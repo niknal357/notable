@@ -1,7 +1,12 @@
 package com.olup.notable.db
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.Settings
+import androidx.annotation.RequiresApi
 import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
@@ -13,6 +18,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.Date
+
 
 class Converters {
     @TypeConverter
@@ -68,30 +74,40 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         private var INSTANCE: AppDatabase? = null
 
+        @RequiresApi(Build.VERSION_CODES.R)
         fun getDatabase(context: Context): AppDatabase {
             if (INSTANCE == null) {
                 synchronized(this) {
+                    // Check if the app has permission to access all files
+                    if (!Environment.isExternalStorageManager())
+                        requestManageAllFilesPermission(context)
                     val documentsDir =
                         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-                    // val dbDir = File(documentsDir, "Obsidian/MinimalNotes/99-Meta/backups/notabledb")
                     val dbDir = File(documentsDir, "notabledb")
                     if (!dbDir.exists()) {
                         dbDir.mkdirs()
                     }
                     val dbFile = File(dbDir, "app_database")
+
+                    // Use Room to build the database
                     INSTANCE =
                         Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
-                            .allowMainThreadQueries()
-                            //.fallbackToDestructiveMigration()
-                            .addMigrations(
-                                MIGRATION_16_17,
-                                MIGRATION_17_18,
-                                MIGRATION_22_23
-                            )
+                            .allowMainThreadQueries() // Avoid in production
+                            .addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_22_23)
                             .build()
+
                 }
             }
             return INSTANCE!!
         }
     }
+}
+
+// TODO: Ask only for what is needed
+@RequiresApi(Build.VERSION_CODES.R)
+fun requestManageAllFilesPermission(context: Context) {
+    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+    intent.data = Uri.fromParts("package", context.packageName, null)
+    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add this flag
+    context.startActivity(intent)
 }
