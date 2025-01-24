@@ -70,7 +70,7 @@ class DrawCanvas(
         // It might be bad idea, but plan is to insert graphic in this, and then take it from it
         // There is probably better way
         var addImageByUri = MutableStateFlow<Uri?>(null)
-        var imageCoordinateToSelect = MutableStateFlow<Pair<Int, Int>?>(null)
+        var imageCoordinateToSelect = MutableStateFlow<SimplePoint?>(null)
     }
 
     fun getActualState(): EditorState {
@@ -336,15 +336,15 @@ class DrawCanvas(
 
     }
 
-    private suspend fun SelectImage(point: Pair<Int, Int>?) {
+    private suspend fun SelectImage(point: SimplePoint?) {
         if (point != null) {
             Log.i(TAG + "Observer", "position of image $point")
 
             // Query the database to find an image that coincides with the point
             val imageToSelect = withContext(Dispatchers.IO) {
                 ImageRepository(context).getImageAtPoint(
-                    point.first,
-                    point.second + page.scroll,
+                    point.x,
+                    point.y + page.scroll,
                     page.id
                 )
             }
