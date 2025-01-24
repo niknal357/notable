@@ -108,72 +108,33 @@ fun Library(navController: NavController, folderId: String? = null) {
                             })
                 }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Text(text = "Add quick page",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .noRippleClickable {
-                            val page = Page(
-                                notebookId = null,
-                                parentFolderId = folderId,
-                                nativeTemplate = appRepository.kvProxy.get(
-                                    "APP_SETTINGS", AppSettings.serializer()
-                                )?.defaultNativeTemplate ?: "blank"
-                            )
-                            appRepository.pageRepository.create(page)
-                            navController.navigate("pages/${page.id}")
-                        }
-                        .padding(10.dp))
-
-                Text(text = "Add notebook",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .noRippleClickable {
-                            appRepository.bookRepository.create(
-                                Notebook(
-                                    parentFolderId = folderId,
-                                    defaultNativeTemplate = appRepository.kvProxy.get(
-                                        "APP_SETTINGS", AppSettings.serializer()
-                                    )?.defaultNativeTemplate ?: "blank"
-                                )
-                            )
-                        }
-                        .padding(10.dp))
-
-                Text(text = "Add Folder",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .noRippleClickable {
-                            val folder = Folder(parentFolderId = folderId)
-                            appRepository.folderRepository.create(folder)
-                        }
-                        .padding(10.dp))
-
-                // Add the new "Floating Editor" button here
-                Text(text = "Floating Editor",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .noRippleClickable {
-                            val page = Page(
-                                notebookId = null,
-                                parentFolderId = folderId,
-                                nativeTemplate = appRepository.kvProxy.get(
-                                    "APP_SETTINGS", AppSettings.serializer()
-                                )?.defaultNativeTemplate ?: "blank"
-                            )
-                            appRepository.pageRepository.create(page)
-                            floatingEditorPageId = page.id
-                            showFloatingEditor = true
-                        }
-                        .padding(10.dp))
+            Row(
+                Modifier
+                    .padding(10.dp)
+            ) {
+                BreadCrumb(folderId) { navController.navigate("library" + if (it == null) "" else "?folderId=${it}") }
             }
+//           I do not know what the idea behind it was
+//            // Add the new "Floating Editor" button here
+//            Text(text = "Floating Editor",
+//                textAlign = TextAlign.Center,
+//                modifier = Modifier
+//                    .noRippleClickable {
+//                        val page = Page(
+//                            notebookId = null,
+//                            parentFolderId = folderId,
+//                            nativeTemplate = appRepository.kvProxy.get(
+//                                "APP_SETTINGS", AppSettings.serializer()
+//                            )?.defaultNativeTemplate ?: "blank"
+//                        )
+//                        appRepository.pageRepository.create(page)
+//                        floatingEditorPageId = page.id
+//                        showFloatingEditor = true
+//                    }
+//                    .padding(10.dp))
+
         }
-        Row(
-            Modifier
-                .padding(10.dp)
-        ) {
-            BreadCrumb(folderId) { navController.navigate("library" + if (it == null) "" else "?folderId=${it}") }
-        }
+
         Column(
             Modifier.padding(10.dp)
         ) {
