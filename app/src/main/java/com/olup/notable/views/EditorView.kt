@@ -137,7 +137,7 @@ fun EditorView(
                 controlTower = editorControlTower,
                 state = editorState
             )
-            SelectedBitmap(editorState = editorState, controlTower = editorControlTower)
+            SelectedBitmap(context = context, editorState = editorState, controlTower = editorControlTower)
             Row(modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()) {

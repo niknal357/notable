@@ -1,5 +1,6 @@
 package com.olup.notable
 
+import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,6 +26,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Share2
 
 val strokeStyle = androidx.compose.ui.graphics.drawscope.Stroke(
     width = 2f,
@@ -35,6 +38,7 @@ val strokeStyle = androidx.compose.ui.graphics.drawscope.Stroke(
 @ExperimentalComposeUiApi
 @ExperimentalFoundationApi
 fun SelectedBitmap(
+    context: Context,
     editorState: EditorState,
     controlTower: EditorControlTower
 ) {
@@ -87,7 +91,7 @@ fun SelectedBitmap(
         selectionState.selectionStartOffset?.let { startOffset ->
             selectionState.selectionDisplaceOffset?.let { displaceOffset ->
                 val xPos = selectionState.selectionRect?.let { rect ->
-                    (rect.left - rect.right) / 2 + 35 * 3
+                    (rect.left - rect.right) / 2 + 50 * 4
                 } ?: 0
                 val offset = startOffset + displaceOffset + IntOffset(x = -xPos, y = -100)
                 // Overlay buttons near the selection box
@@ -98,6 +102,14 @@ fun SelectedBitmap(
                         .padding(4.dp)
                         .height(35.dp)
                 ) {
+                    ToolbarButton(
+                        vectorIcon = FeatherIcons.Share2,
+                        isSelected = false,
+                        onSelect = {
+                            shareBitmap(context, editorState.selectionState.selectedBitmap!!)
+                        },
+                        modifier = Modifier.height(37.dp)
+                    )
                     ToolbarButton(
                         iconId = R.drawable.delete,
                         isSelected = false,

@@ -202,21 +202,6 @@ fun ToolbarMenu(
                         }
                 ) { Text("Export book to PNG") }
 
-            if (state.selectionState.selectedBitmap != null) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(0.5.dp)
-                        .background(Color.Black)
-                )
-                Box(
-                    Modifier
-                        .padding(10.dp)
-                        .noRippleClickable {
-                            shareBitmap(context, state.selectionState.selectedBitmap!!)
-                        }
-                ) { Text("Share selection") }
-            }
 
             Box(
                 Modifier
