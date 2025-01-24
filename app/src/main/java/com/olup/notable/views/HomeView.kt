@@ -341,7 +341,7 @@ fun Library(navController: NavController, folderId: String? = null) {
                     }
                 }
                 if (books?.isNotEmpty() == true) {
-                    items(books!!) { item ->
+                    items(books!!.reversed()) { item ->
                         var isSettingsOpen by remember { mutableStateOf(false) }
                         Box(
                             modifier = Modifier
