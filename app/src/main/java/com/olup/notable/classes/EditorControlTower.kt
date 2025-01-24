@@ -203,7 +203,17 @@ class EditorControlTower(
             scope.launch {
                 DrawCanvas.refreshUi.emit(Unit)
             }
+        }else{
+            scope.launch {
+                SnackState.globalSnackFlow.emit(
+                    SnackConf(
+                        text = "For now, strokes cannot be resized",
+                        duration = 3000,
+                    )
+                )
+            }
         }
+
     }
 
 
