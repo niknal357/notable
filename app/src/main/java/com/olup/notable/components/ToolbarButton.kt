@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun ToolbarButton(
@@ -68,6 +69,7 @@ fun ToolbarButton(
         if (text != null) {
             Text(
                 text = text,
+                fontSize = 20.sp,
                 color = if (isSelected) Color.White else Color.Black
             )
         }

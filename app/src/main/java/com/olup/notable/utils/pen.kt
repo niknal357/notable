@@ -30,6 +30,7 @@ fun penToStroke(pen: Pen): Int {
 @kotlinx.serialization.Serializable
 data class PenSetting(
     var strokeSize: Float,
+    //TODO: Rename to strokeColor
     var color: Int
 )
 

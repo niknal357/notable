@@ -75,18 +75,6 @@ fun Toolbar(
     var isStrokeSelectionOpen by remember { mutableStateOf(false) }
     var isMenuOpen by remember { mutableStateOf(false) }
     var isPageSettingsModalOpen by remember { mutableStateOf(false) }
-    var isPaletteOpen by remember { mutableStateOf(false) }
-    val penColorMap = mapOf(
-        Pen.REDBALLPEN to Color.Red,
-        Pen.BLUEBALLPEN to Color.Blue,
-        Pen.GREENBALLPEN to Color.Green,
-    )
-    var selectedColor by remember {
-        mutableStateOf(
-            penColorMap[state.pen] ?: Color.Black
-        )
-    } // Add a state for selected color
-    var isColorSelectionDialogOpen by remember { mutableStateOf(false) } // State for color selection dialog
 
     val context = LocalContext.current
 
@@ -138,44 +126,6 @@ fun Toolbar(
         val settings = state.penSettings.toMutableMap()
         settings[penName] = setting.copy()
         state.penSettings = settings
-    }
-
-    fun changePenColor(color: Color) {
-        val settings = state.penSettings.toMutableMap()
-        val selectedPenName = state.pen.penName
-        settings[selectedPenName] = settings[selectedPenName]?.copy(
-            color = android.graphics.Color.argb(
-                (color.alpha * 255).toInt(),
-                (color.red * 255).toInt(),
-                (color.green * 255).toInt(),
-                (color.blue * 255).toInt()
-            )
-        ) ?: return // Convert Color to Int
-        state.penSettings = settings
-    }
-
-    // Show Color Selection Dialog
-    if (isColorSelectionDialogOpen) {
-        ColorSelectionDialog(
-            currentColor = selectedColor,
-            onSelect = { color ->
-                selectedColor = color
-                changePenColor(color) // Change pen color for all pens
-                isColorSelectionDialogOpen = false
-            },
-            onClose = { isColorSelectionDialogOpen = false },
-            options = listOf(
-                Color.Red,
-                Color.Green,
-                Color.Blue,
-                Color.Cyan,
-                Color.Magenta,
-                Color.Yellow,
-                Color.Gray,
-                Color.DarkGray,
-                Color.Black,
-            ) // List of color options
-        )
     }
 
     if (isPageSettingsModalOpen) {
@@ -343,13 +293,6 @@ fun Toolbar(
                         .background(Color.Black)
                 )
 
-                ToolbarButton(
-                    iconId = R.drawable.palette,
-                    contentDescription = "palette",
-                    onSelect = {
-                        isColorSelectionDialogOpen = true // Open the color selection dialog
-                    }
-                )
                 ToolbarButton(
                     iconId = R.drawable.image,
                     contentDescription = "library",
