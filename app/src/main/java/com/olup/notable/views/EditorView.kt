@@ -14,6 +14,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
+import com.olup.notable.components.EditorGestureReceiver
 import com.olup.notable.ui.theme.InkaTheme
 import io.shipbook.shipbooksdk.Log
 
