@@ -32,8 +32,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.EyeOff
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.launch
+
 
 fun presentlyUsedToolIcon(mode: Mode, pen: Pen): Int {
     return when (mode) {
@@ -146,7 +149,7 @@ fun Toolbar(
                 ToolbarButton(
                     onSelect = {
                         state.isToolbarOpen = !state.isToolbarOpen
-                    }, iconId = R.drawable.topbar_open, contentDescription = "close toolbar"
+                    }, vectorIcon = FeatherIcons.EyeOff, contentDescription = "close toolbar"
                 )
                 Box(
                     Modifier
