@@ -144,6 +144,7 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
                         val updatedBook = book!!.copy(defaultNativeTemplate = it)
                         bookRepository.update(updatedBook)
                     },
+                    // this once thrown null ptr exception, when deleting notebook.
                     value = book!!.defaultNativeTemplate
                 )
 
