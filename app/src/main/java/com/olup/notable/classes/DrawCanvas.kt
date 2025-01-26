@@ -15,8 +15,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.olup.notable.db.Image
 import com.olup.notable.db.ImageRepository
+import com.olup.notable.db.StrokeRepository
 import com.olup.notable.db.handleSelect
 import com.olup.notable.db.selectImage
+import com.olup.notable.db.selectImagesAndStrokes
 import com.onyx.android.sdk.api.device.epd.EpdController
 import com.onyx.android.sdk.data.note.TouchPoint
 import com.onyx.android.sdk.pen.RawInputCallback
@@ -70,7 +72,7 @@ class DrawCanvas(
         // It might be bad idea, but plan is to insert graphic in this, and then take it from it
         // There is probably better way
         var addImageByUri = MutableStateFlow<Uri?>(null)
-        var imageCoordinateToSelect = MutableStateFlow<SimplePoint?>(null)
+        var rectangleToSelect = MutableStateFlow<Rect?>(null)
     }
 
     fun getActualState(): EditorState {
@@ -257,8 +259,8 @@ class DrawCanvas(
             }
         }
         coroutineScope.launch {
-            imageCoordinateToSelect.drop(1).collect { point ->
-                SelectImage(point)
+            rectangleToSelect.drop(1).collect {
+                selectRectangle(it)
             }
         }
 
@@ -336,31 +338,25 @@ class DrawCanvas(
 
     }
 
-    private suspend fun SelectImage(point: SimplePoint?) {
-        if (point != null) {
-            Log.i(TAG + "Observer", "position of image $point")
-
+    private suspend fun selectRectangle(rectToSelect: Rect?) {
+        if (rectToSelect != null) {
+            Log.i(TAG + "Observer", "position of image $rectToSelect")
+            rectToSelect.top += page.scroll
+            rectToSelect.bottom += page.scroll
             // Query the database to find an image that coincides with the point
-            val imageToSelect = withContext(Dispatchers.IO) {
-                ImageRepository(context).getImageAtPoint(
-                    point.x,
-                    point.y + page.scroll,
-                    page.id
-                )
+            val imagesToSelect = withContext(Dispatchers.IO) {
+                ImageRepository(context).getImagesInRectangle(rectToSelect, page.id)
             }
-            imageCoordinateToSelect.value = null
-            if (imageToSelect != null) {
-                selectImage(coroutineScope, page, state, imageToSelect)
-                SnackState.globalSnackFlow.emit(
-                    SnackConf(
-                        text = "Image selected!",
-                        duration = 3000,
-                    )
-                )
+            val strokesToSelect = withContext(Dispatchers.IO) {
+                StrokeRepository(context).getStrokesInRectangle(rectToSelect, page.id)
+            }
+            rectangleToSelect.value = null
+            if (imagesToSelect.isNotEmpty() || strokesToSelect.isNotEmpty()) {
+                selectImagesAndStrokes(coroutineScope, page, state, imagesToSelect, strokesToSelect)
             } else {
                 SnackState.globalSnackFlow.emit(
                     SnackConf(
-                        text = "There is no image at this position",
+                        text = "There isn't anything.",
                         duration = 3000,
                     )
                 )
@@ -405,7 +401,7 @@ class DrawCanvas(
 
             // Calculate the center position for the image relative to the page dimensions
             val centerX = (page.viewWidth - imageWidth) / 2
-            val centerY = (page.viewHeight - imageHeight) / 2+ page.scroll
+            val centerY = (page.viewHeight - imageHeight) / 2 + page.scroll
             val imageToSave = Image(
                 x = centerX,
                 y = centerY,

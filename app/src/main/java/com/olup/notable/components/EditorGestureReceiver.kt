@@ -1,22 +1,34 @@
 package com.olup.notable.components
 
+import android.graphics.Rect
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import com.olup.notable.AppRepository
 import com.olup.notable.AppSettings
 import com.olup.notable.DrawCanvas
@@ -34,6 +46,7 @@ import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+
 
 data class GestureState(
     val initialPositions: MutableMap<PointerId, Offset> = mutableMapOf(),
@@ -65,6 +78,25 @@ data class GestureState(
         }
     }
 
+    fun getLastPositionIO(): IntOffset? {
+        return lastPositions.values.firstOrNull()?.let { point ->
+            IntOffset(point.x.toInt(), point.y.toInt())
+        }
+    }
+
+    fun calculateRectangleBounds(): Rect? {
+        if (initialPositions.isEmpty() || lastPositions.isEmpty()) return null
+
+        val firstPosition = initialPositions.values.firstOrNull() ?: return null
+        val lastPosition = lastPositions.values.firstOrNull() ?: return null
+
+        return Rect(
+            firstPosition.x.coerceAtMost(lastPosition.x).toInt(),
+            firstPosition.y.coerceAtMost(lastPosition.y).toInt(),
+            firstPosition.x.coerceAtLeast(lastPosition.x).toInt(),
+            firstPosition.y.coerceAtLeast(lastPosition.y).toInt()
+        )
+    }
 
     // Insert a position for the given pointer ID
     fun insertPosition(input: PointerInputChange) {
@@ -151,12 +183,15 @@ fun EditorGestureReceiver(
         .kvProxy
         .observeKv("APP_SETTINGS", AppSettings.serializer(), AppSettings(version = 1))
         .observeAsState()
+
+    var crossPosition by remember { mutableStateOf<IntOffset?>(null) }
+    var rectangleBounds by remember { mutableStateOf<Rect?>(null) }
     Box(
         modifier = Modifier
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val gestureState = GestureState()
-
+                    var isSelection = false
                     // Detect initial touch
                     val down = awaitFirstDown()
 
@@ -192,25 +227,43 @@ fun EditorGestureReceiver(
                         }
                         // events are only send on change, so we need to check for holding in place separately
                         gestureState.lastTimestamp = System.currentTimeMillis()
-
-                        if (gestureState.getElapsedTime() >= HOLD_THRESHOLD_MS && gestureState.getInputCount() == 1) {
+                        if (isSelection) {
+                            crossPosition = gestureState.getLastPositionIO()
+                            rectangleBounds = gestureState.calculateRectangleBounds()
+                        } else if (gestureState.getElapsedTime() >= HOLD_THRESHOLD_MS && gestureState.getInputCount() == 1) {
                             Log.i(TAG, "Held for ${gestureState.getElapsedTime()}ms")
                             if (gestureState.calculateTotalDelta() < TAP_MOVEMENT_TOLERANCE) {
-                                resolveGesture(
-                                    settings = appSettings,
-                                    default = AppSettings.defaultHoldAction,
-                                    override = AppSettings::holdAction,
-                                    state = state,
-                                    scope = coroutineScope,
-                                    previousPage = goToPreviousPage,
-                                    nextPage = goToNextPage,
-                                    position = gestureState.getFirstPosition()!!
-                                )
-                                return@awaitEachGesture
+                                isSelection = true
+                                crossPosition = gestureState.getLastPositionIO()
+                                rectangleBounds = gestureState.calculateRectangleBounds()
+                                coroutineScope.launch {
+                                    SnackState.globalSnackFlow.emit(
+                                        SnackConf(
+                                            text = "Selection mode!",
+                                            duration = 1500,
+                                        )
+                                    )
+                                }
                             }
+
                         }
                     } while (true)
 
+                    if (isSelection) {
+                        resolveGesture(
+                            settings = appSettings,
+                            default = AppSettings.defaultHoldAction,
+                            override = AppSettings::holdAction,
+                            state = state,
+                            scope = coroutineScope,
+                            previousPage = goToPreviousPage,
+                            nextPage = goToNextPage,
+                            rectangle = rectangleBounds!!
+                        )
+                        crossPosition = null
+                        rectangleBounds = null
+                        return@awaitEachGesture
+                    }
                     // Calculate the total delta (movement distance) for all pointers
                     val totalDelta = gestureState.calculateTotalDelta()
                     val gestureDuration = gestureState.getElapsedTime()
@@ -321,7 +374,56 @@ fun EditorGestureReceiver(
             }
             .fillMaxWidth()
             .fillMaxHeight()
-    )
+    ) {
+
+
+        val density = LocalDensity.current
+
+        // Draw cross where finger is touching
+        crossPosition?.let { pos ->
+            val crossSizePx = with(density) { 100.dp.toPx() }
+            Box(
+                Modifier
+                    .offset {
+                        IntOffset(
+                            pos.x - (crossSizePx / 2).toInt(),
+                            pos.y
+                        )
+                    } // Horizontal bar centered
+                    .size(width = 100.dp, height = 2.dp)
+                    .background(Color.Black)
+            )
+            Box(
+                Modifier
+                    .offset {
+                        IntOffset(
+                            pos.x,
+                            pos.y - (crossSizePx / 2).toInt()
+                        )
+                    } // Vertical bar centered
+                    .size(width = 2.dp, height = 100.dp)
+                    .background(Color.Black)
+            )
+        }
+
+        // Draw the rectangle while dragging
+        rectangleBounds?.let { bounds ->
+            // Draw the rectangle
+            Box(
+                Modifier
+                    .offset { IntOffset(bounds.left, bounds.top) }
+                    .size(
+                        width = with(density) { (bounds.right - bounds.left).toDp() },
+                        height = with(density) { (bounds.bottom - bounds.top).toDp() }
+                    )
+                    // Is there rendering speed difference between colors?
+                    .background(Color(0x55000000))
+                    .border(1.dp, Color.Black)
+            )
+        }
+
+
+    }
 }
 
 private fun resolveGesture(
@@ -332,7 +434,7 @@ private fun resolveGesture(
     scope: CoroutineScope,
     previousPage: () -> Unit,
     nextPage: () -> Unit,
-    position: SimplePoint = SimplePoint(0, 0)
+    rectangle: Rect = Rect()
 ) {
     when (if (settings != null) override(settings) else default) {
         null -> Log.i(TAG, "No Action")
@@ -365,7 +467,7 @@ private fun resolveGesture(
         AppSettings.GestureAction.Select -> {
             Log.i(TAG, "select")
             scope.launch {
-                DrawCanvas.imageCoordinateToSelect.emit(position)
+                DrawCanvas.rectangleToSelect.emit(rectangle)
             }
         }
     }
