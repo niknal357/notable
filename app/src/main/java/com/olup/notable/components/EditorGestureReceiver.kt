@@ -186,6 +186,7 @@ fun EditorGestureReceiver(
 
     var crossPosition by remember { mutableStateOf<IntOffset?>(null) }
     var rectangleBounds by remember { mutableStateOf<Rect?>(null) }
+    var redrawTrigger by remember { mutableStateOf(0) }
     Box(
         modifier = Modifier
             .pointerInput(Unit) {
@@ -215,6 +216,7 @@ fun EditorGestureReceiver(
                                 Log.i(TAG, "Canceling gesture - already consumed")
                                 crossPosition = null
                                 rectangleBounds = null
+                                redrawTrigger = 2
                                 return@awaitEachGesture
                             }
                             fingerChange.forEach { change ->
@@ -380,6 +382,23 @@ fun EditorGestureReceiver(
 
 
         val density = LocalDensity.current
+        // Resolves an issue where selection visuals break after switching from finger touch to stylus input.
+        // When this occurs, the UI fails to reflect subsequent gestures (e.g., selection rectangles) until
+        // a UI refresh  ig successful gesture forces a refresh.
+        // TODO: Investigate and implement a cleaner solution to better handle the touch-to-stylus transition without extra refreshes.
+        if (redrawTrigger > 1) {
+            coroutineScope.launch {
+                DrawCanvas.refreshUi.emit(Unit)
+            }
+            --redrawTrigger
+        }
+        // enable drawing of next rectangle
+        if (redrawTrigger > 0 && crossPosition != null) {
+            coroutineScope.launch {
+                DrawCanvas.refreshUi.emit(Unit)
+            }
+            --redrawTrigger
+        }
 
         // Draw cross where finger is touching
         crossPosition?.let { pos ->
