@@ -213,6 +213,8 @@ fun EditorGestureReceiver(
                             // is already consumed return
                             if (fingerChange.find { it.isConsumed } != null) {
                                 Log.i(TAG, "Canceling gesture - already consumed")
+                                crossPosition = null
+                                rectangleBounds = null
                                 return@awaitEachGesture
                             }
                             fingerChange.forEach { change ->
