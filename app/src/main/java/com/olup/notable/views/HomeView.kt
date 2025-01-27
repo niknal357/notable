@@ -1,4 +1,4 @@
-package com.olup.notable
+package com.olup.notable.views
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -44,10 +44,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.olup.notable.AppRepository
+import com.olup.notable.AppSettings
+import com.olup.notable.AppSettingsModal
+import com.olup.notable.BreadCrumb
+import com.olup.notable.FolderConfigDialog
+import com.olup.notable.PageMenu
+import com.olup.notable.PagePreview
+import com.olup.notable.TAG
+import com.olup.notable.Topbar
 import com.olup.notable.db.Folder
 import com.olup.notable.db.Notebook
 import com.olup.notable.db.Page
-import com.olup.notable.views.FloatingEditorView
+import com.olup.notable.isLatestVersion
+import com.olup.notable.modals.NotebookConfigDialog
+import com.olup.notable.noRippleClickable
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.FilePlus
 import compose.icons.feathericons.Folder
@@ -139,8 +150,6 @@ fun Library(navController: NavController, folderId: String? = null) {
             Modifier.padding(10.dp)
         ) {
 
-
-            Text(text = "Folders")
             Spacer(Modifier.height(10.dp))
 
             LazyRow(
