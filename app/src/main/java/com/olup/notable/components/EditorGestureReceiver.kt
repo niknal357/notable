@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,6 +68,7 @@ data class GestureState(
         }.toFloat()
     }
 
+    @Suppress("unused")
     fun getFirstPosition(): SimplePoint? {
         return initialPositions.values.firstOrNull()?.let { point ->
             SimplePoint(point.x.toInt(), point.y.toInt())
@@ -186,7 +189,7 @@ fun EditorGestureReceiver(
 
     var crossPosition by remember { mutableStateOf<IntOffset?>(null) }
     var rectangleBounds by remember { mutableStateOf<Rect?>(null) }
-    var redrawTrigger by remember { mutableStateOf(0) }
+    var redrawTrigger by remember { mutableIntStateOf(0) }
     Box(
         modifier = Modifier
             .pointerInput(Unit) {
@@ -284,7 +287,7 @@ fun EditorGestureReceiver(
                                         SnackState.globalSnackFlow.emit(
                                             SnackConf(
                                                 text = "double click! delta: $totalDelta, time between: ${System.currentTimeMillis() - gestureState.lastTimestamp}",
-                                                duration = 500,
+                                                duration = 3000,
                                             )
                                         )
                                     }
@@ -317,7 +320,7 @@ fun EditorGestureReceiver(
                             SnackState.globalSnackFlow.emit(
                                 SnackConf(
                                     text = "Two finger tap, delta: $totalDelta, duration $gestureDuration",
-                                    duration = 1000,
+                                    duration = 3000,
                                 )
                             )
                         }
@@ -387,15 +390,19 @@ fun EditorGestureReceiver(
         // a UI refresh  ig successful gesture forces a refresh.
         // TODO: Investigate and implement a cleaner solution to better handle the touch-to-stylus transition without extra refreshes.
         if (redrawTrigger > 1) {
-            coroutineScope.launch {
-                DrawCanvas.refreshUi.emit(Unit)
+            LaunchedEffect(Unit) {
+                launch {
+                    DrawCanvas.refreshUi.emit(Unit)
+                }
             }
             --redrawTrigger
         }
         // enable drawing of next rectangle
         if (redrawTrigger > 0 && crossPosition != null) {
-            coroutineScope.launch {
-                DrawCanvas.refreshUi.emit(Unit)
+            LaunchedEffect(Unit) {
+                launch {
+                    DrawCanvas.refreshUi.emit(Unit)
+                }
             }
             --redrawTrigger
         }
