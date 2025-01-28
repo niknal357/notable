@@ -42,11 +42,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.olup.notable.AppRepository
+import com.olup.notable.BreadCrumb
 import com.olup.notable.LocalSnackContext
 import com.olup.notable.PagePreview
 import com.olup.notable.SnackConf
 import com.olup.notable.TAG
 import com.olup.notable.components.SelectMenu
+import com.olup.notable.components.ShowConfirmationDialog
+import com.olup.notable.components.ShowFolderSelectionDialog
 import com.olup.notable.db.BookRepository
 import com.olup.notable.exportBook
 import io.shipbook.shipbooksdk.Log
@@ -78,6 +81,39 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
         .observeAsState()
     val parentFolder = appRepository.folderRepository.getParent(book!!.parentFolderId)
     var showMoveDialog by remember { mutableStateOf(false) }
+
+    // Confirmation Dialog for Deletion
+    if (showDeleteDialog) {
+        ShowConfirmationDialog(
+            title = "Confirm Deletion",
+            message = "Are you sure you want to delete \"${book!!.title}\"?",
+            onConfirm = {
+                bookRepository.delete(bookId)
+                showDeleteDialog = false
+                onClose()
+            },
+            onCancel = {
+                showDeleteDialog = false
+            }
+        )
+        return
+    }
+    // Folder Selection Dialog
+    if (showMoveDialog) {
+        ShowFolderSelectionDialog(
+            notebookName = book!!.title,
+            availableFolders = folders?.associate { it.title to it.id } ?: emptyMap(),
+            back = parentFolder,
+            onCancel = { showMoveDialog = false },
+            onConfirm = { selectedFolder ->
+                Log.i(TAG, "folder:" + selectedFolder.toString())
+                val updatedBook = book!!.copy(parentFolderId = selectedFolder)
+                bookRepository.update(updatedBook)
+                showMoveDialog = false
+            }
+        )
+        return
+    }
 
     Dialog(
         onDismissRequest = {
@@ -152,7 +188,7 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
                         )
                     }
 
-                    Row{
+                    Row {
                         Text(text = "Default Background Template")
 
                         Spacer(Modifier.width(30.dp))
@@ -174,6 +210,10 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
                     }
                     Text("Pages: ${book!!.pageIds.size}")
                     Text("Size: TODO!")
+                    Row {
+                        Text("In Folder: ")
+                        BreadCrumb(book!!.parentFolderId) { }
+                    }
                     Text("Created: $formattedCreatedAt")
                     Text("Last Updated: $formattedUpdatedAt")
                 }
@@ -222,36 +262,7 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
 
             }
         }
-        // Confirmation Dialog for Deletion
-        if (showDeleteDialog) {
-            ShowConfirmationDialog(
-                title = "Confirm Deletion",
-                message = "Are you sure you want to delete \"${book!!.title}\"?",
-                onConfirm = {
-                    bookRepository.delete(bookId)
-                    showDeleteDialog = false
-                    onClose()
-                },
-                onCancel = {
-                    showDeleteDialog = false
-                }
-            )
-        }
-        // Folder Selection Dialog
-        if (showMoveDialog) {
-            ShowFolderSelectionDialog(
-                notebookName = book!!.title,
-                availableFolders = folders?.associate { it.title to it.id } ?: emptyMap(),
-                back = parentFolder,
-                onCancel = { showMoveDialog = false },
-                onConfirm = { selectedFolder ->
-                    Log.i(TAG, "folder:" + selectedFolder.toString())
-                    val updatedBook = book!!.copy(parentFolderId = selectedFolder)
-                    bookRepository.update(updatedBook)
-                    showMoveDialog = false
-                }
-            )
-        }
+
     }
 
 }
@@ -267,103 +278,5 @@ fun ActionButton(text: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(text, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-fun ShowConfirmationDialog(
-    title: String,
-    message: String,
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit
-) {
-    Dialog(onDismissRequest = { onCancel() }) {
-        Column(
-            modifier = Modifier
-                .background(Color.White)
-                .border(1.dp, Color.Black, RectangleShape),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text(text = message, fontSize = 16.sp)
-            Row(
-                horizontalArrangement = Arrangement.SpaceAround,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-            ) {
-                ActionButton(text = "Cancel", onClick = onCancel)
-                ActionButton(text = "Confirm", onClick = onConfirm)
-            }
-        }
-    }
-}
-
-@Composable
-fun ShowFolderSelectionDialog(
-    notebookName: String,
-    availableFolders: Map<String, String>,
-    back: String?,
-    onCancel: () -> Unit,
-    onConfirm: (String?) -> Unit
-) {
-    var selectedFolder by remember { mutableStateOf(back) }
-
-    Dialog(onDismissRequest = { onCancel() }) {
-        Column(
-            modifier = Modifier
-                .background(Color.White)
-                .border(1.dp, Color.Black, RectangleShape),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Choose folder to move \"$notebookName\":",
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            // Folder List
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { selectedFolder = back }
-                        .padding(8.dp)
-                        .background(if (selectedFolder == back) Color.LightGray else Color.Transparent),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "..", fontSize = 16.sp, fontWeight = FontWeight.Normal)
-                }
-                availableFolders.forEach { (title, id) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { selectedFolder = id }
-                            .padding(8.dp)
-                            .background(if (selectedFolder == id) Color.LightGray else Color.Transparent),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Normal)
-                    }
-                }
-            }
-
-            // Cancel and Confirm Buttons
-            Row(
-                horizontalArrangement = Arrangement.SpaceAround,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ActionButton("Cancel", onClick = onCancel)
-                ActionButton("Confirm", onClick = { onConfirm(selectedFolder) })
-            }
-        }
     }
 }
