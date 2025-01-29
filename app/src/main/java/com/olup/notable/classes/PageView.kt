@@ -31,7 +31,6 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.system.measureTimeMillis
 
-
 class PageView(
     val context: Context,
     val coroutineScope: CoroutineScope,
@@ -296,7 +295,24 @@ class PageView(
                     drawImage(context, activeCanvas, image, IntOffset(0, -scroll))
 
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "PageView.kt: Drawing images failed: ${e.message}", e)
 
+                val errorMessage = if (e.message?.contains("does not have permission") == true) {
+                    "Permission error: Unable to access image."
+                } else {
+                    "Failed to load images."
+                }
+                coroutineScope.launch {
+                    SnackState.globalSnackFlow.emit(
+                        SnackConf(
+                            text = errorMessage,
+                            duration = 3000,
+                        )
+                    )
+                }
+            }
+            try {
                 strokes.forEach { stroke ->
                     if (ignoredStrokeIds.contains(stroke.id)) return@forEach
                     val bounds = strokeBounds(stroke)
@@ -308,7 +324,15 @@ class PageView(
                     )
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "PageView.kt: Drawing strokes failed: ${e.message}")
+                Log.e(TAG, "PageView.kt: Drawing strokes failed: ${e.message}", e)
+                coroutineScope.launch {
+                    SnackState.globalSnackFlow.emit(
+                        SnackConf(
+                            text = "Error drawing strokes",
+                            duration = 3000,
+                        )
+                    )
+                }
             }
 
         }
