@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -41,7 +42,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.olup.notable.AppRepository
 import com.olup.notable.BreadCrumb
 import com.olup.notable.LocalSnackContext
 import com.olup.notable.PagePreview
@@ -76,11 +76,9 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
     val formattedUpdatedAt =
         remember { android.text.format.DateFormat.format("dd MMM yyyy HH:mm", book!!.updatedAt) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val appRepository = AppRepository(LocalContext.current)
-    val folders by appRepository.folderRepository.getAllInFolder(book!!.parentFolderId)
-        .observeAsState()
-    val parentFolder = appRepository.folderRepository.getParent(book!!.parentFolderId)
     var showMoveDialog by remember { mutableStateOf(false) }
+    val bookFolder by remember {  derivedStateOf { book?.parentFolderId}}
+
 
     // Confirmation Dialog for Deletion
     if (showDeleteDialog) {
@@ -100,19 +98,24 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
     }
     // Folder Selection Dialog
     if (showMoveDialog) {
+
         ShowFolderSelectionDialog(
+            book =book!!,
             notebookName = book!!.title,
-            availableFolders = folders?.associate { it.title to it.id } ?: emptyMap(),
-            back = parentFolder,
+            initialFolderId = book!!.parentFolderId,
             onCancel = { showMoveDialog = false },
             onConfirm = { selectedFolder ->
+                showMoveDialog = false
                 Log.i(TAG, "folder:" + selectedFolder.toString())
                 val updatedBook = book!!.copy(parentFolderId = selectedFolder)
-                bookRepository.update(updatedBook)
-                showMoveDialog = false
+                scope.launch {
+                    // TODO: We have some weird race condition, have no idea why
+                    // I suspect name changing, and paper changing
+                    delay(100)
+                    bookRepository.update(updatedBook)
+                }
             }
         )
-        return
     }
 
     Dialog(
@@ -177,7 +180,7 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
                                 .background(Color(230, 230, 230, 255))
                                 .padding(10.dp, 0.dp)
                                 .onFocusChanged { focusState ->
-                                    if (!focusState.isFocused) {
+                                    if (!focusState.isFocused ) {
                                         Log.i(TAG, "loose focus")
                                         val updatedBook = book!!.copy(title = bookTitle)
                                         bookRepository.update(updatedBook)
@@ -212,7 +215,7 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
                     Text("Size: TODO!")
                     Row {
                         Text("In Folder: ")
-                        BreadCrumb(book!!.parentFolderId) { }
+                        BreadCrumb(bookFolder) { }
                     }
                     Text("Created: $formattedCreatedAt")
                     Text("Last Updated: $formattedUpdatedAt")

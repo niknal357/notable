@@ -31,7 +31,8 @@ fun ShowConfirmationDialog(
         Column(
             modifier = Modifier
                 .background(Color.White)
-                .border(1.dp, Color.Black, RectangleShape),
+                .border(1.dp, Color.Black, RectangleShape)
+                .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
