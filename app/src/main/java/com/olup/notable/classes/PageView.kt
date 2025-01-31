@@ -59,8 +59,6 @@ class PageView(
 
     init {
         coroutineScope.launch {
-            // TODO:
-            // Warning:(63, 23) This declaration is in a preview state and can be changed in a backwards-incompatible manner with a best-effort migration. Its usage should be marked with '@kotlinx.coroutines.FlowPreview' or '@OptIn(kotlinx.coroutines.FlowPreview::class)' if you accept the drawback of relying on preview API
             saveTopic.debounce(1000).collect {
                 launch { persistBitmap() }
                 launch { persistBitmapThumbnail() }
