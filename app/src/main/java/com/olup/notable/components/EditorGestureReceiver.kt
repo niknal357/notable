@@ -168,7 +168,8 @@ private const val ONE_FINGER_TOUCH_TAP_TIME = 100L
 private const val TAP_MOVEMENT_TOLERANCE = 15f
 private const val SWIPE_THRESHOLD = 200f
 private const val DOUBLE_TAP_TIMEOUT_MS = 170L
-private const val TWO_FINGER_TOUCH_TAP_TIME = 200L
+private const val TWO_FINGER_TOUCH_TAP_MAX_TIME = 200L
+private const val TWO_FINGER_TOUCH_TAP_MIN_TIME = 20L
 private const val TWO_FINGER_TAP_MOVEMENT_TOLERANCE = 20f
 
 
@@ -324,7 +325,10 @@ fun EditorGestureReceiver(
                                 )
                             )
                         }
-                        if (totalDelta < TWO_FINGER_TAP_MOVEMENT_TOLERANCE && gestureDuration < TWO_FINGER_TOUCH_TAP_TIME) {
+                        if (totalDelta < TWO_FINGER_TAP_MOVEMENT_TOLERANCE &&
+                            gestureDuration < TWO_FINGER_TOUCH_TAP_MAX_TIME &&
+                            gestureDuration > TWO_FINGER_TOUCH_TAP_MIN_TIME
+                        ) {
                             resolveGesture(
                                 settings = appSettings,
                                 default = AppSettings.defaultTwoFingerTapAction,
