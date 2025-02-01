@@ -168,6 +168,7 @@ private const val ONE_FINGER_TOUCH_TAP_TIME = 100L
 private const val TAP_MOVEMENT_TOLERANCE = 15f
 private const val SWIPE_THRESHOLD = 200f
 private const val DOUBLE_TAP_TIMEOUT_MS = 170L
+private const val DOUBLE_TAP_MIN_MS = 20L
 private const val TWO_FINGER_TOUCH_TAP_MAX_TIME = 200L
 private const val TWO_FINGER_TOUCH_TAP_MIN_TIME = 20L
 private const val TWO_FINGER_TAP_MOVEMENT_TOLERANCE = 20f
@@ -284,18 +285,32 @@ fun EditorGestureReceiver(
                         if (totalDelta < TAP_MOVEMENT_TOLERANCE && gestureDuration < ONE_FINGER_TOUCH_TAP_TIME) {
                             if (withTimeoutOrNull(DOUBLE_TAP_TIMEOUT_MS) {
                                     val secondDown = awaitFirstDown()
-                                    coroutineScope.launch {
-                                        SnackState.globalSnackFlow.emit(
-                                            SnackConf(
-                                                text = "double click! delta: $totalDelta, time between: ${System.currentTimeMillis() - gestureState.lastTimestamp}",
-                                                duration = 3000,
-                                            )
-                                        )
-                                    }
+                                    val deltaTime  = System.currentTimeMillis() - gestureState.lastTimestamp
                                     Log.i(
                                         TAG,
-                                        "Second down detected: ${secondDown.type}, position: ${secondDown.position}"
+                                        "Second down detected: ${secondDown.type}, position: ${secondDown.position}, deltaTime: $deltaTime"
                                     )
+                                    if (deltaTime <DOUBLE_TAP_MIN_MS){
+                                        coroutineScope.launch {
+                                            SnackState.globalSnackFlow.emit(
+                                                SnackConf(
+                                                    text = "Too quick for double click! delta: $totalDelta, time between: $deltaTime",
+                                                    duration = 3000,
+                                                )
+                                            )
+                                        }
+                                        return@withTimeoutOrNull null
+                                    }
+                                    else {
+                                        coroutineScope.launch {
+                                            SnackState.globalSnackFlow.emit(
+                                                SnackConf(
+                                                    text = "double click! delta: $totalDelta, time between: $deltaTime",
+                                                    duration = 3000,
+                                                )
+                                            )
+                                        }
+                                    }
                                     if (secondDown.type != PointerType.Touch) {
                                         Log.i(
                                             TAG,
