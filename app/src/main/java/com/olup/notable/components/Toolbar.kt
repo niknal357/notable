@@ -1,4 +1,4 @@
-package com.olup.notable
+package com.olup.notable.components
 
 
 import android.content.Intent
@@ -31,12 +31,29 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.navigation.NavController
+import com.olup.notable.AppRepository
+import com.olup.notable.DrawCanvas
+import com.olup.notable.EditorState
+import com.olup.notable.EraserToolbarButton
+import com.olup.notable.History
+import com.olup.notable.LineToolbarButton
+import com.olup.notable.Mode
+import com.olup.notable.PageSettingsModal
+import com.olup.notable.Pen
+import com.olup.notable.PenSetting
+import com.olup.notable.PenToolbarButton
+import com.olup.notable.R
+import com.olup.notable.ToolbarButton
+import com.olup.notable.ToolbarMenu
+import com.olup.notable.UndoRedoType
+import com.olup.notable.noRippleClickable
+import com.olup.notable.utils.createFileFromContentUri
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.EyeOff
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.launch
-
 
 fun presentlyUsedToolIcon(mode: Mode, pen: Pen): Int {
     return when (mode) {
@@ -92,10 +109,14 @@ fun Toolbar(
                 // Grant read URI permission to access the selected URI
                 val flag = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 context.contentResolver.takePersistableUriPermission(uri, flag)
+
+                //  copy image to documents/notabledb/images/filename
+                val copiedFile = createFileFromContentUri(context, uri)
+
                 // Set isImageLoaded to true
                 isImageLoaded = true
-                Log.i("InsertImage", "Hura! We have uri: $uri")
-                DrawCanvas.addImageByUri.value = uri
+                Log.i("InsertImage", "Image was received and copied, it is now at:${copiedFile.toUri()}")
+                DrawCanvas.addImageByUri.value = copiedFile.toUri()
 
             }
         }
@@ -259,7 +280,10 @@ fun Toolbar(
                     onChangeSetting = {
                         onChangeStrokeSetting(
                             Pen.MARKER.penName,
-                            it.copy(it.strokeSize, android.graphics.Color.LTGRAY)
+                            it.copy(
+                                strokeSize = it.strokeSize,
+                                color = android.graphics.Color.LTGRAY
+                            )
                         )
                     })
 
