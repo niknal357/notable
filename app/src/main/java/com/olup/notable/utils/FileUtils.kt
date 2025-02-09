@@ -2,8 +2,8 @@ package com.olup.notable.utils
 
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import android.provider.OpenableColumns
-import com.olup.notable.views.DatabasePermissionManager
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -29,10 +29,8 @@ fun createFileFromContentUri(context: Context, fileUri: Uri): File {
 
     // Set up the output file destination
 
-    val outputDir = File(DatabasePermissionManager.ensureDatabaseFolder(), "images")
-    if (!outputDir.exists()) {
-        outputDir.mkdirs()
-    }
+    val outputDir = ensureImagesFolder()
+
     val outputFile = File(outputDir, fileName)
 
     // Copy the input stream to the output file
@@ -53,4 +51,13 @@ fun copyStreamToFile(inputStream: InputStream, outputFile: File) {
             output.flush()
         }
     }
+}
+
+fun ensureImagesFolder(): File {
+    val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+    val dbDir = File(File(documentsDir, "notabledb"), "images")
+    if (!dbDir.exists()) {
+        dbDir.mkdirs()
+    }
+    return dbDir
 }
