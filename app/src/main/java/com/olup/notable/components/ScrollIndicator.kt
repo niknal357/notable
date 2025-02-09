@@ -1,6 +1,7 @@
 package com.olup.notable
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,8 +24,8 @@ fun ScrollIndicator(context: Context, state: EditorState) {
         .fillMaxHeight()) {
         val height = convertDpToPixel(this.maxHeight, LocalContext.current).toInt()
         val page = state.pageView
-        println(page.scroll + height)
-        println(page.height)
+        Log.d(TAG, "Scroll + Height: ${page.scroll + height}")
+        Log.d(TAG, "Page Height: ${page.height}")
         val virtualHeight = max(page.height, page.scroll + height)
         if (virtualHeight <= height) return@BoxWithConstraints
 
