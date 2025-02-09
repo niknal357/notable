@@ -9,12 +9,15 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.core.graphics.toRect
 import com.olup.notable.db.AppDatabase
 import com.olup.notable.db.Image
+import com.olup.notable.db.KvProxy
 import com.olup.notable.db.Page
 import com.olup.notable.db.Stroke
 import io.shipbook.shipbooksdk.Log
@@ -275,13 +278,17 @@ class PageView(
 
         val timeToDraw = measureTimeMillis {
             drawBg(activeCanvas, pageFromDb?.nativeTemplate ?: "blank", scroll)
-            // Draw the gray edge of the rectangle
-//            val redPaint = Paint().apply {
-//                color = Color.GRAY
-//                style = Paint.Style.STROKE
-//                strokeWidth = 1f // Adjust the width of the edge
-//            }
-//            activeCanvas.drawRect(area, redPaint)
+            val appSettings = KvProxy(context).get("APP_SETTINGS", AppSettings.serializer())
+
+            if (appSettings?.debugMode == true) {
+//                 Draw the gray edge of the rectangle
+                val redPaint = Paint().apply {
+                    color = Color.GRAY
+                    style = Paint.Style.STROKE
+                    strokeWidth = 1f // Adjust the width of the edge
+                }
+                activeCanvas.drawRect(area, redPaint)
+            }
             // Trying to find what throws error when drawing quickly
             try {
                 images.forEach { image ->
