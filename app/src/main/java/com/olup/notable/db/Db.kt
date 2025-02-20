@@ -1,17 +1,7 @@
 package com.olup.notable.db
 
-import android.Manifest
-import android.app.Activity
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
 import android.os.Environment
-import android.provider.Settings
-import androidx.annotation.RequiresApi
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
@@ -81,25 +71,6 @@ abstract class AppDatabase : RoomDatabase() {
         fun getDatabase(context: Context): AppDatabase {
             if (INSTANCE == null) {
                 synchronized(this) {
-                    // TODO: request only notable folder.
-                    // Request storage permission for Android 10 (Q) and below
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                        if (ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.WRITE_EXTERNAL_STORAGE
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            ActivityCompat.requestPermissions(
-                                (context as Activity),
-                                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                                1001
-                            )
-                        }
-                    }
-                    // Request "Manage all files" permission for Android R (API 30) and above
-                    else if (!Environment.isExternalStorageManager()) {
-                        requestManageAllFilesPermission(context)
-                    }
                     val documentsDir =
                         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
                     val dbDir = File(documentsDir, "notabledb")
@@ -120,13 +91,4 @@ abstract class AppDatabase : RoomDatabase() {
             return INSTANCE!!
         }
     }
-}
-
-// TODO: Ask only for what is needed
-@RequiresApi(Build.VERSION_CODES.R)
-fun requestManageAllFilesPermission(context: Context) {
-    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-    intent.data = Uri.fromParts("package", context.packageName, null)
-    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add this flag
-    context.startActivity(intent)
 }

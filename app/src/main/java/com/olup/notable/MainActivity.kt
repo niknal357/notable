@@ -1,13 +1,21 @@
 package com.olup.notable
 
+
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -19,6 +27,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.olup.notable.ui.theme.InkaTheme
 import com.onyx.android.sdk.api.device.epd.EpdController
@@ -39,6 +49,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableFullScreen()
+        requestPermissions()
 
         ShipBook.start(
             this.application, "648adf9364c9825976c1d57e",
@@ -124,6 +135,31 @@ class MainActivity : ComponentActivity() {
 //        this.lifecycleScope.launch {
 //            DrawCanvas.restartAfterConfChange.emit(Unit)
 //        }
+    }
+    private fun requestPermissions() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                    1001
+                )
+            }
+        } else if (!Environment.isExternalStorageManager()) {
+            requestManageAllFilesPermission()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun requestManageAllFilesPermission() {
+        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+        intent.data = Uri.fromParts("package", packageName, null)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(intent)
     }
 
     // written by GPT, but it works
