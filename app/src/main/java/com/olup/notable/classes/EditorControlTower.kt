@@ -156,17 +156,15 @@ class EditorControlTower(
     }
 
     fun changeSizeOfSelection(scale: Int) {
-        val selectedImages = state.selectionState.selectedImages
-
+        val selectedImages = state.selectionState.selectedImages?.map { image ->
+            image.copy(
+                height = image.height + (image.height * scale / 100),
+                width = image.width + (image.width * scale / 100)
+            )
+        }
         // Ensure selected images are not null or empty
         if (!selectedImages.isNullOrEmpty()) {
-            state.selectionState.selectedImages = selectedImages.map { image ->
-                image.copy(
-                    height = image.height + (image.height * scale / 100),
-                    width = image.width + (image.width * scale / 100)
-                )
-            }
-
+            state.selectionState.selectedImages = selectedImages
             // Adjust displacement offset by half the size change
             val sizeChange = selectedImages.firstOrNull()?.let { image ->
                 IntOffset(
@@ -203,7 +201,7 @@ class EditorControlTower(
             scope.launch {
                 DrawCanvas.refreshUi.emit(Unit)
             }
-        }else{
+        } else {
             scope.launch {
                 SnackState.globalSnackFlow.emit(
                     SnackConf(
