@@ -229,12 +229,19 @@ class EditorControlTower(
                 createdAt = Date()
             )
         }
+        state.selectionState.selectedImages = state.selectionState.selectedImages!!.map {
+            it.copy(
+                id = UUID
+                    .randomUUID()
+                    .toString(),
+                createdAt = Date()
+            )
+        }
         // move the selection a bit, to show the copy
         state.selectionState.selectionDisplaceOffset = IntOffset(
             x = state.selectionState.selectionDisplaceOffset!!.x + 50,
             y = state.selectionState.selectionDisplaceOffset!!.y + 50,
         )
-        //TODO: implement coping for images
     }
 
 }
