@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.Copy
 import compose.icons.feathericons.Share2
 
 val strokeStyle = androidx.compose.ui.graphics.drawscope.Stroke(
@@ -128,6 +129,12 @@ fun SelectedBitmap(
                         iconId = R.drawable.minus,
                         isSelected = false,
                         onSelect = { controlTower.changeSizeOfSelection(-10) },
+                        modifier = Modifier.height(37.dp)
+                    )
+                    ToolbarButton(
+                        vectorIcon = FeatherIcons.Copy,
+                        isSelected = false,
+                        onSelect = { controlTower.copySelection() },
                         modifier = Modifier.height(37.dp)
                     )
                 }
