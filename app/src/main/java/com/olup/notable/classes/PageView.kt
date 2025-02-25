@@ -279,11 +279,11 @@ class PageView(
             val appSettings = KvProxy(context).get("APP_SETTINGS", AppSettings.serializer())
 
             if (appSettings?.debugMode == true) {
-//                 Draw the gray edge of the rectangle
+//              Draw the gray edge of the rectangle
                 val redPaint = Paint().apply {
                     color = Color.GRAY
                     style = Paint.Style.STROKE
-                    strokeWidth = 1f // Adjust the width of the edge
+                    strokeWidth = 4f
                 }
                 activeCanvas.drawRect(area, redPaint)
             }
