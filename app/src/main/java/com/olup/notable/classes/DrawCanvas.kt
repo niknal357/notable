@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
 import android.net.Uri
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -34,7 +35,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.concurrent.thread
 import kotlin.system.measureTimeMillis
 
 
@@ -91,56 +91,63 @@ class DrawCanvas(
         }
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
-            thread(true) {
-                if (getActualState().mode == Mode.Erase) {
-                    handleErase(
-                        this@DrawCanvas.page,
-                        history,
-                        plist.points.map { SimplePointF(it.x, it.y + page.scroll) },
-                        eraser = getActualState().eraser
-                    )
-                    drawCanvasToView()
-                    refreshUi()
-                }
+            // sometimes UI will get refreshed and frozen before we draw all the strokes.
+            // I think, its because of doing it in separate thread. Commented it for now, to
+            // observe app behavior, and determine if it fixed this bug,
+            // as I do not know reliable way to reproduce it
+            // thread(true) {
+            if (getActualState().mode == Mode.Erase) {
+                handleErase(
+                    this@DrawCanvas.page,
+                    history,
+                    plist.points.map { SimplePointF(it.x, it.y + page.scroll) },
+                    eraser = getActualState().eraser
+                )
+                drawCanvasToView()
+                refreshUi()
+            }
 
-                if (getActualState().mode == Mode.Draw) {
-                    handleDraw(
-                        this@DrawCanvas.page,
-                        strokeHistoryBatch,
-                        getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
-                        getActualState().penSettings[getActualState().pen.penName]!!.color,
-                        getActualState().pen,
-                        plist.points
-                    )
-                    coroutineScope.launch {
-                        commitHistorySignal.emit(Unit)
-                    }
-                }
-
-                if (getActualState().mode == Mode.Select) {
-                    handleSelect(coroutineScope,
-                        this@DrawCanvas.page,
-                        getActualState(),
-                        plist.points.map { SimplePointF(it.x, it.y + page.scroll) })
-                    drawCanvasToView()
-                    refreshUi()
-                }
-
-                if (getActualState().mode == Mode.Line) {
-                    // draw line
-                    handleLine(
-                        page = this@DrawCanvas.page,
-                        historyBucket = strokeHistoryBatch,
-                        strokeSize = getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
-                        color = getActualState().penSettings[getActualState().pen.penName]!!.color,
-                        pen = getActualState().pen,
-                        touchPoints = plist.points
-                    )
-                    //make it visible
-                    drawCanvasToView()
-                    refreshUi()
+            if (getActualState().mode == Mode.Draw) {
+                // After each stroke ends, we draw it on our canvas.
+                // This way, when screen unfreezes the strokes are shown.
+                // When in scribble mode, ui want be refreshed.
+                handleDraw(
+                    this@DrawCanvas.page,
+                    strokeHistoryBatch,
+                    getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
+                    getActualState().penSettings[getActualState().pen.penName]!!.color,
+                    getActualState().pen,
+                    plist.points
+                )
+                coroutineScope.launch {
+                    commitHistorySignal.emit(Unit)
                 }
             }
+
+            if (getActualState().mode == Mode.Select) {
+                handleSelect(coroutineScope,
+                    this@DrawCanvas.page,
+                    getActualState(),
+                    plist.points.map { SimplePointF(it.x, it.y + page.scroll) })
+                drawCanvasToView()
+                refreshUi()
+            }
+
+            if (getActualState().mode == Mode.Line) {
+                // draw line
+                handleLine(
+                    page = this@DrawCanvas.page,
+                    historyBucket = strokeHistoryBatch,
+                    strokeSize = getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
+                    color = getActualState().penSettings[getActualState().pen.penName]!!.color,
+                    pen = getActualState().pen,
+                    touchPoints = plist.points
+                )
+                //make it visible
+                drawCanvasToView()
+                refreshUi()
+            }
+//            }
         }
 
 
@@ -163,6 +170,14 @@ class DrawCanvas(
         }
 
         override fun onRawErasingTouchPointMoveReceived(p0: TouchPoint?) {
+        }
+
+        override fun onPenUpRefresh(refreshRect: RectF?) {
+            super.onPenUpRefresh(refreshRect)
+        }
+
+        override fun onPenActive(point: TouchPoint?) {
+            super.onPenActive(point)
         }
     }
 
@@ -381,6 +396,8 @@ class DrawCanvas(
 
         if (state.isDrawing) {
             // reset screen freeze
+            // if in scribble mode, the screen want refresh
+            // So to update interface we need to disable, and re-enable
             touchHelper.setRawDrawingEnabled(false)
             touchHelper.setRawDrawingEnabled(true) // screen won't freeze until you actually stoke
         }
