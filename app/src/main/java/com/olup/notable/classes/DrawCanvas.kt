@@ -36,6 +36,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.system.measureTimeMillis
 
@@ -53,7 +55,6 @@ class DrawCanvas(
     val page: PageView,
     val history: History
 ) : SurfaceView(_context) {
-
     private val strokeHistoryBatch = mutableListOf<String>()
 //    private val commitHistorySignal = MutableSharedFlow<Unit>()
 
@@ -75,6 +76,7 @@ class DrawCanvas(
         // There is probably better way
         var addImageByUri = MutableStateFlow<Uri?>(null)
         var rectangleToSelect = MutableStateFlow<Rect?>(null)
+        var drawingInProgress =  Mutex()
     }
 
     fun getActualState(): EditorState {
@@ -97,57 +99,67 @@ class DrawCanvas(
             // I think, its because of doing it in separate thread. Commented it for now, to
             // observe app behavior, and determine if it fixed this bug,
             // as I do not know reliable way to reproduce it
-            // thread(true) {
-            if (getActualState().mode == Mode.Erase) {
-                handleErase(
-                    this@DrawCanvas.page,
-                    history,
-                    plist.points.map { SimplePointF(it.x, it.y + page.scroll) },
-                    eraser = getActualState().eraser
-                )
-                drawCanvasToView()
-                refreshUi()
-            }
-
-            if (getActualState().mode == Mode.Draw) {
-                // After each stroke ends, we draw it on our canvas.
-                // This way, when screen unfreezes the strokes are shown.
-                // When in scribble mode, ui want be refreshed.
-                handleDraw(
-                    this@DrawCanvas.page,
-                    strokeHistoryBatch,
-                    getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
-                    getActualState().penSettings[getActualState().pen.penName]!!.color,
-                    getActualState().pen,
-                    plist.points
-                )
-                coroutineScope.launch {
-                    commitHistorySignal.emit(Unit)
+            // Need testing if it will be better to do in main thread on, in separate.
+            // thread(start = true, isDaemon = false, priority = Thread.MAX_PRIORITY) {
+            coroutineScope.launch(Dispatchers.Main.immediate) {
+                if (getActualState().mode == Mode.Erase) {
+                    handleErase(
+                        this@DrawCanvas.page,
+                        history,
+                        plist.points.map { SimplePointF(it.x, it.y + page.scroll) },
+                        eraser = getActualState().eraser
+                    )
+                    drawCanvasToView()
+                    refreshUi()
                 }
-            }
 
-            if (getActualState().mode == Mode.Select) {
-                handleSelect(coroutineScope,
-                    this@DrawCanvas.page,
-                    getActualState(),
-                    plist.points.map { SimplePointF(it.x, it.y + page.scroll) })
-                drawCanvasToView()
-                refreshUi()
-            }
+                if (getActualState().mode == Mode.Draw) {
+                    // After each stroke ends, we draw it on our canvas.
+                    // This way, when screen unfreezes the strokes are shown.
+                    // When in scribble mode, ui want be refreshed.
+                    // If we UI will be refreshed and frozen before we manage to draw
+                    // strokes want be visible, so we need to ensure that it will be done
+                    // before anything else happens.
+                    drawingInProgress.withLock {
+//                        Thread.sleep(1000)
+                        handleDraw(
+                            this@DrawCanvas.page,
+                            strokeHistoryBatch,
+                            getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
+                            getActualState().penSettings[getActualState().pen.penName]!!.color,
+                            getActualState().pen,
+                            plist.points
+                        )
+                    }
+                    coroutineScope.launch {
+                        commitHistorySignal.emit(Unit)
+                    }
+                }
 
-            if (getActualState().mode == Mode.Line) {
-                // draw line
-                handleLine(
-                    page = this@DrawCanvas.page,
-                    historyBucket = strokeHistoryBatch,
-                    strokeSize = getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
-                    color = getActualState().penSettings[getActualState().pen.penName]!!.color,
-                    pen = getActualState().pen,
-                    touchPoints = plist.points
-                )
-                //make it visible
-                drawCanvasToView()
-                refreshUi()
+                if (getActualState().mode == Mode.Select) {
+                    handleSelect(coroutineScope,
+                        this@DrawCanvas.page,
+                        getActualState(),
+                        plist.points.map { SimplePointF(it.x, it.y + page.scroll) })
+                    drawCanvasToView()
+                    refreshUi()
+                }
+
+                if (getActualState().mode == Mode.Line) {
+                    // draw line
+                    handleLine(
+                        page = this@DrawCanvas.page,
+                        historyBucket = strokeHistoryBatch,
+                        strokeSize = getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
+                        color = getActualState().penSettings[getActualState().pen.penName]!!.color,
+                        pen = getActualState().pen,
+                        touchPoints = plist.points
+                    )
+                    //make it visible
+                    drawCanvasToView()
+                    refreshUi()
+                }
+
             }
 //            }
         }
@@ -434,7 +446,7 @@ class DrawCanvas(
             )
             selectImage(coroutineScope, page, state, imageToSave)
             // image will be added to database when released, the same as with paste element.
-            state.selectionState.placementMode =  PlacementMode.Paste
+            state.selectionState.placementMode = PlacementMode.Paste
         } else {
             // Handle cases where the bitmap could not be created
             Log.e("ImageProcessing", "Failed to create software bitmap from URI.")

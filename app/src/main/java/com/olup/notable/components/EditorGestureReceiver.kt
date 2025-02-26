@@ -209,6 +209,12 @@ fun EditorGestureReceiver(
                     gestureState.initialTimestamp = System.currentTimeMillis()
                     gestureState.insertPosition(down)
 
+                    // If we are drawing do not process gestures,
+                    // as we are not ready to show strokes.
+                    if (DrawCanvas.drawingInProgress.isLocked) {
+                        Log.i(TAG, "Drawing is in progress, skipping gesture.")
+                        return@awaitEachGesture
+                    }
                     do {
                         // wait for second gesture
                         val event = withTimeoutOrNull(1000L) { awaitPointerEvent() }
@@ -285,12 +291,13 @@ fun EditorGestureReceiver(
                         if (totalDelta < TAP_MOVEMENT_TOLERANCE && gestureDuration < ONE_FINGER_TOUCH_TAP_TIME) {
                             if (withTimeoutOrNull(DOUBLE_TAP_TIMEOUT_MS) {
                                     val secondDown = awaitFirstDown()
-                                    val deltaTime  = System.currentTimeMillis() - gestureState.lastTimestamp
+                                    val deltaTime =
+                                        System.currentTimeMillis() - gestureState.lastTimestamp
                                     Log.i(
                                         TAG,
                                         "Second down detected: ${secondDown.type}, position: ${secondDown.position}, deltaTime: $deltaTime"
                                     )
-                                    if (deltaTime <DOUBLE_TAP_MIN_MS){
+                                    if (deltaTime < DOUBLE_TAP_MIN_MS) {
                                         coroutineScope.launch {
                                             SnackState.globalSnackFlow.emit(
                                                 SnackConf(
@@ -300,8 +307,7 @@ fun EditorGestureReceiver(
                                             )
                                         }
                                         return@withTimeoutOrNull null
-                                    }
-                                    else {
+                                    } else {
                                         coroutineScope.launch {
                                             SnackState.globalSnackFlow.emit(
                                                 SnackConf(
