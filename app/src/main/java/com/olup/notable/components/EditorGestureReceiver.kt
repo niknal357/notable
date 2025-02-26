@@ -36,14 +36,14 @@ import com.olup.notable.AppSettings
 import com.olup.notable.DrawCanvas
 import com.olup.notable.EditorControlTower
 import com.olup.notable.EditorState
-import com.olup.notable.History
 import com.olup.notable.Mode
 import com.olup.notable.SimplePoint
 import com.olup.notable.SimplePointF
 import com.olup.notable.SnackConf
 import com.olup.notable.SnackState
 import com.olup.notable.TAG
-import com.olup.notable.UndoRedoType
+import com.olup.notable.utils.History
+import com.olup.notable.utils.UndoRedoType
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

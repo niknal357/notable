@@ -1,8 +1,15 @@
-package com.olup.notable
+package com.olup.notable.utils
 
 import android.graphics.Rect
+import com.olup.notable.DrawCanvas
+import com.olup.notable.PageView
+import com.olup.notable.SnackConf
+import com.olup.notable.SnackState
 import com.olup.notable.db.Image
 import com.olup.notable.db.Stroke
+import com.olup.notable.imageBoundsInt
+import com.olup.notable.pageAreaToCanvasArea
+import com.olup.notable.strokeBounds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -12,10 +19,8 @@ import kotlinx.coroutines.launch
 sealed class Operation {
     data class DeleteStroke(val strokeIds: List<String>) : Operation()
     data class AddStroke(val strokes: List<Stroke>) : Operation()
-
-    // TODO
-    data class AddImage(val strokes: List<Image>) : Operation()
-
+    data class AddImage(val images: List<Image>) : Operation()
+    data class DeleteImage(val imageIds: List<String>) : Operation()
 }
 
 typealias OperationBlock = List<Operation>
@@ -101,6 +106,17 @@ class History(coroutineScope: CoroutineScope, pageView: PageView) {
                 val strokes = pageModel.getStrokes(operation.strokeIds).filterNotNull()
                 pageModel.removeStrokes(operation.strokeIds)
                 return Operation.AddStroke(strokes = strokes) to strokeBounds(strokes)
+            }
+            is Operation.AddImage -> {
+                pageModel.addImage(operation.images)
+                return Operation.DeleteImage(imageIds = operation.images.map { it.id }) to imageBoundsInt(
+                    operation.images
+                )
+            }
+            is Operation.DeleteImage -> {
+                val images = pageModel.getImages(operation.imageIds).filterNotNull()
+                pageModel.removeImages(operation.imageIds)
+                return Operation.AddImage(images = images) to imageBoundsInt(images)
             }
 
             else -> {

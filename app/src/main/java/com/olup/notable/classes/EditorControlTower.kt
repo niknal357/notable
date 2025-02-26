@@ -6,6 +6,8 @@ import android.graphics.Rect
 import android.util.Log
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
+import com.olup.notable.utils.History
+import com.olup.notable.utils.Operation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -92,7 +94,9 @@ class EditorControlTower(
             page.drawArea(finalZone)
 
 
-            if (offset.x > 0 || offset.y > 0) {
+            if (offset.x > 0 || offset.y > 0
+                || state.selectionState.placementMode == PlacementMode.Paste
+            ) {
                 // A displacement happened, we can create a history for this
                 var operationList =
                     listOf<Operation>(Operation.DeleteStroke(displacedStrokes.map { it.id }))
@@ -107,20 +111,24 @@ class EditorControlTower(
                 offsetImage(it, offset = offset.toOffset())
             }
             if (state.selectionState.placementMode == PlacementMode.Move)
-                page.removeImage(selectedImages.map { it.id })
+                page.removeImages(selectedImages.map { it.id })
 
             page.addImage(displacedImages)
             page.drawArea(finalZone)
 
+            Log.i(TAG, "applaying disp. $offset")
 
-            if (offset.x > 0 || offset.y > 0) {
+            if (offset.x != 0 || offset.y != 0
+                || state.selectionState.placementMode == PlacementMode.Paste
+            ) {
                 // A displacement happened, we can create a history for this
+                // To undo changes we first remove image
                 var operationList =
-                    listOf<Operation>(Operation.DeleteStroke(displacedImages.map { it.id }))
-                // TODO: in case we are on a move operation, this history point re-adds the original strokes
-                // if (state.selectionState.placementMode == PlacementMode.Move)
-                //    operationList += Operation.AddImage(selectedImages)
-                //history.addOperationsToHistory(operationList)
+                    listOf<Operation>(Operation.DeleteImage(displacedImages.map { it.id }))
+                // then add the original images, only if we intended to move it.
+                if (state.selectionState.placementMode == PlacementMode.Move)
+                    operationList += Operation.AddImage(selectedImages)
+                history.addOperationsToHistory(operationList)
             }
 
         }
@@ -134,7 +142,7 @@ class EditorControlTower(
         if (!selectedImages.isNullOrEmpty()) {
             val imageIds: List<String> = selectedImages.map { it.id }
             Log.i(TAG, "removing images")
-            page.removeImage(imageIds)
+            page.removeImages(imageIds)
         }
         val selectedStrokes = state.selectionState.selectedStrokes
         if (!selectedStrokes.isNullOrEmpty()) {
@@ -229,14 +237,15 @@ class EditorControlTower(
                 createdAt = Date()
             )
         }
-        state.selectionState.selectedImages = state.selectionState.selectedImages!!.map {
-            it.copy(
-                id = UUID
-                    .randomUUID()
-                    .toString(),
-                createdAt = Date()
-            )
-        }
+        if (!state.selectionState.selectedImages.isNullOrEmpty())
+            state.selectionState.selectedImages = state.selectionState.selectedImages!!.map {
+                it.copy(
+                    id = UUID
+                        .randomUUID()
+                        .toString(),
+                    createdAt = Date()
+                )
+            }
         // move the selection a bit, to show the copy
         state.selectionState.selectionDisplaceOffset = IntOffset(
             x = state.selectionState.selectionDisplaceOffset!!.x + 50,

@@ -26,6 +26,8 @@ import androidx.core.graphics.toRegion
 import com.olup.notable.db.Image
 import com.olup.notable.db.Stroke
 import com.olup.notable.db.StrokePoint
+import com.olup.notable.utils.History
+import com.olup.notable.utils.Operation
 import com.onyx.android.sdk.data.note.TouchPoint
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.flow.Flow

@@ -17,6 +17,7 @@ import androidx.navigation.NavController
 import com.olup.notable.components.EditorGestureReceiver
 import com.olup.notable.components.Toolbar
 import com.olup.notable.ui.theme.InkaTheme
+import com.olup.notable.utils.History
 import io.shipbook.shipbooksdk.Log
 
 

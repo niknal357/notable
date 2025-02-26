@@ -20,6 +20,8 @@ import com.olup.notable.db.StrokeRepository
 import com.olup.notable.db.handleSelect
 import com.olup.notable.db.selectImage
 import com.olup.notable.db.selectImagesAndStrokes
+import com.olup.notable.utils.History
+import com.olup.notable.utils.Operation
 import com.onyx.android.sdk.api.device.epd.EpdController
 import com.onyx.android.sdk.data.note.TouchPoint
 import com.onyx.android.sdk.pen.RawInputCallback
@@ -427,12 +429,12 @@ class DrawCanvas(
                 uri = imageUri.toString(),
                 pageId = page.id
             )
-            // Add the image to the page
-            page.addImage(imageToSave)
             drawImage(
                 context, page.windowedCanvas, imageToSave, IntOffset(0, -page.scroll)
             )
             selectImage(coroutineScope, page, state, imageToSave)
+            // image will be added to database when released, the same as with paste element.
+            state.selectionState.placementMode =  PlacementMode.Paste
         } else {
             // Handle cases where the bitmap could not be created
             Log.e("ImageProcessing", "Failed to create software bitmap from URI.")

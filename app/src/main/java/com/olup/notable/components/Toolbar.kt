@@ -37,7 +37,7 @@ import com.olup.notable.AppRepository
 import com.olup.notable.DrawCanvas
 import com.olup.notable.EditorState
 import com.olup.notable.EraserToolbarButton
-import com.olup.notable.History
+import com.olup.notable.utils.History
 import com.olup.notable.LineToolbarButton
 import com.olup.notable.Mode
 import com.olup.notable.PageSettingsModal
@@ -47,7 +47,7 @@ import com.olup.notable.PenToolbarButton
 import com.olup.notable.R
 import com.olup.notable.ToolbarButton
 import com.olup.notable.ToolbarMenu
-import com.olup.notable.UndoRedoType
+import com.olup.notable.utils.UndoRedoType
 import com.olup.notable.noRippleClickable
 import com.olup.notable.utils.createFileFromContentUri
 import compose.icons.FeatherIcons

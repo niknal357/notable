@@ -173,7 +173,7 @@ class PageView(
         persistBitmapDebounced()
     }
 
-    fun removeImage(imageIds: List<String>) {
+    fun removeImages(imageIds: List<String>) {
         images = images.filter { s -> !imageIds.contains(s.id) }
         removeImagesFromPersistLayer(imageIds)
         indexImages()
@@ -184,6 +184,10 @@ class PageView(
 
     fun getImage(imageId: String): Image? {
         return imagesById[imageId]
+    }
+
+    fun getImages(imageIds: List<String>): List<Image?> {
+        return imageIds.map { i -> imagesById[i] }
     }
 
 
