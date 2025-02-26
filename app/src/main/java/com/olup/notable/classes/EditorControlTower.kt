@@ -94,9 +94,7 @@ class EditorControlTower(
             page.drawArea(finalZone)
 
 
-            if (offset.x > 0 || offset.y > 0
-                || state.selectionState.placementMode == PlacementMode.Paste
-            ) {
+            if (offset.x > 0 || offset.y > 0) {
                 // A displacement happened, we can create a history for this
                 var operationList =
                     listOf<Operation>(Operation.DeleteStroke(displacedStrokes.map { it.id }))
@@ -107,6 +105,8 @@ class EditorControlTower(
             }
         }
         if (selectedImages != null) {
+            Log.i(TAG, "Commit images to history." )
+
             val displacedImages = selectedImages.map {
                 offsetImage(it, offset = offset.toOffset())
             }
@@ -116,11 +116,8 @@ class EditorControlTower(
             page.addImage(displacedImages)
             page.drawArea(finalZone)
 
-            Log.i(TAG, "applaying disp. $offset")
-
-            if (offset.x != 0 || offset.y != 0
-                || state.selectionState.placementMode == PlacementMode.Paste
-            ) {
+            if (offset.x != 0 || offset.y != 0) {
+                // TODO: find why sometimes we add two times same operation.
                 // A displacement happened, we can create a history for this
                 // To undo changes we first remove image
                 var operationList =

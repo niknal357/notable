@@ -346,6 +346,7 @@ data class SimplePointF(val x: Float, val y: Float)
 
 fun pathToRegion(path: Path): Region {
     val bounds = RectF()
+    // TODO: it deprecated, find replacement.
     path.computeBounds(bounds, true)
     val region = Region()
     region.setPath(
