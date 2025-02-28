@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,7 +43,6 @@ import com.olup.notable.SnackState
 import com.olup.notable.TAG
 import com.olup.notable.utils.History
 import com.olup.notable.utils.UndoRedoType
-import com.onyx.android.sdk.extension.isNotNull
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -192,13 +190,19 @@ fun EditorGestureReceiver(
 
     var crossPosition by remember { mutableStateOf<IntOffset?>(null) }
     var rectangleBounds by remember { mutableStateOf<Rect?>(null) }
-    var redrawTrigger by remember { mutableIntStateOf(0) }
+    var isSelection by remember { mutableStateOf(false) }
+    LaunchedEffect(isSelection) {
+        if (!isSelection) {
+            Log.i(TAG, "Entering drawing mode.")
+            state.isDrawing = true
+        }
+    }
     Box(
         modifier = Modifier
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val gestureState = GestureState()
-                    var isSelection = false
+                    isSelection = false
                     // Detect initial touch
                     val down = awaitFirstDown()
 
@@ -220,11 +224,8 @@ fun EditorGestureReceiver(
                             // is already consumed return
                             if (fingerChange.find { it.isConsumed } != null) {
                                 Log.i(TAG, "Canceling gesture - already consumed")
-                                if (crossPosition.isNotNull()) {
-                                    crossPosition = null
-                                    rectangleBounds = null
-                                    redrawTrigger = 2
-                                }
+                                crossPosition = null
+                                rectangleBounds = null
                                 return@awaitEachGesture
                             }
                             fingerChange.forEach { change ->
@@ -249,6 +250,7 @@ fun EditorGestureReceiver(
                                 crossPosition = gestureState.getLastPositionIO()
                                 rectangleBounds = gestureState.calculateRectangleBounds()
                                 coroutineScope.launch {
+                                    state.isDrawing = false
                                     SnackState.globalSnackFlow.emit(
                                         SnackConf(
                                             text = "Selection mode!",
@@ -407,27 +409,6 @@ fun EditorGestureReceiver(
 
 
         val density = LocalDensity.current
-        // Resolves an issue where selection visuals break after switching from finger touch to stylus input.
-        // When this occurs, the UI fails to reflect subsequent gestures (e.g., selection rectangles) until
-        // a UI refresh  ig successful gesture forces a refresh.
-        // TODO: Investigate and implement a cleaner solution to better handle the touch-to-stylus transition without extra refreshes.
-        if (redrawTrigger > 1) {
-            LaunchedEffect(Unit) {
-                launch {
-                    DrawCanvas.refreshUi.emit(Unit)
-                }
-            }
-            --redrawTrigger
-        }
-        // enable drawing of next rectangle
-        if (redrawTrigger > 0 && crossPosition != null) {
-            LaunchedEffect(Unit) {
-                launch {
-                    DrawCanvas.refreshUi.emit(Unit)
-                }
-            }
-            --redrawTrigger
-        }
 
         // Draw cross where finger is touching
         crossPosition?.let { pos ->

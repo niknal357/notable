@@ -466,7 +466,7 @@ class DrawCanvas(
             delay(1)
             // Wait until drawingInProgress is unlocked before proceeding
             while (drawingInProgress.isLocked) {
-                delay(10)
+                delay(5)
             }
             drawCanvasToView()
             touchHelper.setRawDrawingEnabled(false)
@@ -536,11 +536,17 @@ class DrawCanvas(
         this.holder.unlockCanvasAndPost(canvas)
     }
 
-    private fun updateIsDrawing() {
+    private suspend fun updateIsDrawing() {
         Log.i(TAG, "Update is drawing : ${state.isDrawing}")
         if (state.isDrawing) {
             touchHelper.setRawDrawingEnabled(true)
         } else {
+            // Check if drawing is completed
+            delay(1)
+            while (drawingInProgress.isLocked) {
+                delay(5)
+            }
+            // draw to view, before showing drawing, avoid stutter
             drawCanvasToView()
             touchHelper.setRawDrawingEnabled(false)
         }
