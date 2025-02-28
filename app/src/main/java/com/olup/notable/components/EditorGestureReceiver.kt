@@ -44,6 +44,7 @@ import com.olup.notable.SnackState
 import com.olup.notable.TAG
 import com.olup.notable.utils.History
 import com.olup.notable.utils.UndoRedoType
+import com.onyx.android.sdk.extension.isNotNull
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -219,9 +220,11 @@ fun EditorGestureReceiver(
                             // is already consumed return
                             if (fingerChange.find { it.isConsumed } != null) {
                                 Log.i(TAG, "Canceling gesture - already consumed")
-                                crossPosition = null
-                                rectangleBounds = null
-                                redrawTrigger = 2
+                                if (crossPosition.isNotNull()) {
+                                    crossPosition = null
+                                    rectangleBounds = null
+                                    redrawTrigger = 2
+                                }
                                 return@awaitEachGesture
                             }
                             fingerChange.forEach { change ->
