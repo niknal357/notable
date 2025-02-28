@@ -1,4 +1,4 @@
-package com.olup.notable
+package com.olup.notable.components
 
 
 import android.content.Intent
@@ -31,7 +31,26 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.navigation.NavController
+import com.olup.notable.AppRepository
+import com.olup.notable.DrawCanvas
+import com.olup.notable.EditorState
+import com.olup.notable.EraserToolbarButton
+import com.olup.notable.utils.History
+import com.olup.notable.LineToolbarButton
+import com.olup.notable.Mode
+import com.olup.notable.PageSettingsModal
+import com.olup.notable.Pen
+import com.olup.notable.PenSetting
+import com.olup.notable.PenToolbarButton
+import com.olup.notable.R
+import com.olup.notable.ToolbarButton
+import com.olup.notable.utils.UndoRedoType
+import com.olup.notable.noRippleClickable
+import com.olup.notable.utils.createFileFromContentUri
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.EyeOff
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.launch
 
@@ -75,18 +94,6 @@ fun Toolbar(
     var isStrokeSelectionOpen by remember { mutableStateOf(false) }
     var isMenuOpen by remember { mutableStateOf(false) }
     var isPageSettingsModalOpen by remember { mutableStateOf(false) }
-    var isPaletteOpen by remember { mutableStateOf(false) }
-    val penColorMap = mapOf(
-        Pen.REDBALLPEN to Color.Red,
-        Pen.BLUEBALLPEN to Color.Blue,
-        Pen.GREENBALLPEN to Color.Green,
-    )
-    var selectedColor by remember {
-        mutableStateOf(
-            penColorMap[state.pen] ?: Color.Black
-        )
-    } // Add a state for selected color
-    var isColorSelectionDialogOpen by remember { mutableStateOf(false) } // State for color selection dialog
 
     val context = LocalContext.current
 
@@ -101,10 +108,14 @@ fun Toolbar(
                 // Grant read URI permission to access the selected URI
                 val flag = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 context.contentResolver.takePersistableUriPermission(uri, flag)
+
+                //  copy image to documents/notabledb/images/filename
+                val copiedFile = createFileFromContentUri(context, uri)
+
                 // Set isImageLoaded to true
                 isImageLoaded = true
-                Log.i("InsertImage", "Hura! We have uri: $uri")
-                DrawCanvas.addImageByUri.value = uri
+                Log.i("InsertImage", "Image was received and copied, it is now at:${copiedFile.toUri()}")
+                DrawCanvas.addImageByUri.value = copiedFile.toUri()
 
             }
         }
@@ -140,44 +151,6 @@ fun Toolbar(
         state.penSettings = settings
     }
 
-    fun changePenColor(color: Color) {
-        val settings = state.penSettings.toMutableMap()
-        val selectedPenName = state.pen.penName
-        settings[selectedPenName] = settings[selectedPenName]?.copy(
-            color = android.graphics.Color.argb(
-                (color.alpha * 255).toInt(),
-                (color.red * 255).toInt(),
-                (color.green * 255).toInt(),
-                (color.blue * 255).toInt()
-            )
-        ) ?: return // Convert Color to Int
-        state.penSettings = settings
-    }
-
-    // Show Color Selection Dialog
-    if (isColorSelectionDialogOpen) {
-        ColorSelectionDialog(
-            currentColor = selectedColor,
-            onSelect = { color ->
-                selectedColor = color
-                changePenColor(color) // Change pen color for all pens
-                isColorSelectionDialogOpen = false
-            },
-            onClose = { isColorSelectionDialogOpen = false },
-            options = listOf(
-                Color.Red,
-                Color.Green,
-                Color.Blue,
-                Color.Cyan,
-                Color.Magenta,
-                Color.Yellow,
-                Color.Gray,
-                Color.DarkGray,
-                Color.Black,
-            ) // List of color options
-        )
-    }
-
     if (isPageSettingsModalOpen) {
         PageSettingsModal(pageView = state.pageView) {
             isPageSettingsModalOpen = false
@@ -196,7 +169,7 @@ fun Toolbar(
                 ToolbarButton(
                     onSelect = {
                         state.isToolbarOpen = !state.isToolbarOpen
-                    }, iconId = R.drawable.topbar_open, contentDescription = "close toolbar"
+                    }, vectorIcon = FeatherIcons.EyeOff, contentDescription = "close toolbar"
                 )
                 Box(
                     Modifier
@@ -306,7 +279,10 @@ fun Toolbar(
                     onChangeSetting = {
                         onChangeStrokeSetting(
                             Pen.MARKER.penName,
-                            it.copy(it.strokeSize, android.graphics.Color.LTGRAY)
+                            it.copy(
+                                strokeSize = it.strokeSize,
+                                color = android.graphics.Color.LTGRAY
+                            )
                         )
                     })
 
@@ -343,13 +319,6 @@ fun Toolbar(
                         .background(Color.Black)
                 )
 
-                ToolbarButton(
-                    iconId = R.drawable.palette,
-                    contentDescription = "palette",
-                    onSelect = {
-                        isColorSelectionDialogOpen = true // Open the color selection dialog
-                    }
-                )
                 ToolbarButton(
                     iconId = R.drawable.image,
                     contentDescription = "library",

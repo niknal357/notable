@@ -6,6 +6,8 @@ import android.graphics.Rect
 import android.util.Log
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
+import com.olup.notable.utils.History
+import com.olup.notable.utils.Operation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -103,24 +105,27 @@ class EditorControlTower(
             }
         }
         if (selectedImages != null) {
+            Log.i(TAG, "Commit images to history." )
+
             val displacedImages = selectedImages.map {
                 offsetImage(it, offset = offset.toOffset())
             }
             if (state.selectionState.placementMode == PlacementMode.Move)
-                page.removeImage(selectedImages.map { it.id })
+                page.removeImages(selectedImages.map { it.id })
 
             page.addImage(displacedImages)
             page.drawArea(finalZone)
 
-
-            if (offset.x > 0 || offset.y > 0) {
+            if (offset.x != 0 || offset.y != 0) {
+                // TODO: find why sometimes we add two times same operation.
                 // A displacement happened, we can create a history for this
+                // To undo changes we first remove image
                 var operationList =
-                    listOf<Operation>(Operation.DeleteStroke(displacedImages.map { it.id }))
-                // TODO: in case we are on a move operation, this history point re-adds the original strokes
-                // if (state.selectionState.placementMode == PlacementMode.Move)
-                //    operationList += Operation.AddImage(selectedImages)
-                //history.addOperationsToHistory(operationList)
+                    listOf<Operation>(Operation.DeleteImage(displacedImages.map { it.id }))
+                // then add the original images, only if we intended to move it.
+                if (state.selectionState.placementMode == PlacementMode.Move)
+                    operationList += Operation.AddImage(selectedImages)
+                history.addOperationsToHistory(operationList)
             }
 
         }
@@ -134,7 +139,7 @@ class EditorControlTower(
         if (!selectedImages.isNullOrEmpty()) {
             val imageIds: List<String> = selectedImages.map { it.id }
             Log.i(TAG, "removing images")
-            page.removeImage(imageIds)
+            page.removeImages(imageIds)
         }
         val selectedStrokes = state.selectionState.selectedStrokes
         if (!selectedStrokes.isNullOrEmpty()) {
@@ -156,17 +161,15 @@ class EditorControlTower(
     }
 
     fun changeSizeOfSelection(scale: Int) {
-        val selectedImages = state.selectionState.selectedImages
-
+        val selectedImages = state.selectionState.selectedImages?.map { image ->
+            image.copy(
+                height = image.height + (image.height * scale / 100),
+                width = image.width + (image.width * scale / 100)
+            )
+        }
         // Ensure selected images are not null or empty
         if (!selectedImages.isNullOrEmpty()) {
-            state.selectionState.selectedImages = selectedImages.map { image ->
-                image.copy(
-                    height = image.height + (image.height * scale / 100),
-                    width = image.width + (image.width * scale / 100)
-                )
-            }
-
+            state.selectionState.selectedImages = selectedImages
             // Adjust displacement offset by half the size change
             val sizeChange = selectedImages.firstOrNull()?.let { image ->
                 IntOffset(
@@ -203,7 +206,17 @@ class EditorControlTower(
             scope.launch {
                 DrawCanvas.refreshUi.emit(Unit)
             }
+        } else {
+            scope.launch {
+                SnackState.globalSnackFlow.emit(
+                    SnackConf(
+                        text = "For now, strokes cannot be resized",
+                        duration = 3000,
+                    )
+                )
+            }
         }
+
     }
 
 
@@ -221,12 +234,20 @@ class EditorControlTower(
                 createdAt = Date()
             )
         }
+        if (!state.selectionState.selectedImages.isNullOrEmpty())
+            state.selectionState.selectedImages = state.selectionState.selectedImages!!.map {
+                it.copy(
+                    id = UUID
+                        .randomUUID()
+                        .toString(),
+                    createdAt = Date()
+                )
+            }
         // move the selection a bit, to show the copy
         state.selectionState.selectionDisplaceOffset = IntOffset(
             x = state.selectionState.selectionDisplaceOffset!!.x + 50,
             y = state.selectionState.selectionDisplaceOffset!!.y + 50,
         )
-        //TODO: implement coping for images
     }
 
 }

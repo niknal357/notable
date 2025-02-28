@@ -26,6 +26,8 @@ import androidx.core.graphics.toRegion
 import com.olup.notable.db.Image
 import com.olup.notable.db.Stroke
 import com.olup.notable.db.StrokePoint
+import com.olup.notable.utils.History
+import com.olup.notable.utils.Operation
 import com.onyx.android.sdk.data.note.TouchPoint
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.flow.Flow
@@ -40,10 +42,9 @@ import java.io.IOException
 fun Modifier.noRippleClickable(
     onClick: () -> Unit
 ): Modifier = composed {
-    this.then(
-        clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-            onClick()
-        })
+    clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+        onClick()
+    }
 }
 
 
@@ -345,6 +346,7 @@ data class SimplePointF(val x: Float, val y: Float)
 
 fun pathToRegion(path: Path): Region {
     val bounds = RectF()
+    // TODO: it deprecated, find replacement.
     path.computeBounds(bounds, true)
     val region = Region()
     region.setPath(

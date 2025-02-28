@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.core.graphics.toRect
 import com.olup.notable.db.AppDatabase
 import com.olup.notable.db.Image
+import com.olup.notable.db.KvProxy
 import com.olup.notable.db.Page
 import com.olup.notable.db.Stroke
 import io.shipbook.shipbooksdk.Log
@@ -30,7 +31,6 @@ import kotlin.io.path.Path
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.system.measureTimeMillis
-
 
 class PageView(
     val context: Context,
@@ -60,8 +60,6 @@ class PageView(
 
     init {
         coroutineScope.launch {
-            // TODO:
-            // Warning:(63, 23) This declaration is in a preview state and can be changed in a backwards-incompatible manner with a best-effort migration. Its usage should be marked with '@kotlinx.coroutines.FlowPreview' or '@OptIn(kotlinx.coroutines.FlowPreview::class)' if you accept the drawback of relying on preview API
             saveTopic.debounce(1000).collect {
                 launch { persistBitmap() }
                 launch { persistBitmapThumbnail() }
@@ -175,7 +173,7 @@ class PageView(
         persistBitmapDebounced()
     }
 
-    fun removeImage(imageIds: List<String>) {
+    fun removeImages(imageIds: List<String>) {
         images = images.filter { s -> !imageIds.contains(s.id) }
         removeImagesFromPersistLayer(imageIds)
         indexImages()
@@ -186,6 +184,10 @@ class PageView(
 
     fun getImage(imageId: String): Image? {
         return imagesById[imageId]
+    }
+
+    fun getImages(imageIds: List<String>): List<Image?> {
+        return imageIds.map { i -> imagesById[i] }
     }
 
 
@@ -278,13 +280,17 @@ class PageView(
 
         val timeToDraw = measureTimeMillis {
             drawBg(activeCanvas, pageFromDb?.nativeTemplate ?: "blank", scroll)
-            // Draw the gray edge of the rectangle
-//            val redPaint = Paint().apply {
-//                color = Color.GRAY
-//                style = Paint.Style.STROKE
-//                strokeWidth = 1f // Adjust the width of the edge
-//            }
-//            activeCanvas.drawRect(area, redPaint)
+            val appSettings = KvProxy(context).get("APP_SETTINGS", AppSettings.serializer())
+
+            if (appSettings?.debugMode == true) {
+//              Draw the gray edge of the rectangle
+                val redPaint = Paint().apply {
+                    color = Color.GRAY
+                    style = Paint.Style.STROKE
+                    strokeWidth = 4f
+                }
+                activeCanvas.drawRect(area, redPaint)
+            }
             // Trying to find what throws error when drawing quickly
             try {
                 images.forEach { image ->
@@ -296,7 +302,24 @@ class PageView(
                     drawImage(context, activeCanvas, image, IntOffset(0, -scroll))
 
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "PageView.kt: Drawing images failed: ${e.message}", e)
 
+                val errorMessage = if (e.message?.contains("does not have permission") == true) {
+                    "Permission error: Unable to access image."
+                } else {
+                    "Failed to load images."
+                }
+                coroutineScope.launch {
+                    SnackState.globalSnackFlow.emit(
+                        SnackConf(
+                            text = errorMessage,
+                            duration = 3000,
+                        )
+                    )
+                }
+            }
+            try {
                 strokes.forEach { stroke ->
                     if (ignoredStrokeIds.contains(stroke.id)) return@forEach
                     val bounds = strokeBounds(stroke)
@@ -308,11 +331,19 @@ class PageView(
                     )
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "PageView.kt: Drawing strokes failed: ${e.message}")
+                Log.e(TAG, "PageView.kt: Drawing strokes failed: ${e.message}", e)
+                coroutineScope.launch {
+                    SnackState.globalSnackFlow.emit(
+                        SnackConf(
+                            text = "Error drawing strokes",
+                            duration = 3000,
+                        )
+                    )
+                }
             }
 
         }
-        Log.i(TAG, "Drew area in ${timeToDraw}ms")
+//        Log.i(TAG, "Drew area in ${timeToDraw}ms")
         activeCanvas.restore()
     }
 
@@ -323,7 +354,7 @@ class PageView(
         scroll += delta
 
         // scroll bitmap
-        val tmp = windowedBitmap.copy(windowedBitmap.config, false)
+        val tmp = windowedBitmap.copy(windowedBitmap.config!!, false)
         drawBg(windowedCanvas, pageFromDb?.nativeTemplate ?: "blank", scroll)
 
         windowedCanvas.drawBitmap(tmp, 0f, -delta.toFloat(), Paint())

@@ -1,6 +1,7 @@
 package com.olup.notable.db
 
 import android.content.Context
+import android.graphics.Rect
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
@@ -73,6 +74,23 @@ interface StrokeDao {
     @Transaction
     @Query("SELECT * FROM stroke WHERE id =:strokeId")
     fun getById(strokeId: String): Stroke
+
+    @Query(
+        """
+    SELECT * FROM stroke 
+    WHERE `right` > :left AND `left` < :right
+      AND bottom > :top AND top < :bottom
+      AND pageId = :pageId
+    """
+    )
+    fun getStrokesInRectangle(
+        left: Int,
+        top: Int,
+        right: Int,
+        bottom: Int,
+        pageId: String
+    ): List<Stroke>
+
 }
 
 class StrokeRepository(context: Context) {
@@ -98,4 +116,7 @@ class StrokeRepository(context: Context) {
         return db.getById(strokeId)
     }
 
+    fun getStrokesInRectangle(rect: Rect, pageId: String): List<Stroke> {
+        return db.getStrokesInRectangle(rect.left, rect.top, rect.right, rect.bottom, pageId)
+    }
 }

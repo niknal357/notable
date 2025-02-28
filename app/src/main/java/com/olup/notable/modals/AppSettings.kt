@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +21,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -39,6 +41,7 @@ data class AppSettings(
     val version: Int,
     val defaultNativeTemplate: String = "blank",
     val quickNavPages: List<String> = listOf(),
+    val debugMode: Boolean = false,
 
     val doubleTapAction: GestureAction? = defaultDoubleTapAction,
     val twoFingerTapAction: GestureAction? = defaultTwoFingerTapAction,
@@ -96,7 +99,8 @@ fun AppSettingsModal(onClose: () -> Unit) {
                 Modifier
                     .height(0.5.dp)
                     .fillMaxWidth()
-                    .background(Color.Black))
+                    .background(Color.Black)
+            )
 
             Column(Modifier.padding(20.dp, 10.dp)) {
                 Row {
@@ -117,6 +121,24 @@ fun AppSettingsModal(onClose: () -> Unit) {
                             )
                         },
                         value = settings?.defaultNativeTemplate ?: "blank"
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Debug Mode (show changed area)")
+                    Spacer(Modifier.width(10.dp))
+                    Switch(
+                        checked = settings?.debugMode ?: false,
+                        onCheckedChange = { isChecked ->
+                            kv.setKv(
+                                "APP_SETTINGS",
+                                settings!!.copy(debugMode = isChecked),
+                                AppSettings.serializer()
+                            )
+                        }
                     )
                 }
                 Spacer(Modifier.height(10.dp))

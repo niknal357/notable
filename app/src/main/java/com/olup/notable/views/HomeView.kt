@@ -1,4 +1,4 @@
-package com.olup.notable
+package com.olup.notable.views
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -43,12 +44,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.olup.notable.AppRepository
+import com.olup.notable.AppSettings
+import com.olup.notable.AppSettingsModal
+import com.olup.notable.BreadCrumb
+import com.olup.notable.FolderConfigDialog
+import com.olup.notable.PageMenu
+import com.olup.notable.PagePreview
+import com.olup.notable.TAG
+import com.olup.notable.Topbar
 import com.olup.notable.db.Folder
 import com.olup.notable.db.Notebook
 import com.olup.notable.db.Page
-import com.olup.notable.views.FloatingEditorView
+import com.olup.notable.isLatestVersion
+import com.olup.notable.modals.NotebookConfigDialog
+import com.olup.notable.noRippleClickable
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.FilePlus
 import compose.icons.feathericons.Folder
+import compose.icons.feathericons.FolderPlus
 import compose.icons.feathericons.Settings
 import io.shipbook.shipbooksdk.Log
 import kotlin.concurrent.thread
@@ -105,84 +119,64 @@ fun Library(navController: NavController, folderId: String? = null) {
                             })
                 }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Text(text = "Add quick page",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .noRippleClickable {
-                            val page = Page(
-                                notebookId = null,
-                                parentFolderId = folderId,
-                                nativeTemplate = appRepository.kvProxy.get(
-                                    "APP_SETTINGS", AppSettings.serializer()
-                                )?.defaultNativeTemplate ?: "blank"
-                            )
-                            appRepository.pageRepository.create(page)
-                            navController.navigate("pages/${page.id}")
-                        }
-                        .padding(10.dp))
-
-                Text(text = "Add notebook",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .noRippleClickable {
-                            appRepository.bookRepository.create(
-                                Notebook(
-                                    parentFolderId = folderId,
-                                    defaultNativeTemplate = appRepository.kvProxy.get(
-                                        "APP_SETTINGS", AppSettings.serializer()
-                                    )?.defaultNativeTemplate ?: "blank"
-                                )
-                            )
-                        }
-                        .padding(10.dp))
-
-                Text(text = "Add Folder",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .noRippleClickable {
-                            val folder = Folder(parentFolderId = folderId)
-                            appRepository.folderRepository.create(folder)
-                        }
-                        .padding(10.dp))
-
-                // Add the new "Floating Editor" button here
-                Text(text = "Floating Editor",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .noRippleClickable {
-                            val page = Page(
-                                notebookId = null,
-                                parentFolderId = folderId,
-                                nativeTemplate = appRepository.kvProxy.get(
-                                    "APP_SETTINGS", AppSettings.serializer()
-                                )?.defaultNativeTemplate ?: "blank"
-                            )
-                            appRepository.pageRepository.create(page)
-                            floatingEditorPageId = page.id
-                            showFloatingEditor = true
-                        }
-                        .padding(10.dp))
+            Row(
+                Modifier
+                    .padding(10.dp)
+            ) {
+                BreadCrumb(folderId) { navController.navigate("library" + if (it == null) "" else "?folderId=${it}") }
             }
+//           I do not know what the idea behind it was
+//            // Add the new "Floating Editor" button here
+//            Text(text = "Floating Editor",
+//                textAlign = TextAlign.Center,
+//                modifier = Modifier
+//                    .noRippleClickable {
+//                        val page = Page(
+//                            notebookId = null,
+//                            parentFolderId = folderId,
+//                            nativeTemplate = appRepository.kvProxy.get(
+//                                "APP_SETTINGS", AppSettings.serializer()
+//                            )?.defaultNativeTemplate ?: "blank"
+//                        )
+//                        appRepository.pageRepository.create(page)
+//                        floatingEditorPageId = page.id
+//                        showFloatingEditor = true
+//                    }
+//                    .padding(10.dp))
+
         }
-        Row(
-            Modifier
-                .padding(10.dp)
-        ) {
-            BreadCrumb(folderId) { navController.navigate("library" + if (it == null) "" else "?folderId=${it}") }
-        }
+
         Column(
             Modifier.padding(10.dp)
         ) {
 
-            if (folders?.isEmpty()?.not() == true) {
-                Text(text = "Folders")
-                Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
 
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    // Add new folder row
+                    Row(
+                        Modifier
+                            .noRippleClickable {
+                                val folder = Folder(parentFolderId = folderId)
+                                appRepository.folderRepository.create(folder)
+                            }
+                            .border(0.5.dp, Color.Black)
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        Icon(
+                            imageVector = FeatherIcons.FolderPlus,
+                            contentDescription = "Add Folder Icon",
+                            Modifier.height(20.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(text = "Add new folder")
+                    }
+                }
+                if (folders?.isNotEmpty() == true) {
                     items(folders!!) { folder ->
                         var isFolderSettingsOpen by remember { mutableStateOf(false) }
                         if (isFolderSettingsOpen) FolderConfigDialog(
@@ -191,7 +185,6 @@ fun Library(navController: NavController, folderId: String? = null) {
                                 Log.i(TAG, "Closing Directory Dialog")
                                 isFolderSettingsOpen = false
                             })
-
                         Row(
                             Modifier
                                 .combinedClickable(
@@ -215,17 +208,45 @@ fun Library(navController: NavController, folderId: String? = null) {
                         }
                     }
                 }
-                Spacer(Modifier.height(10.dp))
             }
+            Spacer(Modifier.height(10.dp))
+            Text(text = "Quick pages")
+            Spacer(Modifier.height(10.dp))
 
-            if (singlePages?.isEmpty()?.not() == true) {
-                Text(text = "Quick pages")
-                Spacer(Modifier.height(10.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Add the "Add quick page" button
+                item {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .width(100.dp)
+                            .aspectRatio(3f / 4f)
+                            .border(1.dp, Color.Gray, RectangleShape)
+                            .noRippleClickable {
+                                val page = Page(
+                                    notebookId = null,
+                                    parentFolderId = folderId,
+                                    nativeTemplate = appRepository.kvProxy.get(
+                                        "APP_SETTINGS", AppSettings.serializer()
+                                    )?.defaultNativeTemplate ?: "blank"
+                                )
+                                appRepository.pageRepository.create(page)
+                                navController.navigate("pages/${page.id}")
+                            }
+                    ) {
+                        Icon(
+                            imageVector = FeatherIcons.FilePlus,
+                            contentDescription = "Add Quick Page",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(40.dp),
+                        )
+                    }
+                }
+                // Render existing pages
+                if (singlePages?.isNotEmpty() == true) {
                     items(singlePages!!.reversed()) { page ->
                         val pageId = page.id
                         var isPageSelected by remember { mutableStateOf(false) }
@@ -251,21 +272,46 @@ fun Library(navController: NavController, folderId: String? = null) {
                                 onClose = { isPageSelected = false })
                         }
                     }
-
                 }
-                Spacer(Modifier.height(10.dp))
             }
+            Spacer(Modifier.height(10.dp))
+            Text(text = "Notebooks")
+            Spacer(Modifier.height(10.dp))
 
-            if (books?.isEmpty()?.not() == true) {
-                Text(text = "Notebooks")
-                Spacer(Modifier.height(10.dp))
-
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(100.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(books!!) { item ->
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(100.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                // Add the "Add quick page" button
+                item {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .width(100.dp)
+                            .aspectRatio(3f / 4f)
+                            .border(1.dp, Color.Gray, RectangleShape)
+                            .noRippleClickable {
+                                appRepository.bookRepository.create(
+                                    Notebook(
+                                        parentFolderId = folderId,
+                                        defaultNativeTemplate = appRepository.kvProxy.get(
+                                            "APP_SETTINGS", AppSettings.serializer()
+                                        )?.defaultNativeTemplate ?: "blank"
+                                    )
+                                )
+                            }
+                    ) {
+                        Icon(
+                            imageVector = FeatherIcons.FilePlus,
+                            contentDescription = "Add Quick Page",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(40.dp),
+                        )
+                    }
+                }
+                if (books?.isNotEmpty() == true) {
+                    items(books!!.reversed()) { item ->
                         var isSettingsOpen by remember { mutableStateOf(false) }
                         Box(
                             modifier = Modifier

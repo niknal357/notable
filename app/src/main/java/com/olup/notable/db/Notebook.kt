@@ -82,7 +82,9 @@ class BookRepository(context: Context) {
     }
 
     fun update(notebook: Notebook) {
-        db.update(notebook)
+        Log.i(TAG, "updating DB")
+        val updatedNotebook = notebook.copy(updatedAt = Date())
+        db.update(updatedNotebook)
     }
 
     fun getAllInFolder(folderId: String? = null): LiveData<List<Notebook>> {

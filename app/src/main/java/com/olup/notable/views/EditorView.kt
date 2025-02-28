@@ -14,7 +14,10 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
+import com.olup.notable.components.EditorGestureReceiver
+import com.olup.notable.components.Toolbar
 import com.olup.notable.ui.theme.InkaTheme
+import com.olup.notable.utils.History
 import io.shipbook.shipbooksdk.Log
 
 
@@ -137,7 +140,7 @@ fun EditorView(
                 controlTower = editorControlTower,
                 state = editorState
             )
-            SelectedBitmap(editorState = editorState, controlTower = editorControlTower)
+            SelectedBitmap(context = context, editorState = editorState, controlTower = editorControlTower)
             Row(modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()) {

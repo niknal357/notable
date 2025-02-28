@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun ToolbarButton(
@@ -20,6 +21,7 @@ fun ToolbarButton(
     isSelected: Boolean = false,
     onSelect: () -> Unit = {},
     iconId: Int? = null,
+    vectorIcon: ImageVector ? =null,
     imageVector: ImageVector? = null,
     text: String? = null,
     penColor: Color? = null,
@@ -38,9 +40,18 @@ fun ToolbarButton(
             .padding(7.dp)
 
     ) {
+        //needs simplification:
         if (iconId != null) {
             Icon(
                 painter = painterResource(id = iconId),
+                contentDescription,
+                Modifier,
+                if (penColor == Color.Black || penColor == Color.DarkGray) Color.White else if (isSelected) Color.White else Color.Black
+            )
+        }
+        if (vectorIcon!=null){
+            Icon(
+                imageVector = vectorIcon,
                 contentDescription,
                 Modifier,
                 if (penColor == Color.Black || penColor == Color.DarkGray) Color.White else if (isSelected) Color.White else Color.Black
@@ -58,6 +69,7 @@ fun ToolbarButton(
         if (text != null) {
             Text(
                 text = text,
+                fontSize = 20.sp,
                 color = if (isSelected) Color.White else Color.Black
             )
         }

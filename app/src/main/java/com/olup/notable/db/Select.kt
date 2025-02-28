@@ -2,6 +2,7 @@ package com.olup.notable.db
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Rect
 import androidx.compose.ui.unit.IntOffset
 import com.olup.notable.DrawCanvas
 import com.olup.notable.EditorState
@@ -21,6 +22,66 @@ import com.olup.notable.strokeBounds
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+
+//TODO: clean up this code, there is a lot of duplication
+
+// allows selection of all images and strokes in given rectangle
+fun selectImagesAndStrokes(
+    scope: CoroutineScope,
+    page: PageView,
+    editorState: EditorState,
+    imagesToSelect: List<Image>,
+    strokesToSelect: List<Stroke>
+) {
+    //handle selection:
+    val pageBounds = Rect()
+
+    if (imagesToSelect.isNotEmpty())
+        pageBounds.union(imageBoundsInt(imagesToSelect))
+    if (strokesToSelect.isNotEmpty())
+        pageBounds.union(strokeBounds(strokesToSelect))
+    val padding = 0
+    pageBounds.inset(-padding, -padding)
+    val bounds = pageAreaToCanvasArea(pageBounds, page.scroll)
+    // create bitmap and draw strokes
+    val selectedBitmap =
+        Bitmap.createBitmap(bounds.width(), bounds.height(), Bitmap.Config.ARGB_8888)
+    val selectedCanvas = Canvas(selectedBitmap)
+
+    imagesToSelect.forEach {
+        drawImage(
+            page.context,
+            selectedCanvas,
+            it,
+            IntOffset(-pageBounds.left, -pageBounds.top)
+        )
+    }
+    strokesToSelect.forEach {
+        drawStroke(
+            selectedCanvas,
+            it,
+            IntOffset(-pageBounds.left, -pageBounds.top)
+        )
+    }
+    // set state
+    editorState.selectionState.selectedImages = imagesToSelect
+    editorState.selectionState.selectedStrokes = strokesToSelect
+    editorState.selectionState.selectedBitmap = selectedBitmap
+    editorState.selectionState.selectionStartOffset = IntOffset(bounds.left, bounds.top)
+    editorState.selectionState.selectionRect = bounds
+    editorState.selectionState.selectionDisplaceOffset = IntOffset(0, 0)
+    editorState.selectionState.placementMode = PlacementMode.Move
+    page.drawArea(
+        bounds,
+        ignoredImageIds = imagesToSelect.map { it.id },
+        ignoredStrokeIds = strokesToSelect.map { it.id })
+
+    scope.launch {
+        DrawCanvas.refreshUi.emit(Unit)
+        editorState.isDrawing = false
+    }
+}
+
 
 fun selectImage(
     scope: CoroutineScope,

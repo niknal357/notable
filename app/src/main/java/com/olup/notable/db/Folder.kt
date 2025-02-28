@@ -68,6 +68,13 @@ class FolderRepository(context: Context) {
         return db.getChildrenFolders(folderId)
     }
 
+    fun getParent(folderId: String? = null): String? {
+        if(folderId ==null)
+            return null
+        val folder = db.get(folderId)
+        return folder.parentFolderId
+    }
+
     fun get(folderId: String): Folder {
         return db.get(folderId)
     }
