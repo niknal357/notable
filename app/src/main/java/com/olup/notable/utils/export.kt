@@ -47,7 +47,7 @@ suspend fun exportPage(context: Context, pageId: String): String {
 
 suspend fun exportBookToPng(context: Context, bookId: String): String {
     val book = BookRepository(context).getById(bookId) ?: return "Book ID not found"
-    book.pageIds.forEachIndexed { index, pageId ->
+    book.pageIds.forEachIndexed { _, pageId ->
         val bitmap = drawCanvas(context, pageId)
         saveFile(context, pageId, "png", book.title) { outputStream ->
             try {
