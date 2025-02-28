@@ -78,8 +78,8 @@ interface StrokeDao {
     @Query(
         """
     SELECT * FROM stroke 
-    WHERE `right` < :right AND `left` > :left
-      AND bottom < :bottom AND top > :top
+    WHERE `right` > :left AND `left` < :right
+      AND bottom > :top AND top < :bottom
       AND pageId = :pageId
     """
     )
