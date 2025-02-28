@@ -28,8 +28,10 @@ import com.olup.notable.utils.exportBookToPng
 import com.olup.notable.utils.exportPage
 import com.olup.notable.utils.exportPageToJpeg
 import com.olup.notable.utils.exportPageToPng
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ToolbarMenu(
@@ -85,8 +87,14 @@ fun ToolbarMenu(
                                 snackManager.displaySnack(
                                     SnackConf(text = "Exporting the page to PDF...")
                                 )
-                            delay(10L) // Why do I need this ?
-                            val message = exportPage(context, state.pageId)
+                            delay(10L)
+                            // Q:  Why do I need this ?
+                            // A: I guess that we need to wait for strokes to be drawn.
+                            // checking if drawingInProgress.isLocked should be enough
+                            // but I do not have time to test it.
+                            val message = withContext(Dispatchers.IO) {
+                                exportPage(context, state.pageId)
+                            }
                             removeSnack()
                             snackManager.displaySnack(
                                 SnackConf(text = message, duration = 2000)
@@ -106,8 +114,12 @@ fun ToolbarMenu(
                                 snackManager.displaySnack(
                                     SnackConf(text = "Exporting the page to PNG...")
                                 )
-                            delay(10L) // Why do I need this ?
-                            val message = exportPageToPng(context, state.pageId)
+                            delay(10L)
+
+                            val message =
+                                withContext(Dispatchers.IO) {
+                                    exportPageToPng(context, state.pageId)
+                                }
                             removeSnack()
                             snackManager.displaySnack(
                                 SnackConf(text = message, duration = 2000)
@@ -122,10 +134,8 @@ fun ToolbarMenu(
                     .padding(10.dp)
                     .noRippleClickable {
                         scope.launch {
-                            delay(10L) // Why do I need this ?
-
+                            delay(10L)
                             copyPagePngLinkForObsidian(context, state.pageId)
-
                             snackManager.displaySnack(
                                 SnackConf(text = "Copied page link for obsidian", duration = 2000)
                             )
@@ -143,9 +153,11 @@ fun ToolbarMenu(
                                 snackManager.displaySnack(
                                     SnackConf(text = "Exporting the page to JPEG...")
                                 )
-                            delay(10L) // Why do I need this ?
+                            delay(10L)
 
-                            val message = exportPageToJpeg(context, state.pageId)
+                            val message = withContext(Dispatchers.IO) {
+                                exportPageToJpeg(context, state.pageId)
+                            }
                             removeSnack()
                             snackManager.displaySnack(
                                 SnackConf(text = message, duration = 2000)
@@ -168,9 +180,12 @@ fun ToolbarMenu(
                                             id = "exportSnack"
                                         )
                                     )
-                                delay(10L) // Why do I need this ?
+                                delay(10L)
 
-                                val message = exportBook(context, state.bookId)
+                                val message =
+                                    withContext(Dispatchers.IO) {
+                                        exportBook(context, state.bookId)
+                                    }
                                 removeSnack()
                                 snackManager.displaySnack(
                                     SnackConf(text = message, duration = 2000)
@@ -193,12 +208,11 @@ fun ToolbarMenu(
                                             id = "exportSnack"
                                         )
                                     )
-                                delay(10L) // Why do I need this ?
+                                delay(10L)
 
-
-                                val message =
+                                val message = withContext(Dispatchers.IO) {
                                     exportBookToPng(context, state.bookId)
-
+                                }
                                 removeSnack()
                                 snackManager.displaySnack(
                                     SnackConf(text = message, duration = 2000)

@@ -126,9 +126,10 @@ class FloatingEditorActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         pageId?.let { id ->
-            Thread {
-                exportPageToPng(this, id)
-            }.start()
+            val context =this
+            lifecycleScope.launch(Dispatchers.IO) {
+                exportPageToPng(context, id)
+            }
         }
         bookId?.let { id ->
             lifecycleScope.launch(Dispatchers.IO) {
