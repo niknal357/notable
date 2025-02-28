@@ -32,6 +32,7 @@ import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
@@ -447,22 +448,32 @@ class DrawCanvas(
     }
 
     suspend fun refreshUiSuspend() {
+        // Do not use, if refresh need to be preformed without delay.
         // This function waits for strokes to be fully rendered.
         if (!state.isDrawing) {
             Log.w(TAG, "Not in drawing mode, skipping refreshUi")
             return
         }
         if (Looper.getMainLooper().isCurrentThread) {
-            Log.w(TAG, "refreshUiSuspend() is called from the main thread, it might not be a good idea.")
+            Log.w(
+                TAG,
+                "refreshUiSuspend() is called from the main thread, it might not be a good idea."
+            )
         }
 
         withTimeoutOrNull(3000) {
+            // Just to make sure wait 1ms before checking lock.
+            delay(1)
             // Wait until drawingInProgress is unlocked before proceeding
-            drawingInProgress.withLock {
-                drawCanvasToView()
-                touchHelper.setRawDrawingEnabled(false)
-                touchHelper.setRawDrawingEnabled(true)
+            while (drawingInProgress.isLocked) {
+                delay(10)
             }
+            drawCanvasToView()
+            touchHelper.setRawDrawingEnabled(false)
+            if (drawingInProgress.isLocked)
+                Log.w(TAG, "Lock was acquired during refreshing UI. It might cause errors.")
+            touchHelper.setRawDrawingEnabled(true)
+
         } ?: Log.e(TAG, "Timeout while waiting for drawing lock. Potential deadlock.")
     }
 
