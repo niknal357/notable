@@ -343,7 +343,7 @@ class PageView(
             }
 
         }
-        Log.i(TAG, "Drew area in ${timeToDraw}ms")
+//        Log.i(TAG, "Drew area in ${timeToDraw}ms")
         activeCanvas.restore()
     }
 

@@ -209,12 +209,6 @@ fun EditorGestureReceiver(
                     gestureState.initialTimestamp = System.currentTimeMillis()
                     gestureState.insertPosition(down)
 
-                    // If we are drawing do not process gestures,
-                    // as we are not ready to show strokes.
-                    if (DrawCanvas.drawingInProgress.isLocked) {
-                        Log.i(TAG, "Drawing is in progress, skipping gesture.")
-                        return@awaitEachGesture
-                    }
                     do {
                         // wait for second gesture
                         val event = withTimeoutOrNull(1000L) { awaitPointerEvent() }

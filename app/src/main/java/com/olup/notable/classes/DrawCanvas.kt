@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.net.Uri
+import android.os.Looper
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.compose.runtime.snapshotFlow
@@ -39,6 +40,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.concurrent.thread
 import kotlin.system.measureTimeMillis
 
 
@@ -76,7 +79,7 @@ class DrawCanvas(
         // There is probably better way
         var addImageByUri = MutableStateFlow<Uri?>(null)
         var rectangleToSelect = MutableStateFlow<Rect?>(null)
-        var drawingInProgress =  Mutex()
+        var drawingInProgress = Mutex()
     }
 
     fun getActualState(): EditorState {
@@ -95,25 +98,22 @@ class DrawCanvas(
         }
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
+            val startTime = System.currentTimeMillis()
+            Log.d(TAG, "onRawDrawingTouchPointListReceived started")
             // sometimes UI will get refreshed and frozen before we draw all the strokes.
             // I think, its because of doing it in separate thread. Commented it for now, to
             // observe app behavior, and determine if it fixed this bug,
             // as I do not know reliable way to reproduce it
             // Need testing if it will be better to do in main thread on, in separate.
             // thread(start = true, isDaemon = false, priority = Thread.MAX_PRIORITY) {
-            coroutineScope.launch(Dispatchers.Main.immediate) {
-                if (getActualState().mode == Mode.Erase) {
-                    handleErase(
-                        this@DrawCanvas.page,
-                        history,
-                        plist.points.map { SimplePointF(it.x, it.y + page.scroll) },
-                        eraser = getActualState().eraser
-                    )
-                    drawCanvasToView()
-                    refreshUi()
-                }
 
-                if (getActualState().mode == Mode.Draw) {
+            if (getActualState().mode == Mode.Draw) {
+                val newThread = System.currentTimeMillis()
+                Log.d(
+                    TAG,
+                    "Got to new thread ${Thread.currentThread().name}, in ${newThread - startTime}}"
+                )
+                coroutineScope.launch(Dispatchers.Main.immediate) {
                     // After each stroke ends, we draw it on our canvas.
                     // This way, when screen unfreezes the strokes are shown.
                     // When in scribble mode, ui want be refreshed.
@@ -121,6 +121,9 @@ class DrawCanvas(
                     // strokes want be visible, so we need to ensure that it will be done
                     // before anything else happens.
                     drawingInProgress.withLock {
+                        val lock = System.currentTimeMillis()
+                        Log.d(TAG, "lock obtained in ${lock - startTime} ms")
+
 //                        Thread.sleep(1000)
                         handleDraw(
                             this@DrawCanvas.page,
@@ -130,10 +133,31 @@ class DrawCanvas(
                             getActualState().pen,
                             plist.points
                         )
+                        val drawEndTime = System.currentTimeMillis()
+                        Log.d(TAG, "Drawing operation took ${drawEndTime - startTime} ms")
+
                     }
                     coroutineScope.launch {
                         commitHistorySignal.emit(Unit)
                     }
+
+                    val endTime = System.currentTimeMillis()
+                    Log.d(
+                        TAG,
+                        "onRawDrawingTouchPointListReceived completed in ${endTime - startTime} ms"
+                    )
+
+                }
+            } else thread {
+                if (getActualState().mode == Mode.Erase) {
+                    handleErase(
+                        this@DrawCanvas.page,
+                        history,
+                        plist.points.map { SimplePointF(it.x, it.y + page.scroll) },
+                        eraser = getActualState().eraser
+                    )
+                    drawCanvasToView()
+                    refreshUi()
                 }
 
                 if (getActualState().mode == Mode.Select) {
@@ -161,7 +185,6 @@ class DrawCanvas(
                 }
 
             }
-//            }
         }
 
 
@@ -258,7 +281,7 @@ class DrawCanvas(
                         zoneAffected.bottom - page.scroll
                     ),
                 )
-                refreshUi()
+                refreshUiSuspend()
             }
         }
 
@@ -266,7 +289,7 @@ class DrawCanvas(
         coroutineScope.launch {
             refreshUi.collect {
                 Log.i(TAG + "Observer", "Refreshing UI!")
-                refreshUi()
+                refreshUiSuspend()
             }
         }
         coroutineScope.launch {
@@ -308,21 +331,21 @@ class DrawCanvas(
             snapshotFlow { state.pen }.drop(1).collect {
                 Log.i(TAG + "Observer", "pen change: ${state.pen}")
                 updatePenAndStroke()
-                refreshUi()
+                refreshUiSuspend()
             }
         }
         coroutineScope.launch {
             snapshotFlow { state.penSettings.toMap() }.drop(1).collect {
                 Log.i(TAG + "Observer", "pen settings change: ${state.penSettings}")
                 updatePenAndStroke()
-                refreshUi()
+                refreshUiSuspend()
             }
         }
         coroutineScope.launch {
             snapshotFlow { state.eraser }.drop(1).collect {
                 Log.i(TAG + "Observer", "eraser change: ${state.eraser}")
                 updatePenAndStroke()
-                refreshUi()
+                refreshUiSuspend()
             }
         }
 
@@ -347,7 +370,7 @@ class DrawCanvas(
             snapshotFlow { getActualState().mode }.drop(1).collect {
                 Log.i(TAG + "Observer", "mode change: ${getActualState().mode}")
                 updatePenAndStroke()
-                refreshUi()
+                refreshUiSuspend()
             }
         }
 
@@ -404,17 +427,43 @@ class DrawCanvas(
         drawCanvasToView()
     }
 
-    fun refreshUi() {
-        Log.i(TAG, "Refreshing ui. isDrawing : ${state.isDrawing}")
+    private fun refreshUi() {
+        // Use only if you have confidence that there are no strokes being drawn at the moment
+        if (!state.isDrawing) {
+            Log.w(TAG, "Not in drawing mode, skipping refreshUI")
+            return
+        }
+        if (drawingInProgress.isLocked)
+            Log.w(TAG, "Drawing is still in progress there might be a bug.")
+
         drawCanvasToView()
 
-        if (state.isDrawing) {
-            // reset screen freeze
-            // if in scribble mode, the screen want refresh
-            // So to update interface we need to disable, and re-enable
-            touchHelper.setRawDrawingEnabled(false)
-            touchHelper.setRawDrawingEnabled(true) // screen won't freeze until you actually stoke
+        // reset screen freeze
+        // if in scribble mode, the screen want refresh
+        // So to update interface we need to disable, and re-enable
+        touchHelper.setRawDrawingEnabled(false)
+        touchHelper.setRawDrawingEnabled(true)
+        // screen won't freeze until you actually stoke
+    }
+
+    suspend fun refreshUiSuspend() {
+        // This function waits for strokes to be fully rendered.
+        if (!state.isDrawing) {
+            Log.w(TAG, "Not in drawing mode, skipping refreshUi")
+            return
         }
+        if (Looper.getMainLooper().isCurrentThread) {
+            Log.w(TAG, "refreshUiSuspend() is called from the main thread, it might not be a good idea.")
+        }
+
+        withTimeoutOrNull(3000) {
+            // Wait until drawingInProgress is unlocked before proceeding
+            drawingInProgress.withLock {
+                drawCanvasToView()
+                touchHelper.setRawDrawingEnabled(false)
+                touchHelper.setRawDrawingEnabled(true)
+            }
+        } ?: Log.e(TAG, "Timeout while waiting for drawing lock. Potential deadlock.")
     }
 
     private fun handleImage(imageUri: Uri) {
@@ -471,7 +520,7 @@ class DrawCanvas(
                 }
             }
         }
-        Log.i(TAG, "drawCanvasToView: Took ${timeToDraw}ms.")
+//        Log.i(TAG, "drawCanvasToView: Took ${timeToDraw}ms.")
         // finish rendering
         this.holder.unlockCanvasAndPost(canvas)
     }
