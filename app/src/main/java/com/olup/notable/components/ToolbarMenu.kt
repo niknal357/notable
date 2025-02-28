@@ -1,4 +1,4 @@
-package com.olup.notable
+package com.olup.notable.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +22,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.navigation.NavController
+import com.olup.notable.AppRepository
+import com.olup.notable.EditorState
+import com.olup.notable.LocalSnackContext
+import com.olup.notable.SnackConf
+import com.olup.notable.convertDpToPixel
+import com.olup.notable.noRippleClickable
 import com.olup.notable.utils.copyPagePngLinkForObsidian
 import com.olup.notable.utils.exportBook
 import com.olup.notable.utils.exportBookToPng

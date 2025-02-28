@@ -46,7 +46,6 @@ import com.olup.notable.PenSetting
 import com.olup.notable.PenToolbarButton
 import com.olup.notable.R
 import com.olup.notable.ToolbarButton
-import com.olup.notable.ToolbarMenu
 import com.olup.notable.utils.UndoRedoType
 import com.olup.notable.noRippleClickable
 import com.olup.notable.utils.createFileFromContentUri
