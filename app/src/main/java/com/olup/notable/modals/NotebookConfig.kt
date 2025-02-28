@@ -50,7 +50,7 @@ import com.olup.notable.components.SelectMenu
 import com.olup.notable.components.ShowConfirmationDialog
 import com.olup.notable.components.ShowFolderSelectionDialog
 import com.olup.notable.db.BookRepository
-import com.olup.notable.exportBook
+import com.olup.notable.utils.exportBook
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

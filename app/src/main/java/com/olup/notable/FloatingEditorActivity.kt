@@ -20,6 +20,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.olup.notable.db.Page
 import com.olup.notable.ui.theme.InkaTheme
+import com.olup.notable.utils.exportBook
+import com.olup.notable.utils.exportPageToPng
 import com.olup.notable.views.FloatingEditorView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
