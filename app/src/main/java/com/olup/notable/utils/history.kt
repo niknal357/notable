@@ -2,7 +2,7 @@ package com.olup.notable.utils
 
 import android.graphics.Rect
 import com.olup.notable.DrawCanvas
-import com.olup.notable.PageView
+import com.olup.notable.classes.PageView
 import com.olup.notable.SnackConf
 import com.olup.notable.SnackState
 import com.olup.notable.db.Image

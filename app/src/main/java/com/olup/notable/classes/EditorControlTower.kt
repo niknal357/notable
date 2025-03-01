@@ -6,8 +6,10 @@ import android.graphics.Rect
 import android.util.Log
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
+import com.olup.notable.classes.PageView
 import com.olup.notable.utils.History
 import com.olup.notable.utils.Operation
+import com.olup.notable.utils.drawImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Date

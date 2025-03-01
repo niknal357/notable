@@ -30,7 +30,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.olup.notable.AppRepository
-import com.olup.notable.AppSettings
 import com.olup.notable.DrawCanvas
 import com.olup.notable.EditorControlTower
 import com.olup.notable.EditorState
@@ -40,6 +39,7 @@ import com.olup.notable.SimplePointF
 import com.olup.notable.SnackConf
 import com.olup.notable.SnackState
 import com.olup.notable.TAG
+import com.olup.notable.modals.AppSettings
 import com.olup.notable.utils.History
 import com.olup.notable.utils.UndoRedoType
 import io.shipbook.shipbooksdk.Log

@@ -15,9 +15,6 @@ import com.olup.notable.SCREEN_WIDTH
 import com.olup.notable.TAG
 import com.olup.notable.db.PageRepository
 import com.olup.notable.db.Stroke
-import com.olup.notable.drawBg
-import com.olup.notable.drawImage
-import com.olup.notable.drawStroke
 import io.shipbook.shipbooksdk.Log
 
 

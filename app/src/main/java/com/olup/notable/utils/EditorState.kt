@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.IntOffset
+import com.olup.notable.classes.PageView
 import com.olup.notable.db.Image
 import com.olup.notable.db.Stroke
 

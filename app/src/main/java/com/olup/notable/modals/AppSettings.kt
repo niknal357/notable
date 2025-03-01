@@ -1,4 +1,4 @@
-package com.olup.notable
+package com.olup.notable.modals
 
 import android.content.Intent
 import android.net.Uri
@@ -31,10 +31,17 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.olup.notable.BuildConfig
 import com.olup.notable.components.SelectMenu
 import com.olup.notable.db.KvProxy
+import com.olup.notable.isLatestVersion
+import com.olup.notable.isNext
+import com.olup.notable.noRippleClickable
 import kotlinx.serialization.Serializable
 import kotlin.concurrent.thread
+
+// it is workaround for now
+var NeoTools: Boolean = false
 
 @Serializable
 data class AppSettings(
@@ -42,6 +49,7 @@ data class AppSettings(
     val defaultNativeTemplate: String = "blank",
     val quickNavPages: List<String> = listOf(),
     val debugMode: Boolean = false,
+    val neoTools: Boolean = false,
 
     val doubleTapAction: GestureAction? = defaultDoubleTapAction,
     val twoFingerTapAction: GestureAction? = defaultTwoFingerTapAction,
@@ -138,6 +146,25 @@ fun AppSettingsModal(onClose: () -> Unit) {
                                 settings!!.copy(debugMode = isChecked),
                                 AppSettings.serializer()
                             )
+                        }
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Use Onyx NeoTools (may cause crashes)")
+                    Spacer(Modifier.width(10.dp))
+                    Switch(
+                        checked = settings?.neoTools ?: false,
+                        onCheckedChange = { isChecked ->
+                            kv.setKv(
+                                "APP_SETTINGS",
+                                settings!!.copy(neoTools = isChecked),
+                                AppSettings.serializer()
+                            )
+                            // it is workaround for now
+                            NeoTools = isChecked
                         }
                     )
                 }

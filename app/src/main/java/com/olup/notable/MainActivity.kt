@@ -29,7 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import com.olup.notable.db.KvProxy
+import com.olup.notable.modals.AppSettings
+import com.olup.notable.modals.NeoTools
 import com.olup.notable.ui.theme.InkaTheme
 import com.onyx.android.sdk.api.device.epd.EpdController
 import io.shipbook.shipbooksdk.Log
@@ -69,6 +73,9 @@ class MainActivity : ComponentActivity() {
         // Refactor - we prob don't need this
         EditorSettingCacheManager.init(applicationContext)
 
+        // it is workaround for now
+        NeoTools =
+            KvProxy(applicationContext).get("APP_SETTINGS", AppSettings.serializer())?.neoTools ?: false
 
         //EpdDeviceManager.enterAnimationUpdate(true);
 
@@ -167,8 +174,14 @@ class MainActivity : ComponentActivity() {
     private fun enableFullScreen() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // For Android 11 and above
-            window.setDecorFitsSystemWindows(false)
-
+            // 'setDecorFitsSystemWindows(Boolean): Unit' is deprecated. Deprecated in Java
+//            window.setDecorFitsSystemWindows(false)
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            if (window.insetsController != null) {
+                window.insetsController!!.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                window.insetsController!!.systemBarsBehavior =
+                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
             // Safely access the WindowInsetsController
             val controller = window.decorView.windowInsetsController
             if (controller != null) {

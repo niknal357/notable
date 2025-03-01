@@ -37,7 +37,6 @@ import com.olup.notable.AppRepository
 import com.olup.notable.DrawCanvas
 import com.olup.notable.EditorState
 import com.olup.notable.EraserToolbarButton
-import com.olup.notable.utils.History
 import com.olup.notable.LineToolbarButton
 import com.olup.notable.Mode
 import com.olup.notable.PageSettingsModal
@@ -46,8 +45,11 @@ import com.olup.notable.PenSetting
 import com.olup.notable.PenToolbarButton
 import com.olup.notable.R
 import com.olup.notable.ToolbarButton
-import com.olup.notable.utils.UndoRedoType
+import com.olup.notable.db.KvProxy
+import com.olup.notable.modals.AppSettings
 import com.olup.notable.noRippleClickable
+import com.olup.notable.utils.History
+import com.olup.notable.utils.UndoRedoType
 import com.olup.notable.utils.createFileFromContentUri
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.EyeOff
@@ -114,7 +116,10 @@ fun Toolbar(
 
                 // Set isImageLoaded to true
                 isImageLoaded = true
-                Log.i("InsertImage", "Image was received and copied, it is now at:${copiedFile.toUri()}")
+                Log.i(
+                    "InsertImage",
+                    "Image was received and copied, it is now at:${copiedFile.toUri()}"
+                )
                 DrawCanvas.addImageByUri.value = copiedFile.toUri()
 
             }
@@ -221,28 +226,30 @@ fun Toolbar(
                     onChangeSetting = { onChangeStrokeSetting(Pen.GREENBALLPEN.penName, it) },
                 )
 
-//                PenToolbarButton(
-//                    onStrokeMenuOpenChange = { state.isDrawing = !it },
-//                    pen = Pen.PENCIL,
-//                    icon = R.drawable.pencil,
-//                    isSelected = isSelected(state, Pen.PENCIL),
-//                    onSelect = { handleChangePen(Pen.PENCIL) }, // Neo-tool! Usage not recommended
-//                    sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
-//                    penSetting = state.penSettings[Pen.PENCIL.penName] ?: return,
-//                    onChangeSetting = { onChangeStrokeSetting(Pen.PENCIL.penName, it) },
-//                )
+                val appSettings = KvProxy(context).get("APP_SETTINGS", AppSettings.serializer())
+                if (appSettings?.neoTools == true) {
+                    PenToolbarButton(
+                        onStrokeMenuOpenChange = { state.isDrawing = !it },
+                        pen = Pen.PENCIL,
+                        icon = R.drawable.pencil,
+                        isSelected = isSelected(state, Pen.PENCIL),
+                        onSelect = { handleChangePen(Pen.PENCIL) }, // Neo-tool! Usage not recommended
+                        sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
+                        penSetting = state.penSettings[Pen.PENCIL.penName] ?: return,
+                        onChangeSetting = { onChangeStrokeSetting(Pen.PENCIL.penName, it) },
+                    )
 
-//                PenToolbarButton(
-//                    onStrokeMenuOpenChange = { state.isDrawing = !it },
-//                    pen = Pen.BRUSH,
-//                    icon = R.drawable.brush,
-//                    isSelected = isSelected(state, Pen.BRUSH),
-//                    onSelect = { handleChangePen(Pen.BRUSH) }, // Neo-tool! Usage not recommended
-//                    sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
-//                    penSetting = state.penSettings[Pen.BRUSH.penName] ?: return,
-//                    onChangeSetting = { onChangeStrokeSetting(Pen.BRUSH.penName, it) },
-//                )
-
+                    PenToolbarButton(
+                        onStrokeMenuOpenChange = { state.isDrawing = !it },
+                        pen = Pen.BRUSH,
+                        icon = R.drawable.brush,
+                        isSelected = isSelected(state, Pen.BRUSH),
+                        onSelect = { handleChangePen(Pen.BRUSH) }, // Neo-tool! Usage not recommended
+                        sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
+                        penSetting = state.penSettings[Pen.BRUSH.penName] ?: return,
+                        onChangeSetting = { onChangeStrokeSetting(Pen.BRUSH.penName, it) },
+                    )
+                }
                 PenToolbarButton(
                     onStrokeMenuOpenChange = { state.isDrawing = !it },
                     pen = Pen.FOUNTAIN,

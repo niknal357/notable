@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.olup.notable.classes.PageView
 import com.olup.notable.components.SelectMenu
 import kotlinx.coroutines.launch
 

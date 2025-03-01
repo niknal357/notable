@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.olup.notable.classes.PageView
 import com.olup.notable.db.Image
 import com.olup.notable.db.ImageRepository
 import com.olup.notable.db.StrokeRepository
@@ -23,6 +24,8 @@ import com.olup.notable.db.selectImage
 import com.olup.notable.db.selectImagesAndStrokes
 import com.olup.notable.utils.History
 import com.olup.notable.utils.Operation
+import com.olup.notable.utils.drawImage
+import com.olup.notable.utils.selectPaint
 import com.olup.notable.utils.uriToBitmap
 import com.onyx.android.sdk.api.device.epd.EpdController
 import com.onyx.android.sdk.data.note.TouchPoint

@@ -45,8 +45,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.olup.notable.AppRepository
-import com.olup.notable.AppSettings
-import com.olup.notable.AppSettingsModal
+import com.olup.notable.modals.AppSettings
+import com.olup.notable.modals.AppSettingsModal
 import com.olup.notable.BreadCrumb
 import com.olup.notable.FolderConfigDialog
 import com.olup.notable.PageMenu

@@ -23,9 +23,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.graphics.toRect
 import androidx.core.graphics.toRegion
+import com.olup.notable.classes.PageView
 import com.olup.notable.db.Image
 import com.olup.notable.db.Stroke
 import com.olup.notable.db.StrokePoint
+import com.olup.notable.modals.AppSettings
 import com.olup.notable.utils.History
 import com.olup.notable.utils.Operation
 import com.onyx.android.sdk.data.note.TouchPoint

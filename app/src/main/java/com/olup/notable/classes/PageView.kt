@@ -1,4 +1,4 @@
-package com.olup.notable
+package com.olup.notable.classes
 
 
 import android.content.Context
@@ -13,11 +13,23 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.IntOffset
 import androidx.core.graphics.toRect
+import com.olup.notable.AppRepository
+import com.olup.notable.SCREEN_HEIGHT
+import com.olup.notable.SCREEN_WIDTH
+import com.olup.notable.SnackConf
+import com.olup.notable.SnackState
+import com.olup.notable.TAG
 import com.olup.notable.db.AppDatabase
 import com.olup.notable.db.Image
 import com.olup.notable.db.KvProxy
 import com.olup.notable.db.Page
 import com.olup.notable.db.Stroke
+import com.olup.notable.imageBounds
+import com.olup.notable.modals.AppSettings
+import com.olup.notable.strokeBounds
+import com.olup.notable.utils.drawBg
+import com.olup.notable.utils.drawImage
+import com.olup.notable.utils.drawStroke
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow

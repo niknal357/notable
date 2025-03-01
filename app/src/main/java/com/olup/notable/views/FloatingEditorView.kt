@@ -19,7 +19,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.olup.notable.AppRepository
-import com.olup.notable.AppSettings
+import com.olup.notable.modals.AppSettings
 import com.olup.notable.EditorView
 import com.olup.notable.db.Page
 import com.olup.notable.ui.theme.InkaTheme
