@@ -452,7 +452,9 @@ class DrawCanvas(
         // Do not use, if refresh need to be preformed without delay.
         // This function waits for strokes to be fully rendered.
         if (!state.isDrawing) {
-            Log.w(TAG, "Not in drawing mode, skipping refreshUi")
+            waitForDrawing()
+            drawCanvasToView()
+            Log.w(TAG, "Not in drawing mode -- refreshUi ")
             return
         }
         if (Looper.getMainLooper().isCurrentThread) {
@@ -461,7 +463,15 @@ class DrawCanvas(
                 "refreshUiSuspend() is called from the main thread, it might not be a good idea."
             )
         }
+        waitForDrawing()
+        drawCanvasToView()
+        touchHelper.setRawDrawingEnabled(false)
+        if (drawingInProgress.isLocked)
+            Log.w(TAG, "Lock was acquired during refreshing UI. It might cause errors.")
+        touchHelper.setRawDrawingEnabled(true)
+    }
 
+    private suspend fun waitForDrawing() {
         withTimeoutOrNull(3000) {
             // Just to make sure wait 1ms before checking lock.
             delay(1)
@@ -469,12 +479,6 @@ class DrawCanvas(
             while (drawingInProgress.isLocked) {
                 delay(5)
             }
-            drawCanvasToView()
-            touchHelper.setRawDrawingEnabled(false)
-            if (drawingInProgress.isLocked)
-                Log.w(TAG, "Lock was acquired during refreshing UI. It might cause errors.")
-            touchHelper.setRawDrawingEnabled(true)
-
         } ?: Log.e(TAG, "Timeout while waiting for drawing lock. Potential deadlock.")
     }
 
@@ -543,10 +547,7 @@ class DrawCanvas(
             touchHelper.setRawDrawingEnabled(true)
         } else {
             // Check if drawing is completed
-            delay(1)
-            while (drawingInProgress.isLocked) {
-                delay(5)
-            }
+            waitForDrawing()
             // draw to view, before showing drawing, avoid stutter
             drawCanvasToView()
             touchHelper.setRawDrawingEnabled(false)

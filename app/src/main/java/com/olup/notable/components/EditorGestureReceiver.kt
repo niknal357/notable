@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -191,17 +190,14 @@ fun EditorGestureReceiver(
     var crossPosition by remember { mutableStateOf<IntOffset?>(null) }
     var rectangleBounds by remember { mutableStateOf<Rect?>(null) }
     var isSelection by remember { mutableStateOf(false) }
-    LaunchedEffect(isSelection) {
-        if (!isSelection) {
-            Log.i(TAG, "Entering drawing mode.")
-            state.isDrawing = true
-        }
-    }
     Box(
         modifier = Modifier
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val gestureState = GestureState()
+                    if(!state.isDrawing && !isSelection){
+                        state.isDrawing = true
+                    }
                     isSelection = false
                     // Detect initial touch
                     val down = awaitFirstDown()
