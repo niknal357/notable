@@ -186,11 +186,11 @@ class MainActivity : ComponentActivity() {
             // 'setDecorFitsSystemWindows(Boolean): Unit' is deprecated. Deprecated in Java
 //            window.setDecorFitsSystemWindows(false)
             WindowCompat.setDecorFitsSystemWindows(window, false)
-            if (window.insetsController != null) {
-                window.insetsController!!.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-                window.insetsController!!.systemBarsBehavior =
-                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
+//            if (window.insetsController != null) {
+//                window.insetsController!!.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+//                window.insetsController!!.systemBarsBehavior =
+//                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+//            }
             // Safely access the WindowInsetsController
             val controller = window.decorView.windowInsetsController
             if (controller != null) {
