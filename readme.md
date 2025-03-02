@@ -10,7 +10,7 @@
 <div align="center">
 
 ![Notable App](https://github.com/Ethran/notable/blob/main/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png?raw=true "Notable Logo")
-# Notable (Ethran Fork)
+# Notable (Fork)
 
 <a href="https://github.com/Ethran/notable/releases/latest">
   <img src="https://img.shields.io/badge/-download%20here-informational" alt="Download here">
@@ -31,11 +31,9 @@
 
 </div>
 
-
 ## About This Fork
 
-This repository, maintained by **Ethran**, is a personal project based on the original [olup/notable](https://github.com/olup/notable) repository.  
-The base repository has been inactive for over a year, and this fork introduces updates and features tailored to my specific needs and preferences.
+This repository, maintained by **Ethran**, is a personal project based on the original [olup/notable](https://github.com/olup/notable) repository, which has since been archived. This fork focuses on maintaining and improving the project with ongoing updates and enhancements, mainly tailored to my specific needs and preferences.
 
 ### What's New in This Fork?
 - Semi-active development with regular updates.
@@ -53,8 +51,8 @@ The base repository has been inactive for over a year, and this fork introduces 
 * 📒 **Notebooks:** Keep related notes together and easily switch between different noteboo︂︂ks based on your needs.
 * 📁 **Folders:** Create folders to organize your notes.
 * 🤏 **Editors' Mode Gestures:** [Intuitive gesture controls](#gestures) to enhance the editing experience.
-* 🌅 **Images:** Add, move, scale, and remove images
-* ︂︂᠋︁  **selection export** share selected text
+* 🌅 **Images:** Add, move, scale, and remove images.
+* ︂︂᠋︁➤  **Selection export:** share selected text.
 
 ## Download
 **Download the latest stable version of the [Notable app here.](https://github.com/Ethran/notable/releases/latest)**
@@ -76,11 +74,10 @@ Notable features intuitive gestures controls within Editor's Mode, to optimize t
 #### ☝️ 1 Finger
 * **Swipe up or down**: Scroll the page.
 * **Swipe left or right:** Change to the previous/next page (only available in notebooks).
-* **Double tap:** Show or hide the toolbar.
-* ~**Double tap bottom part of the screen:** Show quick navigation.~
-* **Hold** select image
+* **Double tap:** Undo
+* **Hold and drag:** select text and images
 #### ✌️ 2 Fingers
-* **Swipe left or right:** Undo/redo your changes.
+* **Swipe left or right:** Show or hide the toolbar.
 * **Single tap:** Switch between writing modes and eraser modes.
 
 #### 🔲 Selection
@@ -90,14 +87,14 @@ Notable features intuitive gestures controls within Editor's Mode, to optimize t
 ## Supported Devices
 
 The following table lists devices confirmed by users to be compatible with specific versions of Notable.  
-This does not imply any commitment from the developers. Feel free to add your device to the list if tested successfully.
-
+This does not imply any commitment from the developers.
 | Device Name                                                                           | v0.0.10 | v0.0.11dev |        |        |        |
 |---------------------------------------------------------------------------------------|---------|------------|--------|--------|--------|
 | [ONYX BOOX Go 10.3](https://onyxboox.com/boox_go103)                                  | ✔       | ?          |        |        |        |
 | [Onyx Boox Note Air 4 C](https://onyxboox.pl/en/ebook-readers/onyx-boox-note-air-4-c) | ✘       | ✔          |        |        |        |
 | [Onyx Boox Note Air 3 C](https://onyxboox.pl/en/ebook-readers/onyx-boox-note-air-3-c) | ✘       | ✔          |        |        |        |
 | [Onyx Boox Note Max](https://shop.boox.com/products/notemax)                          | ✘       | ✔          |        |        |        |
+| [Boox Note 3](https://onyxboox.pl/en/ebook-readers/onyx-boox-note-3)    | ✔       |  ✘   https://github.com/Ethran/notable/issues/24        |        |        |        |
 
 Feel free to add your device if tested successfully!
 
@@ -129,4 +126,4 @@ To start working with the project, see [the guide on how to start contributing](
 
 ***Important:*** Be sure to edit the `DEBUG_STORE_FILE` variable in the `/app/gradle.properties` file to the keystore on your own device. This is likely stored in the `.android` directory on your device.
 
-***Important:*** To use your BOOX device for debugging, an application will be required to enable developer mode on your BOOX device. [See a short guide here.](https://imgur.com/a/i1kb2UQ)  
+***Important:*** To use your BOOX device for debugging, an application will be required to enable developer mode on your BOOX device. [See a short guide here for older devices.](https://imgur.com/a/i1kb2UQ) For newer, there should be option in Settings→More Settings → USB Debug Mode   
