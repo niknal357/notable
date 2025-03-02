@@ -39,7 +39,9 @@ jobs:
           export DEBUG_STORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}"
           export DEBUG_KEY_ALIAS="${{ secrets.KEY_ALIAS }}"
           export DEBUG_KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
-          
+          export SHIPBOOK_APP_ID="${{ secrets.SHIPBOOK_APP_ID }}"
+          export SHIPBOOK_APP_KEY="${{ secrets.SHIPBOOK_APP_KEY }}"
+
           ./gradlew \
             -PDEBUG_STORE_FILE="$DEBUG_STORE_FILE" \
             -PDEBUG_STORE_PASSWORD="$DEBUG_STORE_PASSWORD" \
