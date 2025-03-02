@@ -12,12 +12,12 @@ android {
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.olup.notable"
+        applicationId "com.ethran.notable"
         minSdk 29
         targetSdk 35
 
         versionCode 11
-        versionName '0.0.11Ethran'
+        versionName '0.0.11'
         if (project.hasProperty('IS_NEXT') && project.IS_NEXT.toBoolean()) {
             def timestamp = new Date().format('dd.MM.YYYY-HH:mm')
             versionName = "${versionName}-next-${timestamp}"
@@ -83,7 +83,7 @@ android {
             pickFirsts += ['**/*.so']
         }
     }
-    namespace 'com.olup.notable'
+    namespace 'com.ethran.notable'
 }
 
 dependencies {
@@ -151,6 +151,6 @@ dependencies {
 
 }
 
-task printVersionName {
+tasks.register('printVersionName') {
     println android.defaultConfig.versionName
 }

@@ -1,0 +1,51 @@
+package com.ethran.notable
+
+import android.content.Context
+import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import kotlin.math.max
+
+@Composable
+fun ScrollIndicator(context: Context, state: EditorState) {
+    BoxWithConstraints(modifier = Modifier
+        .width(5.dp)
+        .fillMaxHeight()) {
+        val height = convertDpToPixel(this.maxHeight, LocalContext.current).toInt()
+        val page = state.pageView
+        Log.d(TAG, "Scroll + Height: ${page.scroll + height}")
+        Log.d(TAG, "Page Height: ${page.height}")
+        val virtualHeight = max(page.height, page.scroll + height)
+        if (virtualHeight <= height) return@BoxWithConstraints
+
+        val indicatorSize = (height / virtualHeight.toFloat()) * this.maxHeight.value
+        val indicatorPosition = (page.scroll / virtualHeight.toFloat()) * this.maxHeight.value
+
+
+        if (!state.isToolbarOpen) return@BoxWithConstraints
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(
+                    y = indicatorPosition.dp
+                )
+                .background(Color.Black)
+                .height(
+                    indicatorSize.dp
+                )
+
+        )
+    }
+}
