@@ -40,8 +40,8 @@
         </activity>
 
         <provider
-            android:name="com.olup.notable.Provider"
-            android:authorities="com.olup.notable.provider"
+            android:name="com.ethran.notable.utils.Provider"
+            android:authorities="com.ethran.notable.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
