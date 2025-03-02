@@ -3,13 +3,10 @@ package com.ethran.notable.utils
 import android.graphics.Rect
 import com.ethran.notable.DrawCanvas
 import com.ethran.notable.classes.PageView
-import com.ethran.notable.SnackConf
-import com.ethran.notable.SnackState
+import com.ethran.notable.classes.SnackConf
+import com.ethran.notable.classes.SnackState
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.Stroke
-import com.ethran.notable.imageBoundsInt
-import com.ethran.notable.pageAreaToCanvasArea
-import com.ethran.notable.strokeBounds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow

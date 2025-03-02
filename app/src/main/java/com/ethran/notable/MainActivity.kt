@@ -31,10 +31,15 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import com.ethran.notable.classes.LocalSnackContext
+import com.ethran.notable.classes.SnackBar
+import com.ethran.notable.classes.SnackState
+import com.ethran.notable.datastore.EditorSettingCacheManager
 import com.ethran.notable.db.KvProxy
 import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.modals.NeoTools
 import com.ethran.notable.ui.theme.InkaTheme
+import com.ethran.notable.views.Router
 import com.onyx.android.sdk.api.device.epd.EpdController
 import io.shipbook.shipbooksdk.Log
 import io.shipbook.shipbooksdk.ShipBook

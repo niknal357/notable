@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.components
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
@@ -29,7 +29,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.modals.AppSettings
+import com.ethran.notable.utils.noRippleClickable
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Home
 import compose.icons.feathericons.Plus

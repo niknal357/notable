@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.components
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

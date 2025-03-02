@@ -24,8 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.ethran.notable.AppRepository
-import com.ethran.notable.BreadCrumb
+import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.db.Notebook
 import com.ethran.notable.modals.ActionButton
 

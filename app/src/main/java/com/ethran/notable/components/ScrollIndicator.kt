@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.components
 
 import android.content.Context
 import android.util.Log
@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.ethran.notable.utils.EditorState
+import com.ethran.notable.TAG
+import com.ethran.notable.utils.convertDpToPixel
 import kotlin.math.max
 
 @Composable

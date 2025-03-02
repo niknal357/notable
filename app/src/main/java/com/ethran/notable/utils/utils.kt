@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.utils
 
 import android.content.Context
 import android.content.Intent
@@ -23,13 +23,14 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.graphics.toRect
 import androidx.core.graphics.toRegion
+import com.ethran.notable.R
+import com.ethran.notable.TAG
+import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.classes.PageView
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.Stroke
 import com.ethran.notable.db.StrokePoint
 import com.ethran.notable.modals.AppSettings
-import com.ethran.notable.utils.History
-import com.ethran.notable.utils.Operation
 import com.onyx.android.sdk.data.note.TouchPoint
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.flow.Flow

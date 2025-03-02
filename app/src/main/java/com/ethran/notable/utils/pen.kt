@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.utils
 
 import com.onyx.android.sdk.pen.style.StrokeStyle
 

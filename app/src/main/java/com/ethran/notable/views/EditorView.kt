@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.views
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,11 +14,21 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
+import com.ethran.notable.DrawCanvas
+import com.ethran.notable.TAG
+import com.ethran.notable.classes.AppRepository
+import com.ethran.notable.classes.EditorControlTower
 import com.ethran.notable.classes.PageView
 import com.ethran.notable.components.EditorGestureReceiver
+import com.ethran.notable.components.EditorSurface
+import com.ethran.notable.components.ScrollIndicator
+import com.ethran.notable.components.SelectedBitmap
 import com.ethran.notable.components.Toolbar
+import com.ethran.notable.datastore.EditorSettingCacheManager
 import com.ethran.notable.ui.theme.InkaTheme
+import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.History
+import com.ethran.notable.utils.convertDpToPixel
 import io.shipbook.shipbooksdk.Log
 
 

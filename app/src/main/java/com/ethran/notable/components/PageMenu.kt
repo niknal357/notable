@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,7 +17,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.db.Page
+import com.ethran.notable.utils.deletePage
+import com.ethran.notable.utils.noRippleClickable
 
 
 @Composable

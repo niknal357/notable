@@ -40,7 +40,7 @@
         </activity>
 
         <provider
-            android:name="com.ethran.notable.Provider"
+            android:name="com.ethran.notable.utils.Provider"
             android:authorities="com.ethran.notable.provider"
             android:exported="false"
             android:grantUriPermissions="true">

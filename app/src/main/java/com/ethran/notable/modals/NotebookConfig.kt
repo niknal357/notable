@@ -41,11 +41,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.ethran.notable.BreadCrumb
-import com.ethran.notable.LocalSnackContext
-import com.ethran.notable.PagePreview
-import com.ethran.notable.SnackConf
 import com.ethran.notable.TAG
+import com.ethran.notable.classes.LocalSnackContext
+import com.ethran.notable.classes.SnackConf
+import com.ethran.notable.components.BreadCrumb
+import com.ethran.notable.components.PagePreview
 import com.ethran.notable.components.SelectMenu
 import com.ethran.notable.components.ShowConfirmationDialog
 import com.ethran.notable.components.ShowFolderSelectionDialog

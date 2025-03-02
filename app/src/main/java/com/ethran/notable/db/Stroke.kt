@@ -11,7 +11,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.ethran.notable.Pen
+import com.ethran.notable.utils.Pen
 import java.util.Date
 import java.util.UUID
 

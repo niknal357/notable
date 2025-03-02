@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.classes
 
 import android.content.Context
 import com.ethran.notable.db.BookRepository

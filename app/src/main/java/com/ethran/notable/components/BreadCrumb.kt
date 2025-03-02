@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.components
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.Icon
@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
 import com.ethran.notable.db.Folder
 import com.ethran.notable.db.FolderRepository
+import com.ethran.notable.utils.noRippleClickable
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.ChevronRight
 

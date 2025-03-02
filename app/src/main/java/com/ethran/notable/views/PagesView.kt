@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.views
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
@@ -25,6 +25,11 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.ethran.notable.classes.AppRepository
+import com.ethran.notable.components.PageMenu
+import com.ethran.notable.components.PagePreview
+import com.ethran.notable.components.Topbar
+import com.ethran.notable.utils.noRippleClickable
 
 @ExperimentalFoundationApi
 @Composable

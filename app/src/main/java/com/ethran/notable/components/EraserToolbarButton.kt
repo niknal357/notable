@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.ethran.notable.utils.Eraser
 import com.ethran.notable.R
+import com.ethran.notable.utils.convertDpToPixel
 
 @Composable
 fun EraserToolbarButton(

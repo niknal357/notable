@@ -1,7 +1,11 @@
-package com.ethran.notable
+package com.ethran.notable.utils
 
 import android.content.Context
 import android.content.pm.PackageManager
+import com.ethran.notable.BuildConfig
+import com.ethran.notable.classes.SnackConf
+import com.ethran.notable.classes.SnackState
+import com.ethran.notable.TAG
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

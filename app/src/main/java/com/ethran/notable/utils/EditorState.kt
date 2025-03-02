@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.utils
 
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.IntOffset
 import com.ethran.notable.classes.PageView
+import com.ethran.notable.datastore.EditorSettingCacheManager
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.Stroke
 

@@ -34,9 +34,9 @@ import androidx.compose.ui.window.DialogProperties
 import com.ethran.notable.BuildConfig
 import com.ethran.notable.components.SelectMenu
 import com.ethran.notable.db.KvProxy
-import com.ethran.notable.isLatestVersion
-import com.ethran.notable.isNext
-import com.ethran.notable.noRippleClickable
+import com.ethran.notable.utils.noRippleClickable
+import com.ethran.notable.utils.isLatestVersion
+import com.ethran.notable.utils.isNext
 import kotlinx.serialization.Serializable
 import kotlin.concurrent.thread
 

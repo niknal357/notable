@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.components
 
 import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -26,7 +26,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
+import com.ethran.notable.utils.EditorState
 import com.ethran.notable.R
+import com.ethran.notable.classes.EditorControlTower
+import com.ethran.notable.utils.noRippleClickable
+import com.ethran.notable.utils.shareBitmap
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Copy
 import compose.icons.feathericons.Share2

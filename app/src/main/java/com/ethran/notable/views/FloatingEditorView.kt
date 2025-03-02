@@ -18,10 +18,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
-import com.ethran.notable.AppRepository
-import com.ethran.notable.modals.AppSettings
-import com.ethran.notable.EditorView
+import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.db.Page
+import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.ui.theme.InkaTheme
 
 @OptIn(ExperimentalFoundationApi::class)

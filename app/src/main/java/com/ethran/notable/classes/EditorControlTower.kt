@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.classes
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -6,7 +6,18 @@ import android.graphics.Rect
 import android.util.Log
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
-import com.ethran.notable.classes.PageView
+import com.ethran.notable.DrawCanvas
+import com.ethran.notable.utils.EditorState
+import com.ethran.notable.utils.Mode
+import com.ethran.notable.utils.PlacementMode
+import com.ethran.notable.utils.SimplePointF
+import com.ethran.notable.TAG
+import com.ethran.notable.utils.divideStrokesFromCut
+import com.ethran.notable.utils.imageBoundsInt
+import com.ethran.notable.utils.offsetImage
+import com.ethran.notable.utils.offsetStroke
+import com.ethran.notable.utils.pageAreaToCanvasArea
+import com.ethran.notable.utils.strokeBounds
 import com.ethran.notable.utils.History
 import com.ethran.notable.utils.Operation
 import com.ethran.notable.utils.drawImage

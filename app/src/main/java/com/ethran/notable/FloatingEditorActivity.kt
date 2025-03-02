@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
+import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.db.Page
 import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.ui.theme.InkaTheme
