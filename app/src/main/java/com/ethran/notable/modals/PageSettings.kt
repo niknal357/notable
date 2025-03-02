@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.ethran.notable.DrawCanvas
+import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.PageView
 import com.ethran.notable.components.SelectMenu
 import kotlinx.coroutines.launch

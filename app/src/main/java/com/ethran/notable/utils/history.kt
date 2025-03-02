@@ -1,7 +1,7 @@
 package com.ethran.notable.utils
 
 import android.graphics.Rect
-import com.ethran.notable.DrawCanvas
+import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.PageView
 import com.ethran.notable.classes.SnackConf
 import com.ethran.notable.classes.SnackState

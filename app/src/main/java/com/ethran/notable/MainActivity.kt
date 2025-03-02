@@ -31,6 +31,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.LocalSnackContext
 import com.ethran.notable.classes.SnackBar
 import com.ethran.notable.classes.SnackState
@@ -82,7 +83,8 @@ class MainActivity : ComponentActivity() {
 
         // it is workaround for now
         NeoTools =
-            KvProxy(applicationContext).get("APP_SETTINGS", AppSettings.serializer())?.neoTools ?: false
+            KvProxy(applicationContext).get("APP_SETTINGS", AppSettings.serializer())?.neoTools
+                ?: false
 
         //EpdDeviceManager.enterAnimationUpdate(true);
 
@@ -150,6 +152,7 @@ class MainActivity : ComponentActivity() {
 //            DrawCanvas.restartAfterConfChange.emit(Unit)
 //        }
     }
+
     private fun requestPermissions() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             if (ContextCompat.checkSelfPermission(

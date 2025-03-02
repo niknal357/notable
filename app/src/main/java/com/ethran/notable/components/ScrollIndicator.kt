@@ -1,7 +1,7 @@
 package com.ethran.notable.components
 
 import android.content.Context
-import android.util.Log
+import io.shipbook.shipbooksdk.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints

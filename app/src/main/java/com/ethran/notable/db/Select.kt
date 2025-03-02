@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
 import androidx.compose.ui.unit.IntOffset
-import com.ethran.notable.DrawCanvas
+import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.classes.PageView
 import com.ethran.notable.utils.PlacementMode

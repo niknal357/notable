@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.ethran.notable.DrawCanvas
+import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.Mode
 import com.ethran.notable.utils.SimplePoint

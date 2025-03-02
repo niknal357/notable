@@ -8,7 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfDocument
 import android.os.Environment
 import android.provider.MediaStore
-import android.util.Log
+import io.shipbook.shipbooksdk.Log
 import com.ethran.notable.TAG
 import com.ethran.notable.db.BookRepository
 import com.ethran.notable.db.PageRepository

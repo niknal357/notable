@@ -1,4 +1,4 @@
-package com.ethran.notable
+package com.ethran.notable.classes
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -15,9 +15,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.ethran.notable.classes.PageView
-import com.ethran.notable.classes.SnackConf
-import com.ethran.notable.classes.SnackState
+import com.ethran.notable.TAG
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.ImageRepository
 import com.ethran.notable.db.StrokeRepository

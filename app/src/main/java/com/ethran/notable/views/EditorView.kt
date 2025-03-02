@@ -14,7 +14,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
-import com.ethran.notable.DrawCanvas
+import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.classes.EditorControlTower

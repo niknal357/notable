@@ -3,10 +3,9 @@ package com.ethran.notable.classes
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
-import android.util.Log
+import io.shipbook.shipbooksdk.Log
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
-import com.ethran.notable.DrawCanvas
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.Mode
 import com.ethran.notable.utils.PlacementMode
