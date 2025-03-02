@@ -64,8 +64,7 @@ class MainActivity : ComponentActivity() {
 
         // TODO: change those
         ShipBook.start(
-            this.application, "648adf9364c9825976c1d57e",
-            "7c53dffa949e3b55e37ab04672138feb"
+            this.application, BuildConfig.SHIPBOOK_APP_ID, BuildConfig.SHIPBOOK_APP_KEY
         )
 
         Log.i(TAG, "Notable started")

@@ -53,11 +53,15 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             // signingConfig signingConfigs.debug
             buildConfigField("boolean", "IS_NEXT", IS_NEXT)
+            buildConfigField "String", "SHIPBOOK_APP_ID", "\"${System.getenv("SHIPBOOK_APP_ID") ?: "default-secret"}\""
+            buildConfigField "String", "SHIPBOOK_APP_KEY", "\"${System.getenv("SHIPBOOK_APP_KEY") ?: "default-secret2"}\""
         }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             buildConfigField("boolean", "IS_NEXT", IS_NEXT)
+            buildConfigField "String", "SHIPBOOK_APP_ID", "\"${System.getenv("SHIPBOOK_APP_ID") ?: "default-secret"}\""
+            buildConfigField "String", "SHIPBOOK_APP_KEY", "\"${System.getenv("SHIPBOOK_APP_KEY") ?: "default-secret2"}\""
         }
     }
     compileOptions {
