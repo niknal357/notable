@@ -33,13 +33,7 @@ jobs:
           fileName: "my.keystore"
           encodedString: ${{ secrets.KEYSTORE_FILE }}
 
-      - name: test
-        env:
-          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
-        run:
-          echo "$FIREBASE_CONFIG"
-
-      - name: Decode and Restore `google-services.json`
+      - name: Decode and Replace `google-services.json`
         env:
           FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
         run: |
