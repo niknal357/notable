@@ -33,6 +33,12 @@ jobs:
           fileName: "my.keystore"
           encodedString: ${{ secrets.KEYSTORE_FILE }}
 
+      - name: Decode and Restore `google-services.json`
+        env:
+          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
+        run: |
+          echo $FIREBASE_CONFIG | base64 --decode > google-services.json
+
       - name: Execute Gradle build
         run: |
           export DEBUG_STORE_FILE="../${{ steps.decode_keystore.outputs.filePath }}"
