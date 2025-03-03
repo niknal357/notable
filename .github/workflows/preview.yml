@@ -34,8 +34,10 @@ jobs:
           encodedString: ${{ secrets.KEYSTORE_FILE }}
 
       - name: Decode and Replace `google-services.json`
+        env:
+          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
         run: |
-          echo ${{ secrets.FIREBASE_CONFIG }} | base64 --decode > google-services.json
+          echo $FIREBASE_CONFIG | base64 --decode > google-services.json
 
       - name: Execute Gradle build
         run: |
