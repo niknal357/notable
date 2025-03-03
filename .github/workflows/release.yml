@@ -3,6 +3,7 @@ name: Build and Release Version
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
 
 env:
   MAVEN_OPTS: >-
@@ -42,11 +43,11 @@ jobs:
       - name: Execute Gradle build
         run: |
           ./gradlew \
-           -PDEBUG_STORE_FILE="../${{ steps.decode_keystore.outputs.filePath }}" \
-           -PDEBUG_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }} \
-           -PDEBUG_KEY_ALIAS=${{ secrets.KEY_ALIAS }} \
-           -PDEBUG_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }} \
-           assembleDebug
+           -PSTORE_FILE="../${{ steps.decode_keystore.outputs.filePath }}" \
+           -PSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }} \
+           -PKEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }} \
+           -PKEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }} \
+           assembleRelease
 
       #   - name: Cache Gradle packages
       #     uses: actions/cache@v1

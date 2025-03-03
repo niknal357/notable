@@ -22,7 +22,7 @@ fun createFileFromContentUri(context: Context, fileUri: Uri): File {
     }
 
     // Extract the MIME type if needed
-    val fileType: String? = context.contentResolver.getType(fileUri)
+//    val fileType: String? = context.contentResolver.getType(fileUri)
 
     // Open the input stream
     val iStream: InputStream = context.contentResolver.openInputStream(fileUri)!!
@@ -31,12 +31,18 @@ fun createFileFromContentUri(context: Context, fileUri: Uri): File {
 
     val outputDir = ensureImagesFolder()
 
+
+    fileName = sanitizeFileName(fileName)
     val outputFile = File(outputDir, fileName)
 
     // Copy the input stream to the output file
     copyStreamToFile(iStream, outputFile)
     iStream.close()
     return outputFile
+}
+
+fun sanitizeFileName(fileName: String): String {
+    return fileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
 }
 
 fun copyStreamToFile(inputStream: InputStream, outputFile: File) {
@@ -54,7 +60,8 @@ fun copyStreamToFile(inputStream: InputStream, outputFile: File) {
 }
 
 fun ensureImagesFolder(): File {
-    val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+    val documentsDir =
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
     val dbDir = File(File(documentsDir, "notabledb"), "images")
     if (!dbDir.exists()) {
         dbDir.mkdirs()
