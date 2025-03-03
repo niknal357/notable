@@ -67,14 +67,13 @@ val pressure = EpdController.getMaxTouchPressure()
 // keep reference of the surface view presently associated to the singleton touchhelper
 var referencedSurfaceView: String = ""
 
-
 class DrawCanvas(
-    _context: Context,
+    context: Context,
     val coroutineScope: CoroutineScope,
     val state: EditorState,
     val page: PageView,
     val history: History
-) : SurfaceView(_context) {
+) : SurfaceView(context) {
     private val strokeHistoryBatch = mutableListOf<String>()
 //    private val commitHistorySignal = MutableSharedFlow<Unit>()
 
