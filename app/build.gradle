@@ -12,12 +12,12 @@ android {
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.olup.notable"
+        applicationId "com.ethran.notable"
         minSdk 29
         targetSdk 35
 
         versionCode 11
-        versionName '0.0.11Ethran'
+        versionName '0.0.11'
         if (project.hasProperty('IS_NEXT') && project.IS_NEXT.toBoolean()) {
             def timestamp = new Date().format('dd.MM.YYYY-HH:mm')
             versionName = "${versionName}-next-${timestamp}"
@@ -53,11 +53,15 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             // signingConfig signingConfigs.debug
             buildConfigField("boolean", "IS_NEXT", IS_NEXT)
+            buildConfigField "String", "SHIPBOOK_APP_ID", "\"${System.getenv("SHIPBOOK_APP_ID") ?: "default-secret"}\""
+            buildConfigField "String", "SHIPBOOK_APP_KEY", "\"${System.getenv("SHIPBOOK_APP_KEY") ?: "default-secret2"}\""
         }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             buildConfigField("boolean", "IS_NEXT", IS_NEXT)
+            buildConfigField "String", "SHIPBOOK_APP_ID", "\"${System.getenv("SHIPBOOK_APP_ID") ?: "default-secret"}\""
+            buildConfigField "String", "SHIPBOOK_APP_KEY", "\"${System.getenv("SHIPBOOK_APP_KEY") ?: "default-secret2"}\""
         }
     }
     compileOptions {
@@ -83,7 +87,7 @@ android {
             pickFirsts += ['**/*.so']
         }
     }
-    namespace 'com.olup.notable'
+    namespace 'com.ethran.notable'
 }
 
 dependencies {
@@ -94,7 +98,7 @@ dependencies {
     implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
     implementation "androidx.compose.material:material-icons-extended:$compose_version"
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
-    implementation 'androidx.activity:activity-compose:1.10.0'
+    implementation 'androidx.activity:activity-compose:1.10.1'
 
     //implementation fileTree(dir: 'libs', include: ['*.aar'])
     implementation('com.onyx.android.sdk:onyxsdk-device:1.2.32') {
@@ -126,7 +130,7 @@ dependencies {
     implementation "androidx.compose.runtime:runtime:$compose_version"
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0'
 
-    implementation "androidx.navigation:navigation-compose:2.8.7"
+    implementation "androidx.navigation:navigation-compose:2.8.8"
 
     def room_version = "2.6.1"
 
@@ -140,17 +144,18 @@ dependencies {
 
     implementation 'com.aventrix.jnanoid:jnanoid:2.0.0'
 
-    implementation platform('com.google.firebase:firebase-bom:33.9.0')
+    implementation platform('com.google.firebase:firebase-bom:33.10.0')
     implementation 'com.google.firebase:firebase-analytics-ktx'
 
     implementation 'br.com.devsrsouza.compose.icons.android:feather:1.0.0'
     implementation "com.beust:klaxon:5.5"
 
+    //noinspection GradleDynamicVersion
     implementation 'io.shipbook:shipbooksdk:1.+'
 
 
 }
 
-task printVersionName {
+tasks.register('printVersionName') {
     println android.defaultConfig.versionName
 }
