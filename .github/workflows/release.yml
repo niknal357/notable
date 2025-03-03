@@ -3,6 +3,7 @@ name: Build and Release Version
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
 
 env:
   MAVEN_OPTS: >-
