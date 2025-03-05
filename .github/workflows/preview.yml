@@ -33,11 +33,15 @@ jobs:
           fileName: "my.keystore"
           encodedString: ${{ secrets.KEYSTORE_FILE }}
 
+      - name: Remove `google-services.json`
+        run: rm google-services.json
+
       - name: Decode and Replace `google-services.json`
         env:
           FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
         run: |
           echo $FIREBASE_CONFIG | base64 --decode > google-services.json
+          wc -l google-services.json
 
       - name: Execute Gradle build
         run: |
