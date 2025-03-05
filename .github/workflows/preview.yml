@@ -34,14 +34,14 @@ jobs:
           encodedString: ${{ secrets.KEYSTORE_FILE }}
 
       - name: Remove `google-services.json`
-        run: rm ${{ github.workspace }}/google-services.json
+        run: rm ${{ github.workspace }}/app/google-services.json
 
       - name: Decode and Replace `google-services.json`
         env:
           FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
         run: |
-          echo $FIREBASE_CONFIG | base64 --decode > ${{ github.workspace }}/google-services.json
-          wc -l ${{ github.workspace }}/google-services.json
+          echo $FIREBASE_CONFIG | base64 --decode > ${{ github.workspace }}/app/google-services.json
+          wc -l ${{ github.workspace }}/app/google-services.json
 
       - name: Execute Gradle build
         run: |
