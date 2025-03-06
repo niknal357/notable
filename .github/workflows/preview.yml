@@ -2,6 +2,8 @@ name: Build and Release Preview
 on:
   push:
     branches: ["dev"]
+    paths:
+      - 'app/**'
   workflow_dispatch:
 
 env:
