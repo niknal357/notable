@@ -32,6 +32,7 @@ import com.onyx.android.sdk.pen.NeoMarkerPen
 import io.shipbook.shipbooksdk.Log
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -327,7 +328,7 @@ fun drawHexedBg(canvas: Canvas, scroll: Int, scale: Float) {
     }
 
     // https://www.redblobgames.com/grids/hexagons/#spacing
-    val r = height / (hexVerticalCount * 1.5f)
+    val r = max(width, height) / (hexVerticalCount * 1.5f)
     val hexHeight = r * 2
     val hexWidth = r * sqrt(3f)
 
