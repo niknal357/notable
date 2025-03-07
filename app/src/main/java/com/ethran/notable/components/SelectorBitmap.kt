@@ -26,9 +26,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
-import com.ethran.notable.utils.EditorState
 import com.ethran.notable.R
 import com.ethran.notable.classes.EditorControlTower
+import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.noRippleClickable
 import com.ethran.notable.utils.shareBitmap
 import compose.icons.FeatherIcons
@@ -81,6 +81,7 @@ fun SelectedBitmap(
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
+                        //TODO: Sometimes its null, when handling images
                         selectionState.selectionDisplaceOffset =
                             selectionState.selectionDisplaceOffset!! + dragAmount.round()
                     }
