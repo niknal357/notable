@@ -200,7 +200,8 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
                                 "blank" to "Blank page",
                                 "dotted" to "Dot grid",
                                 "lined" to "Lines",
-                                "squared" to "Small squares grid"
+                                "squared" to "Small squares grid",
+                                "hexed" to "Hexagon grid",
                             ),
                             onChange = {
                                 if (book!!.defaultNativeTemplate != it) {

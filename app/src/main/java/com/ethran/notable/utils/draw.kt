@@ -32,6 +32,9 @@ import com.onyx.android.sdk.pen.NeoMarkerPen
 import io.shipbook.shipbooksdk.Log
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 
 fun drawBallPenStroke(
@@ -223,6 +226,7 @@ fun drawImage(context: Context, canvas: Canvas, image: Image, offset: IntOffset)
 const val padding = 0
 const val lineHeight = 80
 const val dotSize = 6f
+const val hexVerticalCount = 26
 
 fun drawLinedBg(canvas: Canvas, scroll: Int, scale: Float) {
     val height = (canvas.height / scale).toInt()
@@ -309,12 +313,62 @@ fun drawSquaredBg(canvas: Canvas, scroll: Int, scale: Float) {
     }
 }
 
+fun drawHexedBg(canvas: Canvas, scroll: Int, scale: Float) {
+    val height = (canvas.height / scale)
+    val width = (canvas.width / scale)
+
+    // background
+    canvas.drawColor(Color.WHITE)
+
+    // stroke
+    val paint = Paint().apply {
+        this.color = Color.GRAY
+        this.strokeWidth = 1f
+        this.style = Paint.Style.STROKE
+    }
+
+    // https://www.redblobgames.com/grids/hexagons/#spacing
+    val r = max(width, height) / (hexVerticalCount * 1.5f)
+    val hexHeight = r * 2
+    val hexWidth = r * sqrt(3f)
+
+    val rows = (height / hexVerticalCount).toInt()
+    val cols = (width / hexWidth).toInt()
+
+    for (row in 0..rows) {
+        val offsetX = if (row % 2 == 0) 0f else hexWidth / 2
+
+        for (col in 0..cols) {
+            val x = col * hexWidth + offsetX
+            val y = row * hexHeight * 0.75f - scroll.toFloat().mod(hexHeight * 1.5f)
+            drawHexagon(canvas, x, y, r, paint)
+        }
+    }
+}
+
+fun drawHexagon(canvas: Canvas, centerX: Float, centerY: Float, r: Float, paint: Paint) {
+    val path = Path()
+    for (i in 0..5) {
+        val angle = Math.toRadians((30 + 60 * i).toDouble())
+        val x = (centerX + r * cos(angle)).toFloat()
+        val y = (centerY + r * sin(angle)).toFloat()
+        if (i == 0) {
+            path.moveTo(x, y)
+        } else {
+            path.lineTo(x, y)
+        }
+    }
+    path.close()
+    canvas.drawPath(path, paint)
+}
+
 fun drawBg(canvas: Canvas, nativeTemplate: String, scroll: Int, scale: Float = 1f) {
     when (nativeTemplate) {
         "blank" -> canvas.drawColor(Color.WHITE)
         "dotted" -> drawDottedBg(canvas, scroll, scale)
         "lined" -> drawLinedBg(canvas, scroll, scale)
         "squared" -> drawSquaredBg(canvas, scroll, scale)
+        "hexed" -> drawHexedBg(canvas, scroll, scale)
     }
 
     // in landscape orientation add margin to indicate what will be visible in vertical orientation.
