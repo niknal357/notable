@@ -62,7 +62,6 @@ class MainActivity : ComponentActivity() {
         requestPermissions()
 
 
-        // TODO: change those
         ShipBook.start(
             this.application, BuildConfig.SHIPBOOK_APP_ID, BuildConfig.SHIPBOOK_APP_KEY
         )
