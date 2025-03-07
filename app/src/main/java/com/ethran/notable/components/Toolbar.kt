@@ -279,16 +279,7 @@ fun Toolbar(
                     onSelect = { handleChangePen(Pen.MARKER) },
                     sizes = listOf("L" to 40f, "XL" to 60f),
                     penSetting = state.penSettings[Pen.MARKER.penName] ?: return,
-                    onChangeSetting = {
-                        onChangeStrokeSetting(
-                            Pen.MARKER.penName,
-                            it.copy(
-                                strokeSize = it.strokeSize,
-                                color = android.graphics.Color.LTGRAY
-                            )
-                        )
-                    })
-
+                    onChangeSetting = { onChangeStrokeSetting(Pen.MARKER.penName, it) })
                 Box(
                     Modifier
                         .fillMaxHeight()
