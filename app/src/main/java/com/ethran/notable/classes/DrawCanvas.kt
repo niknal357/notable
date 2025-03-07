@@ -59,7 +59,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.concurrent.thread
-import kotlin.system.measureTimeMillis
 
 
 val pressure = EpdController.getMaxTouchPressure()
@@ -288,7 +287,7 @@ class DrawCanvas(
         // observe forceUpdate
         coroutineScope.launch {
             forceUpdate.collect { zoneAffected ->
-                Log.i(TAG + "Observer", "Force update zone $zoneAffected")
+                Log.v(TAG + "Observer", "Force update zone $zoneAffected")
 
                 if (zoneAffected != null) page.drawArea(
                     area = Rect(
@@ -305,7 +304,7 @@ class DrawCanvas(
         // observe refreshUi
         coroutineScope.launch {
             refreshUi.collect {
-                Log.i(TAG + "Observer", "Refreshing UI!")
+                Log.v(TAG + "Observer", "Refreshing UI!")
                 refreshUiSuspend()
             }
         }
@@ -409,7 +408,7 @@ class DrawCanvas(
 
     private suspend fun selectRectangle(rectToSelect: Rect?) {
         if (rectToSelect != null) {
-            Log.i(TAG + "Observer", "position of image $rectToSelect")
+            Log.d(TAG + "Observer", "position of image $rectToSelect")
             rectToSelect.top += page.scroll
             rectToSelect.bottom += page.scroll
             // Query the database to find an image that coincides with the point
@@ -473,7 +472,7 @@ class DrawCanvas(
             return
         }
         if (Looper.getMainLooper().isCurrentThread) {
-            Log.w(
+            Log.i(
                 TAG,
                 "refreshUiSuspend() is called from the main thread, it might not be a good idea."
             )
@@ -545,21 +544,18 @@ class DrawCanvas(
     fun drawCanvasToView() {
         val canvas = this.holder.lockCanvas() ?: return
         canvas.drawBitmap(page.windowedBitmap, 0f, 0f, Paint())
-        val timeToDraw = measureTimeMillis {
-            if (getActualState().mode == Mode.Select) {
-                // render selection
-                if (getActualState().selectionState.firstPageCut != null) {
-                    Log.i(TAG, "render cut")
-                    val path = pointsToPath(getActualState().selectionState.firstPageCut!!.map {
-                        SimplePointF(
-                            it.x, it.y - page.scroll
-                        )
-                    })
-                    canvas.drawPath(path, selectPaint)
-                }
+        if (getActualState().mode == Mode.Select) {
+            // render selection
+            if (getActualState().selectionState.firstPageCut != null) {
+                Log.i(TAG, "render cut")
+                val path = pointsToPath(getActualState().selectionState.firstPageCut!!.map {
+                    SimplePointF(
+                        it.x, it.y - page.scroll
+                    )
+                })
+                canvas.drawPath(path, selectPaint)
             }
         }
-//        Log.i(TAG, "drawCanvasToView: Took ${timeToDraw}ms.")
         // finish rendering
         this.holder.unlockCanvasAndPost(canvas)
     }

@@ -19,147 +19,30 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerId
-import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.ethran.notable.classes.DrawCanvas
-import com.ethran.notable.utils.EditorState
-import com.ethran.notable.utils.Mode
-import com.ethran.notable.utils.SimplePoint
-import com.ethran.notable.utils.SimplePointF
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
+import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.EditorControlTower
+import com.ethran.notable.classes.GestureState
 import com.ethran.notable.classes.SnackConf
 import com.ethran.notable.classes.SnackState
 import com.ethran.notable.modals.AppSettings
+import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.History
+import com.ethran.notable.utils.Mode
 import com.ethran.notable.utils.UndoRedoType
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-
-data class GestureState(
-    val initialPositions: MutableMap<PointerId, Offset> = mutableMapOf(),
-    val lastPositions: MutableMap<PointerId, Offset> = mutableMapOf(),
-    var initialTimestamp: Long = System.currentTimeMillis(),
-    var lastTimestamp: Long = initialTimestamp,
-) {
-    fun getElapsedTime(): Long {
-        return lastTimestamp - initialTimestamp
-    }
-
-    fun calculateTotalDelta(): Float {
-        return initialPositions.keys.sumOf { id ->
-            val initial = initialPositions[id] ?: Offset.Zero
-            val last = lastPositions[id] ?: Offset.Zero
-            (initial - last).getDistance().toDouble()
-        }.toFloat()
-    }
-
-    @Suppress("unused")
-    fun getFirstPosition(): SimplePoint? {
-        return initialPositions.values.firstOrNull()?.let { point ->
-            SimplePoint(point.x.toInt(), point.y.toInt())
-        }
-    }
-
-    fun getFirstPositionF(): SimplePointF? {
-        return initialPositions.values.firstOrNull()?.let { point ->
-            SimplePointF(point.x, point.y)
-        }
-    }
-
-    fun getLastPositionIO(): IntOffset? {
-        return lastPositions.values.firstOrNull()?.let { point ->
-            IntOffset(point.x.toInt(), point.y.toInt())
-        }
-    }
-
-    fun calculateRectangleBounds(): Rect? {
-        if (initialPositions.isEmpty() || lastPositions.isEmpty()) return null
-
-        val firstPosition = initialPositions.values.firstOrNull() ?: return null
-        val lastPosition = lastPositions.values.firstOrNull() ?: return null
-
-        return Rect(
-            firstPosition.x.coerceAtMost(lastPosition.x).toInt(),
-            firstPosition.y.coerceAtMost(lastPosition.y).toInt(),
-            firstPosition.x.coerceAtLeast(lastPosition.x).toInt(),
-            firstPosition.y.coerceAtLeast(lastPosition.y).toInt()
-        )
-    }
-
-    // Insert a position for the given pointer ID
-    fun insertPosition(input: PointerInputChange) {
-        lastTimestamp = System.currentTimeMillis()
-        if (initialPositions.containsKey(input.id)) {
-            // Update last position if the pointer ID already exists in initial positions
-            lastPositions[input.id] = input.position
-
-        } else {
-            // Add to initial positions if the pointer ID is new
-            initialPositions[input.id] = input.position
-        }
-    }
-
-    // Get the current number of active inputs
-    fun getInputCount(): Int {
-        return initialPositions.size
-    }
-
-    //return smallest horizontal movement, or 0, if movement is not horizontal
-    fun getHorizontalDrag(): Float {
-        if (initialPositions.isEmpty() || lastPositions.isEmpty()) return 0f
-
-        var minHorizontalMovement: Float? = null
-
-        for ((id, initial) in initialPositions) {
-            val last = lastPositions[id] ?: continue
-            val delta = last - initial
-
-            // Check if the movement is more horizontal than vertical
-            if (abs(delta.x) <= abs(delta.y)) return 0f
-
-            // Track the smallest horizontal movement
-            if (minHorizontalMovement == null || abs(delta.x) < abs(minHorizontalMovement)) {
-                minHorizontalMovement = delta.x
-            }
-        }
-
-        return minHorizontalMovement ?: 0f
-    }
-
-    //return smallest vertical movement, or 0, if movement is not vertical
-    fun getVerticalDrag(): Float {
-        if (initialPositions.isEmpty() || lastPositions.isEmpty()) return 0f
-
-        var minVerticalMovement: Float? = null
-
-        for ((id, initial) in initialPositions) {
-            val last = lastPositions[id] ?: continue
-            val delta = last - initial
-
-            // Check if the movement is more vertical than horizontal
-            if (abs(delta.y) <= abs(delta.x)) return 0f
-
-            // Track the smallest vertical movement
-            if (minVerticalMovement == null || abs(delta.y) < abs(minVerticalMovement)) {
-                minVerticalMovement = delta.y
-            }
-        }
-        return minVerticalMovement ?: 0f
-    }
-}
 
 private const val HOLD_THRESHOLD_MS = 300
 private const val ONE_FINGER_TOUCH_TAP_TIME = 100L
@@ -195,7 +78,7 @@ fun EditorGestureReceiver(
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val gestureState = GestureState()
-                    if(!state.isDrawing && !isSelection){
+                    if (!state.isDrawing && !isSelection) {
                         state.isDrawing = true
                     }
                     isSelection = false
@@ -240,7 +123,6 @@ fun EditorGestureReceiver(
                             crossPosition = gestureState.getLastPositionIO()
                             rectangleBounds = gestureState.calculateRectangleBounds()
                         } else if (gestureState.getElapsedTime() >= HOLD_THRESHOLD_MS && gestureState.getInputCount() == 1) {
-                            Log.i(TAG, "Held for ${gestureState.getElapsedTime()}ms")
                             if (gestureState.calculateTotalDelta() < TAP_MOVEMENT_TOLERANCE) {
                                 isSelection = true
                                 crossPosition = gestureState.getLastPositionIO()
@@ -277,7 +159,7 @@ fun EditorGestureReceiver(
                     // Calculate the total delta (movement distance) for all pointers
                     val totalDelta = gestureState.calculateTotalDelta()
                     val gestureDuration = gestureState.getElapsedTime()
-                    Log.i(
+                    Log.v(
                         TAG,
                         "Leaving gesture. totalDelta: ${totalDelta}, gestureDuration: $gestureDuration "
                     )
@@ -288,7 +170,7 @@ fun EditorGestureReceiver(
                                     val secondDown = awaitFirstDown()
                                     val deltaTime =
                                         System.currentTimeMillis() - gestureState.lastTimestamp
-                                    Log.i(
+                                    Log.v(
                                         TAG,
                                         "Second down detected: ${secondDown.type}, position: ${secondDown.position}, deltaTime: $deltaTime"
                                     )
@@ -303,14 +185,7 @@ fun EditorGestureReceiver(
                                         }
                                         return@withTimeoutOrNull null
                                     } else {
-                                        coroutineScope.launch {
-                                            SnackState.globalSnackFlow.emit(
-                                                SnackConf(
-                                                    text = "double click! delta: $totalDelta, time between: $deltaTime",
-                                                    duration = 3000,
-                                                )
-                                            )
-                                        }
+                                        Log.v(TAG, "double click!")
                                     }
                                     if (secondDown.type != PointerType.Touch) {
                                         Log.i(
@@ -333,14 +208,7 @@ fun EditorGestureReceiver(
                                 } != null) return@awaitEachGesture
                         }
                     } else if (gestureState.getInputCount() == 2) {
-                        coroutineScope.launch {
-                            SnackState.globalSnackFlow.emit(
-                                SnackConf(
-                                    text = "Two finger tap, delta: $totalDelta, duration $gestureDuration",
-                                    duration = 3000,
-                                )
-                            )
-                        }
+                        Log.v(TAG, "Two finger tap")
                         if (totalDelta < TWO_FINGER_TAP_MOVEMENT_TOLERANCE &&
                             gestureDuration < TWO_FINGER_TOUCH_TAP_MAX_TIME &&
                             gestureDuration > TWO_FINGER_TOUCH_TAP_MIN_TIME
@@ -362,7 +230,7 @@ fun EditorGestureReceiver(
                         .getVerticalDrag()
                         .toInt()
 
-                    Log.i(TAG, "horizontalDrag $horizontalDrag, verticalDrag $verticalDrag")
+                    Log.v(TAG, "horizontalDrag $horizontalDrag, verticalDrag $verticalDrag")
                     when {
                         horizontalDrag < -SWIPE_THRESHOLD -> {
                             resolveGesture(
