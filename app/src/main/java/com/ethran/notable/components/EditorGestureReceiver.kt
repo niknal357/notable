@@ -24,6 +24,7 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ethran.notable.TAG
@@ -119,6 +120,7 @@ fun EditorGestureReceiver(
                         }
                         // events are only send on change, so we need to check for holding in place separately
                         gestureState.lastTimestamp = System.currentTimeMillis()
+                        gestureState.lastPositions[down.id] = down.position
                         if (isSelection) {
                             crossPosition = gestureState.getLastPositionIO()
                             rectangleBounds = gestureState.calculateRectangleBounds()
@@ -270,54 +272,66 @@ fun EditorGestureReceiver(
             .fillMaxWidth()
             .fillMaxHeight()
     ) {
-
-
-        val density = LocalDensity.current
-
-        // Draw cross where finger is touching
-        crossPosition?.let { pos ->
-            val crossSizePx = with(density) { 100.dp.toPx() }
-            Box(
-                Modifier
-                    .offset {
-                        IntOffset(
-                            pos.x - (crossSizePx / 2).toInt(),
-                            pos.y
-                        )
-                    } // Horizontal bar centered
-                    .size(width = 100.dp, height = 2.dp)
-                    .background(Color.Black)
-            )
-            Box(
-                Modifier
-                    .offset {
-                        IntOffset(
-                            pos.x,
-                            pos.y - (crossSizePx / 2).toInt()
-                        )
-                    } // Vertical bar centered
-                    .size(width = 2.dp, height = 100.dp)
-                    .background(Color.Black)
-            )
+        // This 'if' forces UI to update, with out it:
+        // if user holds in one place finger, the selection mode will be entered,
+        // but UI want be refreshed.
+        if (isSelection) {
+            val density = LocalDensity.current
+            // Draw cross where finger is touching
+            DrawCross(crossPosition, density)
+            // Draw the rectangle while dragging
+            DrawRectangle(rectangleBounds, density)
         }
+    }
+}
 
-        // Draw the rectangle while dragging
-        rectangleBounds?.let { bounds ->
-            // Draw the rectangle
-            Box(
-                Modifier
-                    .offset { IntOffset(bounds.left, bounds.top) }
-                    .size(
-                        width = with(density) { (bounds.right - bounds.left).toDp() },
-                        height = with(density) { (bounds.bottom - bounds.top).toDp() }
+@Composable
+private fun DrawRectangle(rectangleBounds: Rect?, density: Density) {
+    rectangleBounds?.let { bounds ->
+        // Draw the rectangle
+        Box(
+            Modifier
+                .offset { IntOffset(bounds.left, bounds.top) }
+                .size(
+                    width = with(density) { (bounds.right - bounds.left).toDp() },
+                    height = with(density) { (bounds.bottom - bounds.top).toDp() }
+                )
+                // Is there rendering speed difference between colors?
+                .background(Color(0x55000000))
+                .border(1.dp, Color.Black)
+        )
+    }
+
+}
+
+@Composable
+private fun DrawCross(crossPosition: IntOffset?, density: Density) {
+
+    // Draw cross where finger is touching
+    crossPosition?.let { pos ->
+        val crossSizePx = with(density) { 100.dp.toPx() }
+        Box(
+            Modifier
+                .offset {
+                    IntOffset(
+                        pos.x - (crossSizePx / 2).toInt(),
+                        pos.y
                     )
-                    // Is there rendering speed difference between colors?
-                    .background(Color(0x55000000))
-                    .border(1.dp, Color.Black)
-            )
-        }
-
-
+                } // Horizontal bar centered
+                .size(width = 100.dp, height = 2.dp)
+                .background(Color.Black)
+        )
+        Box(
+            Modifier
+                .offset {
+                    IntOffset(
+                        pos.x,
+                        pos.y - (crossSizePx / 2).toInt()
+                    )
+                } // Vertical bar centered
+                .size(width = 2.dp, height = 100.dp)
+                .background(Color.Black)
+        )
     }
 }
 

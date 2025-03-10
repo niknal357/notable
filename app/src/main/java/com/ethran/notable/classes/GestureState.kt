@@ -23,7 +23,7 @@ data class GestureState(
     fun calculateTotalDelta(): Float {
         return initialPositions.keys.sumOf { id ->
             val initial = initialPositions[id] ?: Offset.Zero
-            val last = lastPositions[id] ?: Offset.Zero
+            val last = lastPositions[id] ?: initial
             (initial - last).getDistance().toDouble()
         }.toFloat()
     }
