@@ -41,7 +41,9 @@ import com.ethran.notable.utils.Mode
 import com.ethran.notable.utils.UndoRedoType
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 
 
@@ -78,196 +80,210 @@ fun EditorGestureReceiver(
         modifier = Modifier
             .pointerInput(Unit) {
                 awaitEachGesture {
-                    val gestureState = GestureState()
-                    if (!state.isDrawing && !isSelection) {
-                        state.isDrawing = true
-                    }
-                    isSelection = false
-                    // Detect initial touch
-                    val down = awaitFirstDown()
+                    try {
+                        // testing if it will fixed exception:
+                        // kotlinx.coroutines.CompletionHandlerException: Exception in resume
+                        // onCancellation handler for CancellableContinuation(DispatchedContinuation[AndroidUiDispatcher@145d639,
+                        // Continuation at androidx.compose.foundation.gestures.PressGestureScopeImpl.reset(TapGestureDetector.kt:357)
+                        // @8b7a2c]){Completed}@4a49cf5
+                        if (!coroutineScope.isActive) return@awaitEachGesture
 
-                    // Ignore non-touch input
-                    if (down.type != PointerType.Touch) {
-                        Log.i(TAG, "Ignoring non-touch input")
-                        return@awaitEachGesture
-                    }
-                    gestureState.initialTimestamp = System.currentTimeMillis()
-                    gestureState.insertPosition(down)
-
-                    do {
-                        // wait for second gesture
-                        val event = withTimeoutOrNull(1000L) { awaitPointerEvent() }
-
-                        if (event != null) {
-                            val fingerChange = event.changes.filter { it.type == PointerType.Touch }
-
-                            // is already consumed return
-                            if (fingerChange.find { it.isConsumed } != null) {
-                                Log.i(TAG, "Canceling gesture - already consumed")
-                                crossPosition = null
-                                rectangleBounds = null
-                                return@awaitEachGesture
-                            }
-                            fingerChange.forEach { change ->
-                                // Consume changes and update positions
-                                change.consume()
-                                gestureState.insertPosition(change)
-                            }
-                            if (fingerChange.any { !it.pressed }) {
-                                gestureState.lastTimestamp = System.currentTimeMillis()
-                                break
-                            }
+                        val gestureState = GestureState()
+                        if (!state.isDrawing && !isSelection) {
+                            state.isDrawing = true
                         }
-                        // events are only send on change, so we need to check for holding in place separately
-                        gestureState.lastTimestamp = System.currentTimeMillis()
-                        if (isSelection) {
-                            crossPosition = gestureState.getLastPositionIO()
-                            rectangleBounds = gestureState.calculateRectangleBounds()
-                        } else if (gestureState.getElapsedTime() >= HOLD_THRESHOLD_MS && gestureState.getInputCount() == 1) {
-                            if (gestureState.calculateTotalDelta() < TAP_MOVEMENT_TOLERANCE) {
-                                isSelection = true
-                                crossPosition = gestureState.getLastPositionIO()
-                                rectangleBounds = gestureState.calculateRectangleBounds()
-                                coroutineScope.launch {
-                                    state.isDrawing = false
-                                    SnackState.globalSnackFlow.emit(
-                                        SnackConf(
-                                            text = "Selection mode!",
-                                            duration = 1500,
-                                        )
-                                    )
+                        isSelection = false
+                        // Detect initial touch
+                        val down = awaitFirstDown()
+
+                        // Ignore non-touch input
+                        if (down.type != PointerType.Touch) {
+                            Log.i(TAG, "Ignoring non-touch input")
+                            return@awaitEachGesture
+                        }
+                        gestureState.initialTimestamp = System.currentTimeMillis()
+                        gestureState.insertPosition(down)
+
+                        do {
+                            // wait for second gesture
+                            val event = withTimeoutOrNull(1000L) { awaitPointerEvent() }
+
+                            if (event != null) {
+                                val fingerChange =
+                                    event.changes.filter { it.type == PointerType.Touch }
+
+                                // is already consumed return
+                                if (fingerChange.find { it.isConsumed } != null) {
+                                    Log.i(TAG, "Canceling gesture - already consumed")
+                                    crossPosition = null
+                                    rectangleBounds = null
+                                    return@awaitEachGesture
+                                }
+                                fingerChange.forEach { change ->
+                                    // Consume changes and update positions
+                                    change.consume()
+                                    gestureState.insertPosition(change)
+                                }
+                                if (fingerChange.any { !it.pressed }) {
+                                    gestureState.lastTimestamp = System.currentTimeMillis()
+                                    break
                                 }
                             }
-
-                        }
-                    } while (true)
-
-                    if (isSelection) {
-                        resolveGesture(
-                            settings = appSettings,
-                            default = AppSettings.defaultHoldAction,
-                            override = AppSettings::holdAction,
-                            state = state,
-                            scope = coroutineScope,
-                            previousPage = goToPreviousPage,
-                            nextPage = goToNextPage,
-                            rectangle = rectangleBounds!!
-                        )
-                        crossPosition = null
-                        rectangleBounds = null
-                        return@awaitEachGesture
-                    }
-                    // Calculate the total delta (movement distance) for all pointers
-                    val totalDelta = gestureState.calculateTotalDelta()
-                    val gestureDuration = gestureState.getElapsedTime()
-                    Log.v(
-                        TAG,
-                        "Leaving gesture. totalDelta: ${totalDelta}, gestureDuration: $gestureDuration "
-                    )
-
-                    if (gestureState.getInputCount() == 1) {
-                        if (totalDelta < TAP_MOVEMENT_TOLERANCE && gestureDuration < ONE_FINGER_TOUCH_TAP_TIME) {
-                            if (withTimeoutOrNull(DOUBLE_TAP_TIMEOUT_MS) {
-                                    val secondDown = awaitFirstDown()
-                                    val deltaTime =
-                                        System.currentTimeMillis() - gestureState.lastTimestamp
-                                    Log.v(
-                                        TAG,
-                                        "Second down detected: ${secondDown.type}, position: ${secondDown.position}, deltaTime: $deltaTime"
-                                    )
-                                    if (deltaTime < DOUBLE_TAP_MIN_MS) {
-                                        coroutineScope.launch {
-                                            SnackState.globalSnackFlow.emit(
-                                                SnackConf(
-                                                    text = "Too quick for double click! delta: $totalDelta, time between: $deltaTime",
-                                                    duration = 3000,
-                                                )
+                            // events are only send on change, so we need to check for holding in place separately
+                            gestureState.lastTimestamp = System.currentTimeMillis()
+                            if (isSelection) {
+                                crossPosition = gestureState.getLastPositionIO()
+                                rectangleBounds = gestureState.calculateRectangleBounds()
+                            } else if (gestureState.getElapsedTime() >= HOLD_THRESHOLD_MS && gestureState.getInputCount() == 1) {
+                                if (gestureState.calculateTotalDelta() < TAP_MOVEMENT_TOLERANCE) {
+                                    isSelection = true
+                                    crossPosition = gestureState.getLastPositionIO()
+                                    rectangleBounds = gestureState.calculateRectangleBounds()
+                                    coroutineScope.launch {
+                                        state.isDrawing = false
+                                        SnackState.globalSnackFlow.emit(
+                                            SnackConf(
+                                                text = "Selection mode!",
+                                                duration = 1500,
                                             )
-                                        }
-                                        return@withTimeoutOrNull null
-                                    } else {
-                                        Log.v(TAG, "double click!")
-                                    }
-                                    if (secondDown.type != PointerType.Touch) {
-                                        Log.i(
-                                            TAG,
-                                            "Ignoring non-touch input during double-tap detection"
                                         )
-                                        return@withTimeoutOrNull null
                                     }
-                                    resolveGesture(
-                                        settings = appSettings,
-                                        default = AppSettings.defaultDoubleTapAction,
-                                        override = AppSettings::doubleTapAction,
-                                        state = state,
-                                        scope = coroutineScope,
-                                        previousPage = goToPreviousPage,
-                                        nextPage = goToNextPage,
-                                    )
+                                }
 
+                            }
+                        } while (true)
 
-                                } != null) return@awaitEachGesture
-                        }
-                    } else if (gestureState.getInputCount() == 2) {
-                        Log.v(TAG, "Two finger tap")
-                        if (totalDelta < TWO_FINGER_TAP_MOVEMENT_TOLERANCE &&
-                            gestureDuration < TWO_FINGER_TOUCH_TAP_MAX_TIME &&
-                            gestureDuration > TWO_FINGER_TOUCH_TAP_MIN_TIME
-                        ) {
+                        if (isSelection) {
                             resolveGesture(
                                 settings = appSettings,
-                                default = AppSettings.defaultTwoFingerTapAction,
-                                override = AppSettings::twoFingerTapAction,
+                                default = AppSettings.defaultHoldAction,
+                                override = AppSettings::holdAction,
                                 state = state,
                                 scope = coroutineScope,
                                 previousPage = goToPreviousPage,
                                 nextPage = goToNextPage,
+                                rectangle = rectangleBounds!!
                             )
+                            crossPosition = null
+                            rectangleBounds = null
+                            return@awaitEachGesture
                         }
-                    }
-
-                    val horizontalDrag = gestureState.getHorizontalDrag()
-                    val verticalDrag = gestureState
-                        .getVerticalDrag()
-                        .toInt()
-
-                    Log.v(TAG, "horizontalDrag $horizontalDrag, verticalDrag $verticalDrag")
-                    when {
-                        horizontalDrag < -SWIPE_THRESHOLD -> {
-                            resolveGesture(
-                                settings = appSettings,
-                                default = if (gestureState.getInputCount() == 1) AppSettings.defaultSwipeLeftAction else AppSettings.defaultTwoFingerSwipeLeftAction,
-                                override = if (gestureState.getInputCount() == 1) AppSettings::swipeLeftAction else AppSettings::twoFingerSwipeLeftAction,
-                                state = state,
-                                scope = coroutineScope,
-                                previousPage = goToPreviousPage,
-                                nextPage = goToNextPage,
-                            )
-                        }
-
-                        horizontalDrag > SWIPE_THRESHOLD -> {
-                            resolveGesture(
-                                settings = appSettings,
-                                default = if (gestureState.getInputCount() == 1) AppSettings.defaultSwipeRightAction else AppSettings.defaultTwoFingerSwipeRightAction,
-                                override = if (gestureState.getInputCount() == 1) AppSettings::swipeRightAction else AppSettings::twoFingerSwipeRightAction,
-                                state = state,
-                                scope = coroutineScope,
-                                previousPage = goToPreviousPage,
-                                nextPage = goToNextPage,
-                            )
-                        }
-
-                    }
-
-                    if (abs(verticalDrag) > SWIPE_THRESHOLD && gestureState.getInputCount() == 1) {
-                        controlTower.onSingleFingerVerticalSwipe(
-                            gestureState.getFirstPositionF()!!,
-                            verticalDrag
+                        // Calculate the total delta (movement distance) for all pointers
+                        val totalDelta = gestureState.calculateTotalDelta()
+                        val gestureDuration = gestureState.getElapsedTime()
+                        Log.v(
+                            TAG,
+                            "Leaving gesture. totalDelta: ${totalDelta}, gestureDuration: $gestureDuration "
                         )
-                    }
 
+                        if (gestureState.getInputCount() == 1) {
+                            if (totalDelta < TAP_MOVEMENT_TOLERANCE && gestureDuration < ONE_FINGER_TOUCH_TAP_TIME) {
+                                if (withTimeoutOrNull(DOUBLE_TAP_TIMEOUT_MS) {
+                                        val secondDown = awaitFirstDown()
+                                        val deltaTime =
+                                            System.currentTimeMillis() - gestureState.lastTimestamp
+                                        Log.v(
+                                            TAG,
+                                            "Second down detected: ${secondDown.type}, position: ${secondDown.position}, deltaTime: $deltaTime"
+                                        )
+                                        if (deltaTime < DOUBLE_TAP_MIN_MS) {
+                                            coroutineScope.launch {
+                                                SnackState.globalSnackFlow.emit(
+                                                    SnackConf(
+                                                        text = "Too quick for double click! delta: $totalDelta, time between: $deltaTime",
+                                                        duration = 3000,
+                                                    )
+                                                )
+                                            }
+                                            return@withTimeoutOrNull null
+                                        } else {
+                                            Log.v(TAG, "double click!")
+                                        }
+                                        if (secondDown.type != PointerType.Touch) {
+                                            Log.i(
+                                                TAG,
+                                                "Ignoring non-touch input during double-tap detection"
+                                            )
+                                            return@withTimeoutOrNull null
+                                        }
+                                        resolveGesture(
+                                            settings = appSettings,
+                                            default = AppSettings.defaultDoubleTapAction,
+                                            override = AppSettings::doubleTapAction,
+                                            state = state,
+                                            scope = coroutineScope,
+                                            previousPage = goToPreviousPage,
+                                            nextPage = goToNextPage,
+                                        )
+
+
+                                    } != null) return@awaitEachGesture
+                            }
+                        } else if (gestureState.getInputCount() == 2) {
+                            Log.v(TAG, "Two finger tap")
+                            if (totalDelta < TWO_FINGER_TAP_MOVEMENT_TOLERANCE &&
+                                gestureDuration < TWO_FINGER_TOUCH_TAP_MAX_TIME &&
+                                gestureDuration > TWO_FINGER_TOUCH_TAP_MIN_TIME
+                            ) {
+                                resolveGesture(
+                                    settings = appSettings,
+                                    default = AppSettings.defaultTwoFingerTapAction,
+                                    override = AppSettings::twoFingerTapAction,
+                                    state = state,
+                                    scope = coroutineScope,
+                                    previousPage = goToPreviousPage,
+                                    nextPage = goToNextPage,
+                                )
+                            }
+                        }
+
+                        val horizontalDrag = gestureState.getHorizontalDrag()
+                        val verticalDrag = gestureState
+                            .getVerticalDrag()
+                            .toInt()
+
+                        Log.v(TAG, "horizontalDrag $horizontalDrag, verticalDrag $verticalDrag")
+                        when {
+                            horizontalDrag < -SWIPE_THRESHOLD -> {
+                                resolveGesture(
+                                    settings = appSettings,
+                                    default = if (gestureState.getInputCount() == 1) AppSettings.defaultSwipeLeftAction else AppSettings.defaultTwoFingerSwipeLeftAction,
+                                    override = if (gestureState.getInputCount() == 1) AppSettings::swipeLeftAction else AppSettings::twoFingerSwipeLeftAction,
+                                    state = state,
+                                    scope = coroutineScope,
+                                    previousPage = goToPreviousPage,
+                                    nextPage = goToNextPage,
+                                )
+                            }
+
+                            horizontalDrag > SWIPE_THRESHOLD -> {
+                                resolveGesture(
+                                    settings = appSettings,
+                                    default = if (gestureState.getInputCount() == 1) AppSettings.defaultSwipeRightAction else AppSettings.defaultTwoFingerSwipeRightAction,
+                                    override = if (gestureState.getInputCount() == 1) AppSettings::swipeRightAction else AppSettings::twoFingerSwipeRightAction,
+                                    state = state,
+                                    scope = coroutineScope,
+                                    previousPage = goToPreviousPage,
+                                    nextPage = goToNextPage,
+                                )
+                            }
+
+                        }
+
+                        if (abs(verticalDrag) > SWIPE_THRESHOLD && gestureState.getInputCount() == 1) {
+                            controlTower.onSingleFingerVerticalSwipe(
+                                gestureState.getFirstPositionF()!!,
+                                verticalDrag
+                            )
+                        }
+                    } catch (e: CancellationException) {
+                        Log.e(TAG, "Gesture coroutine canceled", e)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Unexpected error in gesture handling", e)
+                    }
                 }
             }
+
             .fillMaxWidth()
             .fillMaxHeight()
     ) {
