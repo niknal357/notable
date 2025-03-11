@@ -105,6 +105,7 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
             onCancel = { showMoveDialog = false },
             onConfirm = { selectedFolder ->
                 showMoveDialog = false
+                onClose()
                 Log.i(TAG, "folder:" + selectedFolder.toString())
                 val updatedBook = book!!.copy(parentFolderId = selectedFolder)
                 bookFolder = selectedFolder
