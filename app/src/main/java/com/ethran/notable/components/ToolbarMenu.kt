@@ -23,17 +23,18 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.navigation.NavController
 import com.ethran.notable.classes.AppRepository
-import com.ethran.notable.utils.EditorState
 import com.ethran.notable.classes.LocalSnackContext
 import com.ethran.notable.classes.SnackConf
+import com.ethran.notable.classes.XoppFile
+import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.convertDpToPixel
-import com.ethran.notable.utils.noRippleClickable
 import com.ethran.notable.utils.copyPagePngLinkForObsidian
 import com.ethran.notable.utils.exportBook
 import com.ethran.notable.utils.exportBookToPng
 import com.ethran.notable.utils.exportPage
 import com.ethran.notable.utils.exportPageToJpeg
 import com.ethran.notable.utils.exportPageToPng
+import com.ethran.notable.utils.noRippleClickable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -60,10 +61,10 @@ fun ToolbarMenu(
         alignment = Alignment.TopEnd,
         onDismissRequest = { onClose() },
         offset =
-        IntOffset(
-            convertDpToPixel((-10).dp, context).toInt(),
-            convertDpToPixel(50.dp, context).toInt()
-        ),
+            IntOffset(
+                convertDpToPixel((-10).dp, context).toInt(),
+                convertDpToPixel(50.dp, context).toInt()
+            ),
         properties = PopupProperties(focusable = true)
     ) {
         Column(
@@ -79,8 +80,8 @@ fun ToolbarMenu(
                     .noRippleClickable {
                         navController.navigate(
                             route =
-                            if (parentFolder != null) "library?folderId=${parentFolder}"
-                            else "library"
+                                if (parentFolder != null) "library?folderId=${parentFolder}"
+                                else "library"
                         )
                     }
             ) { Text("Library") }
@@ -173,6 +174,25 @@ fun ToolbarMenu(
                     }
             ) { Text("Export page to JPEG") }
 
+            Box(
+                Modifier
+                    .padding(10.dp)
+                    .noRippleClickable {
+                        scope.launch {
+                            val removeSnack =
+                                snackManager.displaySnack(
+                                    SnackConf(text = "Exporting the page to xopp")
+                                )
+                            delay(10L)
+
+                            val test = XoppFile(null)
+                            test.exportPage(context, state.pageId)
+                            removeSnack()
+                            onClose()
+                        }
+                    }
+            ) { Text("Export page to xopp") }
+
             if (state.bookId != null)
                 Box(
                     Modifier
@@ -201,7 +221,7 @@ fun ToolbarMenu(
                         }
                 ) { Text("Export book to PDF") }
 
-            if (state.bookId != null)
+            if (state.bookId != null) {
                 Box(
                     Modifier
                         .padding(10.dp)
@@ -227,7 +247,25 @@ fun ToolbarMenu(
                             }
                         }
                 ) { Text("Export book to PNG") }
+                Box(
+                    Modifier
+                        .padding(10.dp)
+                        .noRippleClickable {
+                            scope.launch {
+                                val removeSnack =
+                                    snackManager.displaySnack(
+                                        SnackConf(text = "Exporting the book to xopp")
+                                    )
+                                delay(10L)
 
+                                val test = XoppFile(null)
+                                test.exportBook(context, state.bookId)
+                                removeSnack()
+                                onClose()
+                            }
+                        }
+                ) { Text("Export book to xopp") }
+            }
 
             Box(
                 Modifier

@@ -15,6 +15,8 @@ import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.db.PageRepository
 import com.ethran.notable.db.Stroke
+import com.ethran.notable.modals.A4_HEIGHT
+import com.ethran.notable.modals.A4_WIDTH
 import io.shipbook.shipbooksdk.Log
 
 
@@ -55,10 +57,6 @@ fun PdfDocument.writePage(context: Context, number: Int, repo: PageRepository, i
     val (page, strokes) = repo.getWithStrokeById(id)
     //TODO: improve that function
     val (_, images) = repo.getWithImageById(id)
-
-    // Define the target page size (A4 in points: 595 x 842)
-    val A4_WIDTH = 595
-    val A4_HEIGHT = 842
 
     val strokeHeight = if (strokes.isEmpty()) 0 else strokes.maxOf(Stroke::bottom).toInt() + 50
     val strokeWidth = if (strokes.isEmpty()) 0 else strokes.maxOf(Stroke::right).toInt() + 50

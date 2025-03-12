@@ -6,6 +6,8 @@ plugins {
     id 'kotlin-parcelize'
     id 'com.google.gms.google-services'
     id 'org.jetbrains.kotlin.plugin.compose'
+
+    id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
 android {
@@ -177,7 +179,9 @@ dependencies {
     //noinspection GradleDynamicVersion
     implementation 'io.shipbook:shipbooksdk:1.+'
 
-
+    // For xopp file format
+    implementation("org.apache.commons:commons-compress:1.27.1") // GZip support
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0"
 }
 
 tasks.register('printVersionName') {
