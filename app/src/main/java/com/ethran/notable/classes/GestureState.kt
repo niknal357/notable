@@ -5,7 +5,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.unit.IntOffset
-import com.ethran.notable.utils.SimplePoint
 import com.ethran.notable.utils.SimplePointF
 import kotlin.math.abs
 
@@ -23,15 +22,14 @@ data class GestureState(
     fun calculateTotalDelta(): Float {
         return initialPositions.keys.sumOf { id ->
             val initial = initialPositions[id] ?: Offset.Zero
-            val last = lastPositions[id] ?: Offset.Zero
+            val last = lastPositions[id] ?: initial
             (initial - last).getDistance().toDouble()
         }.toFloat()
     }
 
-    @Suppress("unused")
-    fun getFirstPosition(): SimplePoint? {
+    fun getFirstPosition(): IntOffset? {
         return initialPositions.values.firstOrNull()?.let { point ->
-            SimplePoint(point.x.toInt(), point.y.toInt())
+            IntOffset(point.x.toInt(), point.y.toInt())
         }
     }
 
@@ -44,14 +42,14 @@ data class GestureState(
     fun getLastPositionIO(): IntOffset? {
         return lastPositions.values.firstOrNull()?.let { point ->
             IntOffset(point.x.toInt(), point.y.toInt())
-        }
+        } ?: getFirstPosition()
     }
 
     fun calculateRectangleBounds(): Rect? {
-        if (initialPositions.isEmpty() || lastPositions.isEmpty()) return null
+        if (initialPositions.isEmpty() && lastPositions.isEmpty()) return null
 
         val firstPosition = initialPositions.values.firstOrNull() ?: return null
-        val lastPosition = lastPositions.values.firstOrNull() ?: return null
+        val lastPosition = lastPositions.values.firstOrNull() ?: firstPosition
 
         return Rect(
             firstPosition.x.coerceAtMost(lastPosition.x).toInt(),
