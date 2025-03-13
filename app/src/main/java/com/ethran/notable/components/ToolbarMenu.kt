@@ -185,8 +185,7 @@ fun ToolbarMenu(
                                 )
                             delay(10L)
 
-                            val test = XoppFile(null)
-                            test.exportPage(context, state.pageId)
+                            XoppFile.exportPage(context, state.pageId)
                             removeSnack()
                             onClose()
                         }
@@ -258,8 +257,7 @@ fun ToolbarMenu(
                                     )
                                 delay(10L)
 
-                                val test = XoppFile(null)
-                                test.exportBook(context, state.bookId)
+                                XoppFile.exportBook(context, state.bookId)
                                 removeSnack()
                                 onClose()
                             }
