@@ -2,30 +2,45 @@ package com.ethran.notable.classes
 
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.RectF
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Base64
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.toColorInt
+import androidx.core.net.toUri
 import com.ethran.notable.BuildConfig
 import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
+import com.ethran.notable.db.AppDatabase
 import com.ethran.notable.db.BookRepository
+import com.ethran.notable.db.Notebook
+import com.ethran.notable.db.Page
 import com.ethran.notable.db.PageRepository
 import com.ethran.notable.db.Stroke
+import com.ethran.notable.db.StrokePoint
 import com.ethran.notable.modals.A4_WIDTH
+import com.ethran.notable.utils.Pen
+import com.onyx.android.sdk.api.device.epd.EpdController
 import io.shipbook.shipbooksdk.Log
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
 import org.w3c.dom.Document
+import org.w3c.dom.Element
+import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.BufferedWriter
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.io.OutputStreamWriter
 import java.io.StringWriter
+import java.util.UUID
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
@@ -34,6 +49,10 @@ import javax.xml.transform.stream.StreamResult
 
 
 object XoppFile {
+    private val scaleFactor = A4_WIDTH.toFloat() / SCREEN_WIDTH
+    private val maxPressure = EpdController.getMaxTouchPressure()
+    //I do not know what pressureFactor should be, I just guest it.
+    private val pressureFactor = maxPressure/2
 
     /**
      * Exports an entire book as a `.xopp` file.
@@ -72,14 +91,7 @@ object XoppFile {
     }
 
     /**
-     * Exports an entire book as a `.xopp` file.
-     *
-     * This method processes each page separately, writing the XML data
-     * to a temporary file to prevent excessive memory usage. After all
-     * pages are processed, the file is compressed into a `.xopp` format.
-     *
-     * @param context The application context.
-     * @param bookId The ID of the book to export.
+     * Exports page as a `.xopp` file.
      */
     fun exportPage(context: Context, pageId: String) {
         val tempFile = File(context.cacheDir, "exported_page.xml")
@@ -112,14 +124,13 @@ object XoppFile {
      */
     private fun writePage(context: Context, pageId: String, writer: BufferedWriter) {
         val pages = PageRepository(context)
-        val (page, strokes) = pages.getWithStrokeById(pageId)
+        val (_, strokes) = pages.getWithStrokeById(pageId)
         val (_, images) = pages.getWithImageById(pageId)
 
         val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument()
 
         val root = doc.createElement("page")
         val strokeHeight = if (strokes.isEmpty()) 0 else strokes.maxOf(Stroke::bottom).toInt() + 50
-        val scaleFactor = A4_WIDTH.toFloat() / SCREEN_WIDTH
         val height = strokeHeight.coerceAtLeast(SCREEN_HEIGHT) * scaleFactor
 
         root.setAttribute("width", A4_WIDTH.toString())
@@ -142,7 +153,12 @@ object XoppFile {
             val strokeElement = doc.createElement("stroke")
             strokeElement.setAttribute("tool", stroke.pen.toString())
             strokeElement.setAttribute("color", getColorName(Color(stroke.color)))
-            strokeElement.setAttribute("width", (stroke.size * scaleFactor).toString())
+            val widthValues = mutableListOf(stroke.size* scaleFactor)
+            if (stroke.pen == Pen.FOUNTAIN || stroke.pen == Pen.BRUSH || stroke.pen == Pen.PENCIL)
+                widthValues += stroke.points.map { it.pressure / pressureFactor }
+            val widthString = widthValues.joinToString(" ")
+
+            strokeElement.setAttribute("width", widthString)
 
             val pointsString =
                 stroke.points.joinToString(" ") { "${it.x * scaleFactor} ${it.y * scaleFactor}" }
@@ -175,8 +191,12 @@ object XoppFile {
         writer.write(xmlString)
     }
 
+
+    /**
+     * Opens a file and converts it to a base64 string.
+     */
     private fun convertImageToBase64(uri: String, context: Context): String {
-        val inputStream = context.contentResolver.openInputStream(Uri.parse(uri))
+        val inputStream = context.contentResolver.openInputStream(uri.toUri())
         val bytes = inputStream?.readBytes() ?: return ""
         return Base64.encodeToString(bytes, Base64.DEFAULT)
     }
@@ -249,6 +269,200 @@ object XoppFile {
 //            Color.DarkGray, Color.Gray -> "gray"
 //            Color.Cyan -> "lightblue"
             else -> "#${Integer.toHexString(color.toArgb()).padStart(8, '0')}"
+        }
+    }
+
+
+    /**
+     * Imports a `.xopp` file, creating a new book and pages in the database.
+     *
+     * @param context The application context.
+     * @param uri The URI of the `.xopp` file to import.
+     */
+    fun importBook(context: Context, uri: Uri, parentFolderId: String?) {
+        Log.i(TAG, "got uri $uri, and parentFolderId $parentFolderId")
+        val inputStream = context.contentResolver.openInputStream(uri) ?: return
+        val xmlContent = extractXmlFromXopp(inputStream) ?: return
+
+        val document = parseXml(xmlContent) ?: return
+        val bookTitle = getBookTitle(uri)
+        val bookRepo = BookRepository(context)
+        val pageRepo = PageRepository(context)
+
+        val book = Notebook(
+            title = bookTitle,
+            parentFolderId = parentFolderId,
+            defaultNativeTemplate = "blank"
+        )
+        bookRepo.createEmpty(book)
+
+        val pages = document.getElementsByTagName("page")
+
+        for (i in 0 until pages.length) {
+            val pageElement = pages.item(i) as Element
+            val page = Page(notebookId = book.id, nativeTemplate = "blank")
+            pageRepo.create(page)
+            parseStrokes(context, pageElement, page)
+            bookRepo.addPage(book.id, page.id)
+
+//            parseImages(pageElement, page, pageRepo, context)
+        }
+        Log.i(TAG, "Successfully imported book '${book.title}' with ${pages.length} pages.")
+    }
+
+    /**
+     * Extracts XML content from a `.xopp` file.
+     */
+    private fun extractXmlFromXopp(inputStream: InputStream): String? {
+        return try {
+            GzipCompressorInputStream(BufferedInputStream(inputStream)).bufferedReader()
+                .use { it.readText() }
+        } catch (e: IOException) {
+            Log.e(TAG, "Error extracting XML from .xopp file: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Parses an XML string into a DOM Document.
+     */
+    private fun parseXml(xml: String): Document? {
+        return try {
+            val factory = DocumentBuilderFactory.newInstance()
+            factory.isNamespaceAware = true
+            val builder = factory.newDocumentBuilder()
+            builder.parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing XML: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Extracts strokes from a page element and saves them.
+     */
+    private fun parseStrokes(context: Context, pageElement: Element, page: Page) {
+        val strokeRepo = AppDatabase.getDatabase(context).strokeDao()
+        val strokeNodes = pageElement.getElementsByTagName("stroke")
+        val strokes = mutableListOf<Stroke>()
+
+
+        for (i in 0 until strokeNodes.length) {
+            val strokeElement = strokeNodes.item(i) as Element
+            val pointsString = strokeElement.textContent.trim()
+
+            if (pointsString.isBlank()) continue // Skip empty strokes
+
+            // Decode stroke attributes
+//            val strokeSize = strokeElement.getAttribute("width").toFloatOrNull()?.div(scaleFactor) ?: 1.0f
+            val color = parseColor(strokeElement.getAttribute("color"))
+
+
+            // Decode width attribute
+            val widthString = strokeElement.getAttribute("width").trim()
+            val widthValues = widthString.split(" ").mapNotNull { it.toFloatOrNull() }
+
+            val strokeSize = widthValues.firstOrNull()?.div(scaleFactor) ?: 1.0f // First value is stroke width
+            val pressureValues = widthValues.drop(1) // Remaining values are pressure
+
+
+            val points = pointsString.split(" ").chunked(2).mapIndexedNotNull { index, chunk ->
+                try {
+                    StrokePoint(
+                        x = chunk[0].toFloat() / scaleFactor,
+                        y = chunk[1].toFloat() / scaleFactor,
+                        pressure = pressureValues.getOrNull(index - 1)?.times(pressureFactor)
+                            ?: (maxPressure / 2),
+                        size = strokeSize,
+                        tiltX = 0,
+                        tiltY = 0,
+                        timestamp = System.currentTimeMillis()
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing stroke point: ${e.message}")
+                    null
+                }
+            }
+            if (points.isEmpty()) continue // Skip strokes without valid points
+
+            val boundingBox = RectF()
+
+            val decodedPoints = points.mapIndexed { index, it ->
+                if (index == 0) boundingBox.set(it.x, it.y, it.x, it.y) else boundingBox.union(
+                    it.x,
+                    it.y
+                )
+                it
+            }
+
+            boundingBox.inset(-strokeSize, -strokeSize)
+            val toolName = strokeElement.getAttribute("tool")
+            val tool = Pen.fromString(toolName)
+
+            val stroke = Stroke(
+                size = strokeSize,
+                pen = tool, // TODO: change this to proper pen
+                pageId = page.id,
+                top = boundingBox.top,
+                bottom = boundingBox.bottom,
+                left = boundingBox.left,
+                right = boundingBox.right,
+                points = decodedPoints,
+                color = android.graphics.Color.argb(
+                    (color.alpha * 255).toInt(),
+                    (color.red * 255).toInt(),
+                    (color.green * 255).toInt(),
+                    (color.blue * 255).toInt()
+                )
+            )
+            Log.d(TAG, "Created stroke: ${stroke.pageId}")
+
+            strokes.add(stroke)
+        }
+        strokeRepo.create(strokes)
+    }
+
+
+    /**
+     * Extracts images from a page element and saves them.
+     */
+    private fun parseImages(
+        context: Context,
+        pageElement: Element,
+        page: Page
+    ) {
+        TODO("Not yet implemented")
+    }
+
+    /**
+     * Saves image data to a file and returns the file object.
+     */
+    private fun saveImageToFile(imageBytes: ByteArray, context: Context): File {
+        val file = File(context.filesDir, "image_${UUID.randomUUID()}.png")
+        file.outputStream().use { it.write(imageBytes) }
+        return file
+    }
+
+    /**
+     * Extracts the book title from a file URI.
+     */
+    private fun getBookTitle(uri: Uri): String {
+        return uri.lastPathSegment?.substringAfterLast("/")?.removeSuffix(".xopp")
+            ?: "Imported Book"
+    }
+
+    /**
+     * Parses an Xournal++ color string to a Compose Color.
+     */
+    private fun parseColor(colorString: String): Color {
+        return when (colorString.lowercase()) {
+            "black" -> Color.Black
+            "blue" -> Color.Blue
+            "red" -> Color.Red
+            "green" -> Color.Green
+            "magenta" -> Color.Magenta
+            "yellow" -> Color.Yellow
+            else -> Color(colorString.toColorInt())
         }
     }
 }
