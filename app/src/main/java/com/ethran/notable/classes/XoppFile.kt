@@ -403,8 +403,6 @@ object XoppFile {
                     (color.blue * 255).toInt()
                 )
             )
-            Log.d(TAG, "Created stroke: ${stroke.color}")
-
             strokes.add(stroke)
         }
         strokeRepo.create(strokes)
