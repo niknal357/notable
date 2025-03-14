@@ -49,11 +49,15 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
+import com.ethran.notable.classes.LocalSnackContext
+import com.ethran.notable.classes.SnackConf
 import com.ethran.notable.classes.XoppFile
 import com.ethran.notable.components.BreadCrumb
 import com.ethran.notable.components.PageMenu
 import com.ethran.notable.components.PagePreview
+import com.ethran.notable.components.ShowConfirmationDialog
 import com.ethran.notable.components.Topbar
+import com.ethran.notable.db.BookRepository
 import com.ethran.notable.db.Folder
 import com.ethran.notable.db.Notebook
 import com.ethran.notable.db.Page
@@ -70,6 +74,9 @@ import compose.icons.feathericons.FolderPlus
 import compose.icons.feathericons.Settings
 import compose.icons.feathericons.Upload
 import io.shipbook.shipbooksdk.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.concurrent.thread
 
 @ExperimentalFoundationApi
@@ -87,6 +94,7 @@ fun Library(navController: NavController, folderId: String? = null) {
     val singlePages by appRepository.pageRepository.getSinglePagesInFolder(folderId)
         .observeAsState()
     val folders by appRepository.folderRepository.getAllInFolder(folderId).observeAsState()
+    val bookRepository = BookRepository(LocalContext.current)
 
     var isLatestVersion by remember {
         mutableStateOf(true)
@@ -97,8 +105,12 @@ fun Library(navController: NavController, folderId: String? = null) {
         }
     })
 
+    var importInProgress = false
+
     var showFloatingEditor by remember { mutableStateOf(false) }
     var floatingEditorPageId by remember { mutableStateOf<String?>(null) }
+
+    val snackManager = LocalSnackContext.current
 
     Column(
         Modifier.fillMaxSize()
@@ -329,7 +341,16 @@ fun Library(navController: NavController, folderId: String? = null) {
                                 contract = ActivityResultContracts.OpenDocument()
                             ) { uri: Uri? ->
                                 uri?.let {
-                                    XoppFile.importBook(context, uri, folderId)
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        val removeSnack =
+                                            snackManager.displaySnack(
+                                                SnackConf(text = "importing from xopp file")
+                                            )
+                                        importInProgress = true
+                                        XoppFile.importBook(context, uri, folderId)
+                                        importInProgress = false
+                                        removeSnack()
+                                    }
                                 }
                             }
                             // Import Notebook (Bottom Half)
@@ -363,6 +384,19 @@ fun Library(navController: NavController, folderId: String? = null) {
                 }
                 if (books?.isNotEmpty() == true) {
                     items(books!!.reversed()) { item ->
+                        if (item.pageIds.isEmpty()) {
+                            if (!importInProgress) {
+                                ShowConfirmationDialog(
+                                    title = "There is a book without pages!!!",
+                                    message = "We suggest deleting book title \"${item.title}\", it was created at ${item.createdAt}. Do you want to do it?",
+                                    onConfirm = {
+                                        bookRepository.delete(item.id)
+                                    },
+                                    onCancel = { }
+                                )
+                            }
+                            return@items
+                        }
                         var isSettingsOpen by remember { mutableStateOf(false) }
                         Box(
                             modifier = Modifier
@@ -374,6 +408,7 @@ fun Library(navController: NavController, folderId: String? = null) {
                         ) {
                             Box {
                                 val pageId = item.pageIds[0]
+
                                 PagePreview(
                                     modifier = Modifier
                                         .fillMaxWidth()

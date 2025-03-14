@@ -35,6 +35,7 @@ import com.ethran.notable.utils.exportPage
 import com.ethran.notable.utils.exportPageToJpeg
 import com.ethran.notable.utils.exportPageToPng
 import com.ethran.notable.utils.noRippleClickable
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -184,9 +185,10 @@ fun ToolbarMenu(
                                     SnackConf(text = "Exporting the page to xopp")
                                 )
                             delay(10L)
-
-                            XoppFile.exportPage(context, state.pageId)
-                            removeSnack()
+                            CoroutineScope(Dispatchers.IO).launch {
+                                XoppFile.exportPage(context, state.pageId)
+                                removeSnack()
+                            }
                             onClose()
                         }
                     }
@@ -256,9 +258,10 @@ fun ToolbarMenu(
                                         SnackConf(text = "Exporting the book to xopp")
                                     )
                                 delay(10L)
-
-                                XoppFile.exportBook(context, state.bookId)
-                                removeSnack()
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    XoppFile.exportBook(context, state.bookId)
+                                    removeSnack()
+                                }
                                 onClose()
                             }
                         }

@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.RectF
 import android.net.Uri
 import android.os.Environment
+import android.os.Looper
 import android.provider.MediaStore
 import android.util.Base64
 import androidx.compose.ui.graphics.Color
@@ -51,8 +52,9 @@ import javax.xml.transform.stream.StreamResult
 object XoppFile {
     private val scaleFactor = A4_WIDTH.toFloat() / SCREEN_WIDTH
     private val maxPressure = EpdController.getMaxTouchPressure()
+
     //I do not know what pressureFactor should be, I just guest it.
-    private val pressureFactor = maxPressure/2
+    private val pressureFactor = maxPressure / 2
 
     /**
      * Exports an entire book as a `.xopp` file.
@@ -65,6 +67,9 @@ object XoppFile {
      * @param bookId The ID of the book to export.
      */
     fun exportBook(context: Context, bookId: String) {
+        if (Looper.getMainLooper().isCurrentThread)
+            Log.w(TAG, "Exporting is done on main thread.")
+
         val book = BookRepository(context).getById(bookId)
             ?: return Log.e(TAG, "Book ID($bookId) not found")
 
@@ -153,7 +158,7 @@ object XoppFile {
             val strokeElement = doc.createElement("stroke")
             strokeElement.setAttribute("tool", stroke.pen.toString())
             strokeElement.setAttribute("color", getColorName(Color(stroke.color)))
-            val widthValues = mutableListOf(stroke.size* scaleFactor)
+            val widthValues = mutableListOf(stroke.size * scaleFactor)
             if (stroke.pen == Pen.FOUNTAIN || stroke.pen == Pen.BRUSH || stroke.pen == Pen.PENCIL)
                 widthValues += stroke.points.map { it.pressure / pressureFactor }
             val widthString = widthValues.joinToString(" ")
@@ -252,26 +257,6 @@ object XoppFile {
         file.delete()
     }
 
-    /**
-     * Maps a Compose Color to an Xournal++ color name.
-     *
-     * @param color The Compose Color object.
-     * @return The corresponding color name as a string.
-     */
-    private fun getColorName(color: Color): String {
-        return when (color) {
-            Color.Black -> "black"
-            Color.Blue -> "blue"
-            Color.Red -> "red"
-            Color.Green -> "green"
-            Color.Magenta -> "magenta"
-            Color.Yellow -> "yellow"
-//            Color.DarkGray, Color.Gray -> "gray"
-//            Color.Cyan -> "lightblue"
-            else -> "#${Integer.toHexString(color.toArgb()).padStart(8, '0')}"
-        }
-    }
-
 
     /**
      * Imports a `.xopp` file, creating a new book and pages in the database.
@@ -280,6 +265,8 @@ object XoppFile {
      * @param uri The URI of the `.xopp` file to import.
      */
     fun importBook(context: Context, uri: Uri, parentFolderId: String?) {
+        if (Looper.getMainLooper().isCurrentThread)
+            Log.e(TAG, "Importing is done on main thread.")
         Log.i(TAG, "got uri $uri, and parentFolderId $parentFolderId")
         val inputStream = context.contentResolver.openInputStream(uri) ?: return
         val xmlContent = extractXmlFromXopp(inputStream) ?: return
@@ -362,7 +349,8 @@ object XoppFile {
             val widthString = strokeElement.getAttribute("width").trim()
             val widthValues = widthString.split(" ").mapNotNull { it.toFloatOrNull() }
 
-            val strokeSize = widthValues.firstOrNull()?.div(scaleFactor) ?: 1.0f // First value is stroke width
+            val strokeSize =
+                widthValues.firstOrNull()?.div(scaleFactor) ?: 1.0f // First value is stroke width
             val pressureValues = widthValues.drop(1) // Remaining values are pressure
 
 
@@ -415,7 +403,7 @@ object XoppFile {
                     (color.blue * 255).toInt()
                 )
             )
-            Log.d(TAG, "Created stroke: ${stroke.pageId}")
+            Log.d(TAG, "Created stroke: ${stroke.color}")
 
             strokes.add(stroke)
         }
@@ -462,7 +450,48 @@ object XoppFile {
             "green" -> Color.Green
             "magenta" -> Color.Magenta
             "yellow" -> Color.Yellow
-            else -> Color(colorString.toColorInt())
+            // Convert "#RRGGBBAA" → "#AARRGGBB" → Android Color
+            else -> {
+                if (colorString.startsWith("#") && colorString.length == 9)
+                    Color(
+                        ("#" + colorString.substring(7, 9) +
+                                colorString.substring(1, 7)).toColorInt()
+                    )
+                else {
+                    Log.e(TAG, "Unknown color: $colorString")
+                    Color.Black
+                }
+            }
+        }
+    }
+
+    /**
+     * Maps a Compose Color to an Xournal++ color name.
+     *
+     * @param color The Compose Color object.
+     * @return The corresponding color name as a string.
+     */
+    private fun getColorName(color: Color): String {
+        return when (color) {
+            Color.Black -> "black"
+            Color.Blue -> "blue"
+            Color.Red -> "red"
+            Color.Green -> "green"
+            Color.Magenta -> "magenta"
+            Color.Yellow -> "yellow"
+            Color.DarkGray, Color.Gray -> "gray"
+            Color.Cyan -> "lightblue"
+            else -> {
+                val argb = color.toArgb()
+                // Convert ARGB (Android default) → RGBA
+                String.format(
+                    "#%02X%02X%02X%02X",
+                    (argb shr 16) and 0xFF, // Red
+                    (argb shr 8) and 0xFF,  // Green
+                    (argb) and 0xFF,        // Blue
+                    (argb shr 24) and 0xFF  // Alpha
+                )
+            }
         }
     }
 }
