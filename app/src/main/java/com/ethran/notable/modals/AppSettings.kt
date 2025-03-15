@@ -32,16 +32,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ethran.notable.BuildConfig
+import com.ethran.notable.classes.SnackConf
+import com.ethran.notable.classes.SnackState
 import com.ethran.notable.components.SelectMenu
 import com.ethran.notable.db.KvProxy
-import com.ethran.notable.utils.noRippleClickable
 import com.ethran.notable.utils.isLatestVersion
 import com.ethran.notable.utils.isNext
+import com.ethran.notable.utils.noRippleClickable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlin.concurrent.thread
 
 // it is workaround for now
 var NeoTools: Boolean = false
+
+// Define the target page size (A4 in points: 595 x 842)
+val A4_WIDTH = 595
+val A4_HEIGHT = 842
 
 @Serializable
 data class AppSettings(
@@ -254,7 +263,18 @@ fun AppSettingsModal(onClose: () -> Unit) {
                         text = "Check for newer version",
                         textDecoration = TextDecoration.Underline,
                         modifier = Modifier.noRippleClickable {
-                            thread { isLatestVersion = isLatestVersion(context, true) }
+                            thread {
+                                isLatestVersion = isLatestVersion(context, true)
+                                if (isLatestVersion)
+                                    CoroutineScope(Dispatchers.Default).launch {
+                                        SnackState.globalSnackFlow.emit(
+                                            SnackConf(
+                                                text = "You are on latest version.",
+                                                duration = 1000,
+                                            )
+                                        )
+                                    }
+                            }
                         }
                     )
                 }
