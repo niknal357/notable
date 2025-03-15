@@ -79,12 +79,12 @@ fun PdfDocument.writePage(context: Context, number: Int, repo: PageRepository, i
     documentPage.canvas.scale(scaleFactor, scaleFactor)
     drawBg(documentPage.canvas, page.nativeTemplate, 0, scaleFactor)
 
-    for (stroke in strokes) {
-        drawStroke(documentPage.canvas, stroke, IntOffset(0, 0))
-    }
-
     for (image in images) {
         drawImage(context, documentPage.canvas, image, IntOffset(0, 0))
+    }
+
+    for (stroke in strokes) {
+        drawStroke(documentPage.canvas, stroke, IntOffset(0, 0))
     }
 
     finishPage(documentPage)
