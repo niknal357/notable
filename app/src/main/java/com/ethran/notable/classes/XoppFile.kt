@@ -2,6 +2,8 @@ package com.ethran.notable.classes
 
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.RectF
 import android.net.Uri
 import android.os.Environment
@@ -18,6 +20,7 @@ import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.db.AppDatabase
 import com.ethran.notable.db.BookRepository
+import com.ethran.notable.db.Image
 import com.ethran.notable.db.Notebook
 import com.ethran.notable.db.Page
 import com.ethran.notable.db.PageRepository
@@ -25,6 +28,7 @@ import com.ethran.notable.db.Stroke
 import com.ethran.notable.db.StrokePoint
 import com.ethran.notable.modals.A4_WIDTH
 import com.ethran.notable.utils.Pen
+import com.ethran.notable.utils.ensureImagesFolder
 import com.onyx.android.sdk.api.device.epd.EpdController
 import io.shipbook.shipbooksdk.Log
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
@@ -67,6 +71,7 @@ object XoppFile {
      * @param bookId The ID of the book to export.
      */
     fun exportBook(context: Context, bookId: String) {
+        Log.v(TAG, "Exporting book $bookId")
         if (Looper.getMainLooper().isCurrentThread)
             Log.w(TAG, "Exporting is done on main thread.")
 
@@ -99,6 +104,7 @@ object XoppFile {
      * Exports page as a `.xopp` file.
      */
     fun exportPage(context: Context, pageId: String) {
+        Log.v(TAG, "Exporting page $pageId")
         val tempFile = File(context.cacheDir, "exported_page.xml")
 
         BufferedWriter(
@@ -265,9 +271,9 @@ object XoppFile {
      * @param uri The URI of the `.xopp` file to import.
      */
     fun importBook(context: Context, uri: Uri, parentFolderId: String?) {
+        Log.v(TAG, "Importing book from $uri, into $parentFolderId")
         if (Looper.getMainLooper().isCurrentThread)
             Log.e(TAG, "Importing is done on main thread.")
-        Log.i(TAG, "got uri $uri, and parentFolderId $parentFolderId")
         val inputStream = context.contentResolver.openInputStream(uri) ?: return
         val xmlContent = extractXmlFromXopp(inputStream) ?: return
 
@@ -290,9 +296,9 @@ object XoppFile {
             val page = Page(notebookId = book.id, nativeTemplate = "blank")
             pageRepo.create(page)
             parseStrokes(context, pageElement, page)
-            bookRepo.addPage(book.id, page.id)
+            parseImages(context, pageElement, page)
 
-//            parseImages(pageElement, page, pageRepo, context)
+            bookRepo.addPage(book.id, page.id)
         }
         Log.i(TAG, "Successfully imported book '${book.title}' with ${pages.length} pages.")
     }
@@ -417,16 +423,76 @@ object XoppFile {
         pageElement: Element,
         page: Page
     ) {
-        TODO("Not yet implemented")
+        val imageRepo = AppDatabase.getDatabase(context).ImageDao()
+        val imageNodes = pageElement.getElementsByTagName("image")
+        val images = mutableListOf<Image>()
+
+        for (i in 0 until imageNodes.length) {
+            val imageElement = imageNodes.item(i) as? Element ?: continue
+            val base64Data = imageElement.textContent.trim()
+
+            if (base64Data.isBlank()) continue // Skip empty image data
+
+            try {
+                // Extract position attributes
+                val left = imageElement.getAttribute("left").toFloatOrNull()?.div(scaleFactor) ?: continue
+                val top = imageElement.getAttribute("top").toFloatOrNull()?.div(scaleFactor) ?: continue
+                val right = imageElement.getAttribute("right").toFloatOrNull()?.div(scaleFactor) ?: continue
+                val bottom = imageElement.getAttribute("bottom").toFloatOrNull()?.div(scaleFactor) ?: continue
+
+                // Decode Base64 to Bitmap
+                val imageUri = decodeAndSave(base64Data) ?: continue
+
+                // Create Image object and add it to the list
+                val image = Image(
+                    x = left.toInt(),
+                    y = top.toInt(),
+                    width = (right - left).toInt(),
+                    height = (bottom - top).toInt(),
+                    uri = imageUri.toString(),
+                    pageId = page.id
+                )
+                images.add(image)
+
+            } catch (e: Exception) {
+                Log.e("ImageProcessing", "Error parsing image: ${e.message}")
+            }
+        }
+
+        // Save images in the repository
+        if (images.isNotEmpty()) {
+            imageRepo.create(images)
+        }
     }
 
     /**
-     * Saves image data to a file and returns the file object.
+     * Decodes a Base64 image string, saves it as a file, and returns the URI.
      */
-    private fun saveImageToFile(imageBytes: ByteArray, context: Context): File {
-        val file = File(context.filesDir, "image_${UUID.randomUUID()}.png")
-        file.outputStream().use { it.write(imageBytes) }
-        return file
+    private fun decodeAndSave(base64String: String): Uri? {
+        return try {
+            // Decode Base64 to ByteArray
+            val decodedBytes = Base64.decode(base64String, Base64.DEFAULT)
+            val bitmap =
+                BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size) ?: return null
+
+            // Ensure the directory exists
+            val outputDir = ensureImagesFolder()
+
+            // Generate a unique and safe file name
+            val fileName = "image_${UUID.randomUUID()}.png"
+            val outputFile = File(outputDir, fileName)
+
+            // Save the bitmap to the file
+            FileOutputStream(outputFile).use { fos ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+
+            // Return the file URI
+            Uri.fromFile(outputFile)
+        } catch (e: IOException) {
+            Log.e(TAG, "Error decoding and saving image: ${e.message}")
+            null
+        }
     }
 
     /**
@@ -478,7 +544,6 @@ object XoppFile {
             Color.Magenta -> "magenta"
             Color.Yellow -> "yellow"
             Color.DarkGray, Color.Gray -> "gray"
-            Color.Cyan -> "lightblue"
             else -> {
                 val argb = color.toArgb()
                 // Convert ARGB (Android default) → RGBA
