@@ -199,6 +199,9 @@ fun ToolbarMenu(
                     Modifier
                         .padding(10.dp)
                         .noRippleClickable {
+                            // Should I rather use:
+                            // CoroutineScope(Dispatchers.IO).launch
+                            // ?
                             scope.launch {
                                 val removeSnack =
                                     snackManager.displaySnack(

@@ -40,6 +40,7 @@ import java.io.BufferedOutputStream
 import java.io.BufferedWriter
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -207,9 +208,20 @@ object XoppFile {
      * Opens a file and converts it to a base64 string.
      */
     private fun convertImageToBase64(uri: String, context: Context): String {
-        val inputStream = context.contentResolver.openInputStream(uri.toUri())
-        val bytes = inputStream?.readBytes() ?: return ""
-        return Base64.encodeToString(bytes, Base64.DEFAULT)
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri.toUri())
+            val bytes = inputStream?.readBytes() ?: return ""
+            Base64.encodeToString(bytes, Base64.DEFAULT)
+        } catch (e: SecurityException) {
+            Log.e("convertImageToBase64", "Permission denied: ${e.message}")
+            ""
+        } catch (e: FileNotFoundException) {
+            Log.e("convertImageToBase64", "File not found: ${e.message}")
+            ""
+        } catch (e: IOException) {
+            Log.e("convertImageToBase64", "I/O error: ${e.message}")
+            ""
+        }
     }
 
 
@@ -435,10 +447,14 @@ object XoppFile {
 
             try {
                 // Extract position attributes
-                val left = imageElement.getAttribute("left").toFloatOrNull()?.div(scaleFactor) ?: continue
-                val top = imageElement.getAttribute("top").toFloatOrNull()?.div(scaleFactor) ?: continue
-                val right = imageElement.getAttribute("right").toFloatOrNull()?.div(scaleFactor) ?: continue
-                val bottom = imageElement.getAttribute("bottom").toFloatOrNull()?.div(scaleFactor) ?: continue
+                val left =
+                    imageElement.getAttribute("left").toFloatOrNull()?.div(scaleFactor) ?: continue
+                val top =
+                    imageElement.getAttribute("top").toFloatOrNull()?.div(scaleFactor) ?: continue
+                val right =
+                    imageElement.getAttribute("right").toFloatOrNull()?.div(scaleFactor) ?: continue
+                val bottom = imageElement.getAttribute("bottom").toFloatOrNull()?.div(scaleFactor)
+                    ?: continue
 
                 // Decode Base64 to Bitmap
                 val imageUri = decodeAndSave(base64Data) ?: continue
