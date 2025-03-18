@@ -77,7 +77,14 @@ fun ShowExportDialog(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = "Choose Export Format", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text(text = "Select the format in which you want to export the book.", fontSize = 16.sp)
+            Text(
+                text = "Select the format in which you want to export the book:\n" +
+                        "- Xopp: Preserves all data and can be imported. " +
+                        "However, if opened and saved by Xournal++, tool-specific information will be lost, " +
+                        "and all strokes will be interpreted as ballpoint pen.\n" +
+                        "- PDF: A standard format for document sharing.",
+                fontSize = 16.sp
+            )
             Row(
                 horizontalArrangement = Arrangement.SpaceAround,
                 modifier = Modifier
