@@ -31,6 +31,9 @@ import com.ethran.notable.utils.Pen
 import com.ethran.notable.utils.ensureImagesFolder
 import com.onyx.android.sdk.api.device.epd.EpdController
 import io.shipbook.shipbooksdk.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
 import org.w3c.dom.Document
@@ -195,8 +198,18 @@ object XoppFile {
                 imgElement.setAttribute("filename", uri)
                 imgElement.textContent = convertImageToBase64(image.uri, context)
             }
+            if (imgElement.textContent.isNotBlank())
+                layer.appendChild(imgElement)
+            else
+                CoroutineScope(Dispatchers.Default).launch {
+                    SnackState.globalSnackFlow.emit(
+                        SnackConf(
+                            text = "Image cannot be loaded.",
+                            duration = 3000,
+                        )
+                    )
+                }
 
-            layer.appendChild(imgElement)
         }
 
         val xmlString = convertXmlToString(doc)
