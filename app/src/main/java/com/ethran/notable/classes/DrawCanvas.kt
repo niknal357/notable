@@ -114,7 +114,6 @@ class DrawCanvas(
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
             val startTime = System.currentTimeMillis()
-            Log.d(TAG, "onRawDrawingTouchPointListReceived started")
             // sometimes UI will get refreshed and frozen before we draw all the strokes.
             // I think, its because of doing it in separate thread. Commented it for now, to
             // observe app behavior, and determine if it fixed this bug,
@@ -123,11 +122,8 @@ class DrawCanvas(
             // thread(start = true, isDaemon = false, priority = Thread.MAX_PRIORITY) {
 
             if (getActualState().mode == Mode.Draw) {
-                val newThread = System.currentTimeMillis()
-                Log.d(
-                    TAG,
-                    "Got to new thread ${Thread.currentThread().name}, in ${newThread - startTime}}"
-                )
+//                val newThread = System.currentTimeMillis()
+//                Log.d(TAG,"Got to new thread ${Thread.currentThread().name}, in ${newThread - startTime}}")
                 coroutineScope.launch(Dispatchers.Main.immediate) {
                     // After each stroke ends, we draw it on our canvas.
                     // This way, when screen unfreezes the strokes are shown.
@@ -148,19 +144,16 @@ class DrawCanvas(
                             getActualState().pen,
                             plist.points
                         )
-                        val drawEndTime = System.currentTimeMillis()
-                        Log.d(TAG, "Drawing operation took ${drawEndTime - startTime} ms")
+//                        val drawEndTime = System.currentTimeMillis()
+//                        Log.d(TAG, "Drawing operation took ${drawEndTime - startTime} ms")
 
                     }
                     coroutineScope.launch {
                         commitHistorySignal.emit(Unit)
                     }
 
-                    val endTime = System.currentTimeMillis()
-                    Log.d(
-                        TAG,
-                        "onRawDrawingTouchPointListReceived completed in ${endTime - startTime} ms"
-                    )
+//                    val endTime = System.currentTimeMillis()
+//                    Log.d(TAG,"onRawDrawingTouchPointListReceived completed in ${endTime - startTime} ms")
 
                 }
             } else thread {
@@ -398,7 +391,7 @@ class DrawCanvas(
             }
         }
         coroutineScope.launch {
-            commitHistorySignalImmediately.collect() {
+            commitHistorySignalImmediately.collect {
                 commitToHistory()
                 commitCompletion.complete(Unit)
             }
@@ -462,7 +455,7 @@ class DrawCanvas(
         // screen won't freeze until you actually stoke
     }
 
-    suspend fun refreshUiSuspend() {
+    private suspend fun refreshUiSuspend() {
         // Do not use, if refresh need to be preformed without delay.
         // This function waits for strokes to be fully rendered.
         if (!state.isDrawing) {
