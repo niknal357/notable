@@ -20,10 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.ethran.notable.TAG
 import com.ethran.notable.utils.noRippleClickable
-import com.onyx.android.sdk.extension.isNull
-import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -44,7 +41,6 @@ data class SnackConf(
 class SnackState {
     val snackFlow = MutableSharedFlow<SnackConf?>()
     val cancelSnackFlow = MutableSharedFlow<String?>()
-    private var _prev: SnackConf? = null
     suspend fun displaySnack(conf: SnackConf): suspend () -> Unit {
         snackFlow.emit(conf)
         return suspend {
@@ -57,31 +53,21 @@ class SnackState {
     // Register Observers for Global Actions
     companion object {
         val globalSnackFlow = MutableSharedFlow<SnackConf>()
-        val cancelGlobalSnack= MutableSharedFlow<String>()
+        val cancelGlobalSnack = MutableSharedFlow<String>(extraBufferCapacity = 1)
     }
 
     fun registerGlobalSnackObserver() {
         CoroutineScope(Dispatchers.Main).launch {
             globalSnackFlow.collect {
-                val prev = _prev
-                if (it.duration.isNull()) {
-                    if (prev != null)
-                        removeSnack(prev.id)
-                    _prev = (it)
-                }
                 displaySnack(it)
             }
         }
     }
+
     fun registerCancelGlobalSnackObserver() {
         CoroutineScope(Dispatchers.Main).launch {
             cancelGlobalSnack.collect {
-                val prev = _prev
-                Log.d(TAG, "cancelGlobalSnack: $prev")
-                if (prev != null)
-                    removeSnack(prev.id)
                 removeSnack(it)
-                _prev = null
             }
         }
     }

@@ -35,6 +35,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -52,16 +53,17 @@ class PageView(
     var viewWidth: Int,
     var viewHeight: Int
 ) {
-    private var strokeLoadingJob: Job? = null
-    private var snack: SnackConf? =null
+    private var strokeInitialLoadingJob: Job? = null
+    private var strokeRemainingLoadingJob: Job? = null
+
+    private var snack: SnackConf? = null
     fun cleanJob() {
-        Log.d(TAG, "cleaning up page view")
-        coroutineScope.launch {
+        //ensure that snack is canceled, even on dispose of the page.
+        CoroutineScope(Dispatchers.IO).launch {
             snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
         }
-        strokeLoadingJob?.cancel()
-        strokeLoadingJob = null
-
+        strokeInitialLoadingJob?.cancel()
+        strokeRemainingLoadingJob?.cancel()
     }
 
     var windowedBitmap = Bitmap.createBitmap(viewWidth, viewHeight, Bitmap.Config.ARGB_8888)
@@ -114,14 +116,26 @@ class PageView(
         // TODO page might not exists yet
         val page = AppRepository(context).pageRepository.getById(id)
         scroll = page!!.scroll
-
-        strokeLoadingJob = coroutineScope.launch(Dispatchers.IO) {
+        if (strokeInitialLoadingJob?.isActive == true || strokeRemainingLoadingJob?.isActive == true) {
+            Log.w(TAG, "Strokes are still loading, trying to cancel and resume")
+            cleanJob()
+        }
+        strokeInitialLoadingJob = coroutineScope.launch(Dispatchers.IO) {
             val startTime = System.currentTimeMillis()
-
             val pageWithImages = AppRepository(context).pageRepository.getWithImageById(id)
             val viewRectangle = Rect(0, 0, windowedCanvas.width, windowedCanvas.height)
+            //for some reason, scroll is always 0 hare, so take it directly from db
+            val viewRectangleWithScroll = Rect(
+                viewRectangle.left,
+                viewRectangle.top + page.scroll,
+                viewRectangle.right,
+                viewRectangle.bottom + page.scroll
+            )
             strokes =
-                AppRepository(context).strokeRepository.getStrokesInRectangle(viewRectangle, id)
+                AppRepository(context).strokeRepository.getStrokesInRectangle(
+                    viewRectangleWithScroll,
+                    id
+                )
 
             images = pageWithImages.images
             indexStrokes()
@@ -132,7 +146,7 @@ class PageView(
             Log.d(TAG, "Strokes fetch from database, in ${fromDatabase - startTime}}")
             if (!isCached) {
                 // we draw and cache
-                Log.d(TAG, "We do not have cashed.")
+//                Log.d(TAG, "We do not have cashed.")
                 drawBg(windowedCanvas, page.nativeTemplate, scroll)
                 drawArea(viewRectangle)
                 persistBitmap()
@@ -141,20 +155,29 @@ class PageView(
             }
 
             // Fetch all remaining strokes
-            strokeLoadingJob = coroutineScope.launch(Dispatchers.IO) {
+            strokeRemainingLoadingJob = coroutineScope.launch(Dispatchers.IO) {
                 val timeToLoad = measureTimeMillis {
-                    snack = SnackConf(text = "Loading strokes...")
+                    // Set duration as safety guard: in 60 s all strokes should be loaded
+                    snack = SnackConf(text = "Loading strokes...", duration = 60000)
                     SnackState.globalSnackFlow.emit(snack!!)
-                    Thread.sleep(5000)
+//                    Thread.sleep(50000)
                     val pageWithStrokes =
-                        AppRepository(context).pageRepository.getWithStrokeById(id)
+                        AppRepository(context).pageRepository.getWithStrokeByIdSuspend(id)
                     strokes = pageWithStrokes.strokes
                     indexStrokes()
-                    drawArea(viewRectangle)
-
-                    DrawCanvas.refreshUi.emit(Unit)
+                    computeHeight()
+                    snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
                 }
                 Log.d(TAG, "All strokes loaded in $timeToLoad ms")
+                // Ensure strokes are fully loaded and visible before drawing them
+                // Switching to the Main thread guarantees that `strokes = pageWithStrokes.strokes`
+                // has completed and is accessible for rendering.
+                // Or at least I hope it does.
+                withContext(Dispatchers.Main) {
+                    Log.d(TAG, "Strokes remaining loaded")
+                    drawArea(viewRectangle)
+                    DrawCanvas.refreshUi.emit(Unit)
+                }
             }
             Log.d(TAG, "Strokes drawn, in ${System.currentTimeMillis() - fromDatabase}")
         }
