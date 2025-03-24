@@ -32,10 +32,10 @@ import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -138,9 +138,11 @@ class PageView(
                 )
 
             images = pageWithImages.images
-            indexStrokes()
             indexImages()
-            computeHeight()
+            val indexingJob = coroutineScope.launch(Dispatchers.Default) {
+                indexStrokes()
+            }
+
 
             val fromDatabase = System.currentTimeMillis()
             Log.d(TAG, "Strokes fetch from database, in ${fromDatabase - startTime}}")
@@ -164,6 +166,7 @@ class PageView(
                     val pageWithStrokes =
                         AppRepository(context).pageRepository.getWithStrokeByIdSuspend(id)
                     strokes = pageWithStrokes.strokes
+                    indexingJob.cancelAndJoin()
                     indexStrokes()
                     computeHeight()
                     snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
@@ -173,10 +176,13 @@ class PageView(
                 // Switching to the Main thread guarantees that `strokes = pageWithStrokes.strokes`
                 // has completed and is accessible for rendering.
                 // Or at least I hope it does.
-                withContext(Dispatchers.Main) {
-                    Log.d(TAG, "Strokes remaining loaded")
-                    drawArea(viewRectangle)
-                    DrawCanvas.refreshUi.emit(Unit)
+                launch(Dispatchers.Main) {
+                    //required to ensure that everything is visible by draw area.
+                    launch(Dispatchers.Default) {
+                        Log.d(TAG, "Strokes remaining loaded")
+                        drawArea(viewRectangle)
+                        DrawCanvas.refreshUi.emit(Unit)
+                    }
                 }
             }
             Log.d(TAG, "Strokes drawn, in ${System.currentTimeMillis() - fromDatabase}")
