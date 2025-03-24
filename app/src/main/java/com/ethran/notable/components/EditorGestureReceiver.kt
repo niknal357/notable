@@ -279,7 +279,7 @@ fun EditorGestureReceiver(
                             )
                         }
                     } catch (e: CancellationException) {
-                        Log.e(TAG, "Gesture coroutine canceled", e)
+                        Log.w(TAG, "Gesture coroutine canceled", e)
                     } catch (e: Exception) {
                         Log.e(TAG, "Unexpected error in gesture handling", e)
                     }
