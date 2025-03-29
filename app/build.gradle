@@ -170,7 +170,7 @@ dependencies {
 
     implementation 'com.aventrix.jnanoid:jnanoid:2.0.0'
 
-    implementation platform('com.google.firebase:firebase-bom:33.10.0')
+    implementation platform('com.google.firebase:firebase-bom:33.11.0')
     implementation 'com.google.firebase:firebase-analytics-ktx'
 
     implementation 'br.com.devsrsouza.compose.icons.android:feather:1.0.0'
