@@ -53,6 +53,7 @@ class SnackState {
     // Register Observers for Global Actions
     companion object {
         val globalSnackFlow = MutableSharedFlow<SnackConf>()
+        val cancelGlobalSnack = MutableSharedFlow<String>(extraBufferCapacity = 1)
     }
 
     fun registerGlobalSnackObserver() {
@@ -62,6 +63,15 @@ class SnackState {
             }
         }
     }
+
+    fun registerCancelGlobalSnackObserver() {
+        CoroutineScope(Dispatchers.Main).launch {
+            cancelGlobalSnack.collect {
+                removeSnack(it)
+            }
+        }
+    }
+
 
     private suspend fun removeSnack(id: String) {
         cancelSnackFlow.emit(id)

@@ -107,6 +107,7 @@ fun EditorGestureReceiver(
                         do {
                             // wait for second gesture
                             val event = withTimeoutOrNull(1000L) { awaitPointerEvent() }
+                            if (!coroutineScope.isActive) return@awaitEachGesture
 
                             if (event != null) {
                                 val fingerChange =
@@ -175,6 +176,7 @@ fun EditorGestureReceiver(
                             TAG,
                             "Leaving gesture. totalDelta: ${totalDelta}, gestureDuration: $gestureDuration "
                         )
+                        if (!coroutineScope.isActive) return@awaitEachGesture
 
                         if (gestureState.getInputCount() == 1) {
                             if (totalDelta < TAP_MOVEMENT_TOLERANCE && gestureDuration < ONE_FINGER_TOUCH_TAP_TIME) {
@@ -277,7 +279,7 @@ fun EditorGestureReceiver(
                             )
                         }
                     } catch (e: CancellationException) {
-                        Log.e(TAG, "Gesture coroutine canceled", e)
+                        Log.w(TAG, "Gesture coroutine canceled", e)
                     } catch (e: Exception) {
                         Log.e(TAG, "Unexpected error in gesture handling", e)
                     }

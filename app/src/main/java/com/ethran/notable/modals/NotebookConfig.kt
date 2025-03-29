@@ -48,11 +48,10 @@ import com.ethran.notable.components.BreadCrumb
 import com.ethran.notable.components.PagePreview
 import com.ethran.notable.components.SelectMenu
 import com.ethran.notable.components.ShowConfirmationDialog
+import com.ethran.notable.components.ShowExportDialog
 import com.ethran.notable.components.ShowFolderSelectionDialog
 import com.ethran.notable.db.BookRepository
-import com.ethran.notable.utils.exportBook
 import io.shipbook.shipbooksdk.Log
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
@@ -76,6 +75,8 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
         remember { android.text.format.DateFormat.format("dd MMM yyyy HH:mm", book!!.updatedAt) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showMoveDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+
     var bookFolder by remember {  mutableStateOf(book?.parentFolderId)}
 
 
@@ -91,6 +92,22 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
             },
             onCancel = {
                 showDeleteDialog = false
+            }
+        )
+        return
+    }
+    // Confirmation Dialog for Deletion
+    if (showExportDialog) {
+        ShowExportDialog(
+            snackManager = snackManager,
+            bookId = bookId,
+            context = context,
+            onConfirm = {
+                showExportDialog = false
+                onClose()
+            },
+            onCancel = {
+                showExportDialog = false
             }
         )
         return
@@ -240,24 +257,7 @@ fun NotebookConfigDialog(bookId: String, onClose: () -> Unit) {
                     showMoveDialog = true
                 }
                 ActionButton("Export") {
-                    // TODO: Do not duplicate code from ToolbarMenu!
-                    scope.launch {
-                        val removeSnack =
-                            snackManager.displaySnack(
-                                SnackConf(
-                                    text = "Exporting the book to PDF...",
-                                    id = "exportSnack"
-                                )
-                            )
-                        delay(10L) // Why do I need this ?
-
-                        val message = exportBook(context, bookId)
-                        removeSnack()
-                        snackManager.displaySnack(
-                            SnackConf(text = message, duration = 2000)
-                        )
-                    }
-                    onClose()
+                    showExportDialog=true
                 }
                 ActionButton("Copy") {
                     scope.launch {
