@@ -16,6 +16,7 @@ import com.ethran.notable.utils.imageBoundsInt
 import com.ethran.notable.utils.pageAreaToCanvasArea
 import com.ethran.notable.utils.pointsToPath
 import com.ethran.notable.utils.selectStrokesFromPath
+import com.ethran.notable.utils.selectImagesFromPath
 import com.ethran.notable.utils.strokeBounds
 import com.ethran.notable.utils.drawImage
 import com.ethran.notable.utils.drawStroke
@@ -40,10 +41,16 @@ fun selectImagesAndStrokes(
         pageBounds.union(imageBoundsInt(imagesToSelect))
     if (strokesToSelect.isNotEmpty())
         pageBounds.union(strokeBounds(strokesToSelect))
-    val padding = 0
+
+    // padding inside the dashed selection square
+    // - if there are strokes selected, add some padding;
+    // - for image-only selections, use a tight fit.
+    val padding = if (strokesToSelect.isNotEmpty()) 30 else 0
+
     pageBounds.inset(-padding, -padding)
     val bounds = pageAreaToCanvasArea(pageBounds, page.scroll)
-    // create bitmap and draw strokes
+
+    // create bitmap and draw images and strokes
     val selectedBitmap =
         Bitmap.createBitmap(bounds.width(), bounds.height(), Bitmap.Config.ARGB_8888)
     val selectedCanvas = Canvas(selectedBitmap)
@@ -199,52 +206,19 @@ fun handleSelect(
         }
     } else {
         // lasso selection
-        // padding inside the dashed selection square
-        val padding = 30
 
         // rcreate the lasso selection
         val selectionPath = pointsToPath(points)
         selectionPath.close()
 
-        // get the selected strokes
+        // get the selected strokes and images
         val selectedStrokes = selectStrokesFromPath(page.strokes, selectionPath)
-        if (selectedStrokes.isEmpty()) return
+        val selectedImages = selectImagesFromPath(page.images, selectionPath);
+
+        if (selectedStrokes.isEmpty() && selectedImages.isEmpty()) return
+
+        selectImagesAndStrokes(scope, page, editorState, selectedImages, selectedStrokes);
 
         // TODO collocate with control tower ?
-
-        state.selectedStrokes = selectedStrokes
-
-        // area of implication - in page and view reference
-        val pageBounds = strokeBounds(selectedStrokes)
-        pageBounds.inset(-padding, -padding)
-
-        val bounds = pageAreaToCanvasArea(pageBounds, page.scroll)
-
-        // create bitmap and draw strokes
-        val selectedBitmap =
-            Bitmap.createBitmap(bounds.width(), bounds.height(), Bitmap.Config.ARGB_8888)
-        val selectedCanvas = Canvas(selectedBitmap)
-        selectedStrokes.forEach {
-            drawStroke(
-                selectedCanvas,
-                it,
-                IntOffset(-pageBounds.left, -pageBounds.top)
-            )
-        }
-
-        // set state
-        state.selectedBitmap = selectedBitmap
-        state.selectionStartOffset = IntOffset(bounds.left, bounds.top)
-        state.selectionRect = bounds
-        state.selectionDisplaceOffset = IntOffset(0, 0)
-        state.placementMode = PlacementMode.Move
-
-//        page.removeStrokes(selectedStrokes.map{it.id})
-        page.drawArea(bounds, ignoredStrokeIds = selectedStrokes.map { it.id })
-
-        scope.launch {
-            DrawCanvas.refreshUi.emit(Unit)
-            editorState.isDrawing = false
-        }
     }
 }
