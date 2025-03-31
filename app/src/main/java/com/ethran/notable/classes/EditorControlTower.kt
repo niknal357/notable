@@ -97,6 +97,9 @@ class EditorControlTower(
         val finalZone = Rect(state.selectionState.selectionRect!!)
         finalZone.offset(offset.x, offset.y)
 
+        // collect undo operations for strokes and images together, as a single change
+        val operationList = mutableListOf<Operation>()
+
         if (selectedStrokes != null) {
 
             val displacedStrokes = selectedStrokes.map {
@@ -112,12 +115,10 @@ class EditorControlTower(
 
             if (offset.x > 0 || offset.y > 0) {
                 // A displacement happened, we can create a history for this
-                var operationList =
-                    listOf<Operation>(Operation.DeleteStroke(displacedStrokes.map { it.id }))
+                operationList += Operation.DeleteStroke(displacedStrokes.map { it.id })
                 // in case we are on a move operation, this history point re-adds the original strokes
                 if (state.selectionState.placementMode == PlacementMode.Move)
                     operationList += Operation.AddStroke(selectedStrokes)
-                history.addOperationsToHistory(operationList)
             }
         }
         if (selectedImages != null) {
@@ -136,15 +137,17 @@ class EditorControlTower(
                 // TODO: find why sometimes we add two times same operation.
                 // A displacement happened, we can create a history for this
                 // To undo changes we first remove image
-                var operationList =
-                    listOf<Operation>(Operation.DeleteImage(displacedImages.map { it.id }))
+                operationList += Operation.DeleteImage(displacedImages.map { it.id })
                 // then add the original images, only if we intended to move it.
                 if (state.selectionState.placementMode == PlacementMode.Move)
                     operationList += Operation.AddImage(selectedImages)
-                history.addOperationsToHistory(operationList)
             }
-
         }
+
+        if (operationList.isNotEmpty()) {
+            history.addOperationsToHistory(operationList)
+        }
+
         scope.launch {
             DrawCanvas.refreshUi.emit(Unit)
         }
@@ -232,13 +235,12 @@ class EditorControlTower(
                 )
             }
         }
-
     }
-
 
     fun copySelection() {
         // finish ongoing movement
         applySelectionDisplace()
+
         // set operation to paste only
         state.selectionState.placementMode = PlacementMode.Paste
         if (!state.selectionState.selectedStrokes.isNullOrEmpty())
