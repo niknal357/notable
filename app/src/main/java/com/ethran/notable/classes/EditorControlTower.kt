@@ -6,6 +6,7 @@ import android.graphics.Rect
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
 import com.ethran.notable.TAG
+import com.ethran.notable.db.selectImagesAndStrokes
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.History
 import com.ethran.notable.utils.Mode
@@ -84,9 +85,12 @@ class EditorControlTower(
         page.updateScroll(delta)
     }
 
-
     //Now we can have selected images or selected strokes
     fun applySelectionDisplace() {
+
+        if (state.selectionState.selectionDisplaceOffset == null) return
+        if (state.selectionState.selectionRect == null) return
+
         val selectedStrokes = state.selectionState.selectedStrokes
         val selectedImages = state.selectionState.selectedImages
         val offset = state.selectionState.selectionDisplaceOffset!!
@@ -293,6 +297,53 @@ class EditorControlTower(
         showHint("Content cut to clipboard")
     }
 
+    fun pasteFromClipboard() {
+        // finish ongoing movement
+        applySelectionDisplace();
+
+        val (strokes, images) = state.clipboard ?: return;
+
+        val now = Date()
+        val scrollPos = page.scroll;
+        val addPageScroll = IntOffset(0, scrollPos).toOffset();
+
+        val pastedStrokes = strokes.map {
+            offsetStroke(it, offset = addPageScroll).copy(
+                // change the pasted strokes' ids - it's a copy
+                id = UUID
+                    .randomUUID()
+                    .toString(),
+                createdAt = now,
+                // set the pageId to the current page
+                pageId = this.page.id
+            )
+        };
+
+        val pastedImages = images.map {
+            it.copy(
+                // change the pasted images' ids - it's a copy
+                id = UUID
+                    .randomUUID()
+                    .toString(),
+                y = it.y + scrollPos,
+                createdAt = now,
+                // set the pageId to the current page
+                pageId = this.page.id
+            )
+        }
+
+        history.addOperationsToHistory(
+            operations = listOf(
+                Operation.DeleteImage(pastedImages.map { it.id }),
+                Operation.DeleteStroke(pastedStrokes.map { it.id }),
+            )
+        )
+
+        selectImagesAndStrokes(scope, page, state, pastedImages, pastedStrokes);
+        state.selectionState.placementMode = PlacementMode.Paste;
+
+        showHint("Pasted content from clipboard");
+    }
     private fun showHint(text: String) {
         scope.launch {
             SnackState.globalSnackFlow.emit(
