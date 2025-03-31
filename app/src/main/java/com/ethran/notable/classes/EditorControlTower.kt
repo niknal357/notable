@@ -186,54 +186,49 @@ class EditorControlTower(
                 width = image.width + (image.width * scale / 100)
             )
         }
+
         // Ensure selected images are not null or empty
-        if (!selectedImages.isNullOrEmpty()) {
-            state.selectionState.selectedImages = selectedImages
-            // Adjust displacement offset by half the size change
-            val sizeChange = selectedImages.firstOrNull()?.let { image ->
-                IntOffset(
-                    x = (image.width * scale / 200),
-                    y = (image.height * scale / 200)
-                )
-            } ?: IntOffset.Zero
+        if (selectedImages.isNullOrEmpty()) {
+            showHint("For now, strokes cannot be resized")
+            return
+        }
 
-            val pageBounds = imageBoundsInt(selectedImages)
-            state.selectionState.selectionRect = pageAreaToCanvasArea(pageBounds, page.scroll)
-
-            state.selectionState.selectionDisplaceOffset =
-                state.selectionState.selectionDisplaceOffset?.let { it - sizeChange }
-                    ?: IntOffset.Zero
-
-            val selectedBitmap = Bitmap.createBitmap(
-                pageBounds.width(), pageBounds.height(),
-                Bitmap.Config.ARGB_8888
+        state.selectionState.selectedImages = selectedImages
+        // Adjust displacement offset by half the size change
+        val sizeChange = selectedImages.firstOrNull()?.let { image ->
+            IntOffset(
+                x = (image.width * scale / 200),
+                y = (image.height * scale / 200)
             )
-            val selectedCanvas = Canvas(selectedBitmap)
-            selectedImages.forEach {
-                drawImage(
-                    page.context,
-                    selectedCanvas,
-                    it,
-                    IntOffset(-it.x, -it.y)
-                )
-            }
+        } ?: IntOffset.Zero
 
-            // set state
-            state.selectionState.selectedBitmap = selectedBitmap
+        val pageBounds = imageBoundsInt(selectedImages)
+        state.selectionState.selectionRect = pageAreaToCanvasArea(pageBounds, page.scroll)
 
-            // Emit a refresh signal to update UI
-            scope.launch {
-                DrawCanvas.refreshUi.emit(Unit)
-            }
-        } else {
-            scope.launch {
-                SnackState.globalSnackFlow.emit(
-                    SnackConf(
-                        text = "For now, strokes cannot be resized",
-                        duration = 3000,
-                    )
-                )
-            }
+        state.selectionState.selectionDisplaceOffset =
+            state.selectionState.selectionDisplaceOffset?.let { it - sizeChange }
+                ?: IntOffset.Zero
+
+        val selectedBitmap = Bitmap.createBitmap(
+            pageBounds.width(), pageBounds.height(),
+            Bitmap.Config.ARGB_8888
+        )
+        val selectedCanvas = Canvas(selectedBitmap)
+        selectedImages.forEach {
+            drawImage(
+                page.context,
+                selectedCanvas,
+                it,
+                IntOffset(-it.x, -it.y)
+            )
+        }
+
+        // set state
+        state.selectionState.selectedBitmap = selectedBitmap
+
+        // Emit a refresh signal to update UI
+        scope.launch {
+            DrawCanvas.refreshUi.emit(Unit)
         }
     }
 
