@@ -90,42 +90,16 @@ fun selectImagesAndStrokes(
 }
 
 
+/**
+ * Selects a single image (and deselects all strokes) on the page.
+ */
 fun selectImage(
     scope: CoroutineScope,
     page: PageView,
     editorState: EditorState,
     imageToSelect: Image
 ) {
-    //handle selection:
-    val pageBounds = imageBoundsInt(imageToSelect)
-    val padding = 0
-    pageBounds.inset(-padding, -padding)
-    val bounds = pageAreaToCanvasArea(pageBounds, page.scroll)
-    val selectedBitmap = Bitmap.createBitmap(
-        imageToSelect.width,
-        imageToSelect.height,
-        Bitmap.Config.ARGB_8888
-    )
-    val selectedCanvas = Canvas(selectedBitmap)
-    drawImage(
-        page.context,
-        selectedCanvas,
-        imageToSelect,
-        IntOffset(-imageToSelect.x, -imageToSelect.y)
-    )
-    // set state
-    editorState.selectionState.selectedImages = listOf(imageToSelect)
-    editorState.selectionState.selectedBitmap = selectedBitmap
-    editorState.selectionState.selectionStartOffset = IntOffset(bounds.left, bounds.top)
-    editorState.selectionState.selectionRect = bounds
-    editorState.selectionState.selectionDisplaceOffset = IntOffset(0, 0)
-    editorState.selectionState.placementMode = PlacementMode.Move
-    page.drawArea(bounds, ignoredImageIds = listOf(imageToSelect).map { it.id })
-
-    scope.launch {
-        DrawCanvas.refreshUi.emit(Unit)
-        editorState.isDrawing = false
-    }
+    selectImagesAndStrokes(scope, page, editorState, listOf(imageToSelect), emptyList())
 }
 
 
