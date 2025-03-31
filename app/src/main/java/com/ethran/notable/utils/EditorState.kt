@@ -55,7 +55,7 @@ class EditorState(val bookId: String? = null, val pageId: String, val pageView: 
         }
 }
 
-// if state is Move then applySelectionDisplace() will delete original strokes(images in future)
+// if state is Move then applySelectionDisplace() will delete original strokes and images
 enum class PlacementMode {
     Move,
     Paste
