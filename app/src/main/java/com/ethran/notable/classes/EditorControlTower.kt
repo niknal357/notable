@@ -263,4 +263,46 @@ class EditorControlTower(
         )
     }
 
+    fun cutSelectionToClipboard() {
+        val now = Date()
+
+        // Remove the current scroll offset when copying items to the clipboard. When pasting, we
+        //   reapply the active scroll offset. This ensures items are not pasted off-screen.
+        val scrollPos = page.scroll;
+        val removePageScroll = IntOffset(0, -scrollPos).toOffset();
+
+        // Copy selected strokes to clipboard
+        val strokes = state.selectionState.selectedStrokes?.map {
+            offsetStroke(it, offset = removePageScroll)
+        }
+
+        // Copy selected images to clipboard
+        val images = state.selectionState.selectedImages?.map {
+            it.copy(y = it.y - scrollPos)
+        }
+
+        this.state.clipboard = ClipboardContent(
+            strokes = strokes ?: emptyList(),
+            images = images ?: emptyList(),
+        );
+
+        // After copying the selected strokes and images to the clipboard, delete them using the
+        // default deletion handler. This makes undo/redo work.
+        deleteSelection();
+
+        showHint("Content cut to clipboard")
+    }
+
+    private fun showHint(text: String) {
+        scope.launch {
+            SnackState.globalSnackFlow.emit(
+                SnackConf(
+                    text = text,
+                    duration = 3000,
+                )
+            )
+        }
+    }
+
 }
+
