@@ -493,14 +493,7 @@ class DrawCanvas(
         // Convert the image to a software-backed bitmap
         val imageBitmap = uriToBitmap(context, imageUri)?.asImageBitmap()
         if (imageBitmap == null)
-            coroutineScope.launch {
-                SnackState.globalSnackFlow.emit(
-                    SnackConf(
-                        text = "There was an error during image processing.",
-                        duration = 3000,
-                    )
-                )
-            }
+            showHint("There was an error during image processing.", coroutineScope)
         val softwareBitmap =
             imageBitmap?.asAndroidBitmap()?.copy(Bitmap.Config.ARGB_8888, true)
         if (softwareBitmap != null) {

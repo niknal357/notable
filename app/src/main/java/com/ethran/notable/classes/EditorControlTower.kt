@@ -190,7 +190,7 @@ class EditorControlTower(
 
         // Ensure selected images are not null or empty
         if (selectedImages.isNullOrEmpty()) {
-            showHint("For now, strokes cannot be resized")
+            showHint("For now, strokes cannot be resized", scope)
             return
         }
 
@@ -289,7 +289,7 @@ class EditorControlTower(
         // default deletion handler. This makes undo/redo work.
         deleteSelection();
 
-        showHint("Content cut to clipboard")
+        showHint("Content cut to clipboard", scope)
     }
 
     fun pasteFromClipboard() {
@@ -337,19 +337,7 @@ class EditorControlTower(
         selectImagesAndStrokes(scope, page, state, pastedImages, pastedStrokes);
         state.selectionState.placementMode = PlacementMode.Paste;
 
-        showHint("Pasted content from clipboard");
+        showHint("Pasted content from clipboard", scope);
     }
-
-    private fun showHint(text: String) {
-        scope.launch {
-            SnackState.globalSnackFlow.emit(
-                SnackConf(
-                    text = text,
-                    duration = 3000,
-                )
-            )
-        }
-    }
-
 }
 
