@@ -25,6 +25,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Date
 import java.util.UUID
+import androidx.core.graphics.createBitmap
 
 class EditorControlTower(
     private val scope: CoroutineScope,
@@ -209,10 +210,7 @@ class EditorControlTower(
             state.selectionState.selectionDisplaceOffset?.let { it - sizeChange }
                 ?: IntOffset.Zero
 
-        val selectedBitmap = Bitmap.createBitmap(
-            pageBounds.width(), pageBounds.height(),
-            Bitmap.Config.ARGB_8888
-        )
+        val selectedBitmap = createBitmap(pageBounds.width(), pageBounds.height())
         val selectedCanvas = Canvas(selectedBitmap)
         selectedImages.forEach {
             drawImage(
@@ -341,6 +339,7 @@ class EditorControlTower(
 
         showHint("Pasted content from clipboard");
     }
+
     private fun showHint(text: String) {
         scope.launch {
             SnackState.globalSnackFlow.emit(

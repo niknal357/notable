@@ -86,5 +86,5 @@ class SelectionState {
 }
 
 object Clipboard {
-    var content : ClipboardContent? = null;
+    var content: ClipboardContent? = null;
 }

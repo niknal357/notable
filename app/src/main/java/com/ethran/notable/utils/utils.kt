@@ -413,12 +413,12 @@ fun selectStrokesFromPath(strokes: List<Stroke>, path: Path): List<Stroke> {
 
     //region is only 16 bit, so we need to move our region
     val translatedPath = Path(path)
-    translatedPath.offset(0f, - bounds.top)
+    translatedPath.offset(0f, -bounds.top)
     val region = pathToRegion(translatedPath)
 
     return strokes.filter {
         strokeBounds(it).intersect(bounds)
-    }.filter { it.points.any { region.contains(it.x.toInt(), (it.y-bounds.top).toInt()) } }
+    }.filter { it.points.any { region.contains(it.x.toInt(), (it.y - bounds.top).toInt()) } }
 }
 
 fun selectImagesFromPath(images: List<Image>, path: Path): List<Image> {

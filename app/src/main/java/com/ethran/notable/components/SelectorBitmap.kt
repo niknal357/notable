@@ -113,7 +113,7 @@ fun SelectedBitmap(
 
         val isSelectionResizable =
             selectionState.selectedImages?.count() == 1 &&
-            selectionState.selectedStrokes.isNullOrEmpty()
+                    selectionState.selectedStrokes.isNullOrEmpty()
 
         val buttonCount = if (isSelectionResizable) 6 else 4
         val buttonSize = 37;

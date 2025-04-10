@@ -160,15 +160,23 @@ fun EditorView(
                 controlTower = editorControlTower,
                 state = editorState
             )
-            SelectedBitmap(context = context, editorState = editorState, controlTower = editorControlTower)
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()) {
+            SelectedBitmap(
+                context = context,
+                editorState = editorState,
+                controlTower = editorControlTower
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+            ) {
                 Spacer(modifier = Modifier.weight(1f))
                 ScrollIndicator(context = context, state = editorState)
             }
             Toolbar(
-                navController = navController, state = editorState, controlTower = editorControlTower
+                navController = navController,
+                state = editorState,
+                controlTower = editorControlTower
             )
 
         }
