@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.round
 import com.ethran.notable.R
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.EditorControlTower
+import com.ethran.notable.modals.BUTTON_SIZE
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.noRippleClickable
 import com.ethran.notable.utils.shareBitmap
@@ -116,14 +117,13 @@ fun SelectedBitmap(
                     selectionState.selectedStrokes.isNullOrEmpty()
 
         val buttonCount = if (isSelectionResizable) 6 else 4
-        val buttonSize = 37;
         val toolbarPadding = 4;
 
         // If we can calculate offset of buttons show selection handling tools
         selectionState.selectionStartOffset?.let { startOffset ->
             selectionState.selectionDisplaceOffset?.let { displaceOffset ->
                 val xPos = selectionState.selectionRect?.let { rect ->
-                    (rect.left - rect.right) / 2 + buttonSize * buttonCount + (2 * toolbarPadding)
+                    (rect.left - rect.right) / 2 + BUTTON_SIZE * buttonCount + (2 * toolbarPadding)
                 } ?: 0
                 val offset = startOffset + displaceOffset + IntOffset(x = -xPos, y = -100)
                 // Overlay buttons near the selection box
@@ -140,7 +140,7 @@ fun SelectedBitmap(
                         onSelect = {
                             shareBitmap(context, editorState.selectionState.selectedBitmap!!)
                         },
-                        modifier = Modifier.height(buttonSize.dp)
+                        modifier = Modifier.height(BUTTON_SIZE.dp)
                     )
                     ToolbarButton(
                         iconId = R.drawable.delete,
@@ -148,33 +148,33 @@ fun SelectedBitmap(
                         onSelect = {
                             controlTower.deleteSelection()
                         },
-                        modifier = Modifier.height(buttonSize.dp)
+                        modifier = Modifier.height(BUTTON_SIZE.dp)
                     )
                     if (isSelectionResizable)
                         ToolbarButton(
                             iconId = R.drawable.plus,
                             isSelected = false,
                             onSelect = { controlTower.changeSizeOfSelection(10) },
-                            modifier = Modifier.height(buttonSize.dp)
+                            modifier = Modifier.height(BUTTON_SIZE.dp)
                         )
                     if (isSelectionResizable)
                         ToolbarButton(
                             iconId = R.drawable.minus,
                             isSelected = false,
                             onSelect = { controlTower.changeSizeOfSelection(-10) },
-                            modifier = Modifier.height(buttonSize.dp)
+                            modifier = Modifier.height(BUTTON_SIZE.dp)
                         )
                     ToolbarButton(
                         vectorIcon = FeatherIcons.Scissors,
                         isSelected = false,
                         onSelect = { controlTower.cutSelectionToClipboard() },
-                        modifier = Modifier.height(buttonSize.dp)
+                        modifier = Modifier.height(BUTTON_SIZE.dp)
                     )
                     ToolbarButton(
                         vectorIcon = FeatherIcons.Copy,
                         isSelected = false,
                         onSelect = { controlTower.copySelection() },
-                        modifier = Modifier.height(buttonSize.dp)
+                        modifier = Modifier.height(BUTTON_SIZE.dp)
                     )
                 }
             }

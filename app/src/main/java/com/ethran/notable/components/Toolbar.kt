@@ -39,6 +39,7 @@ import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.EditorControlTower
 import com.ethran.notable.db.KvProxy
 import com.ethran.notable.modals.AppSettings
+import com.ethran.notable.modals.BUTTON_SIZE
 import com.ethran.notable.modals.PageSettingsModal
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.History
@@ -166,7 +167,7 @@ fun Toolbar(
             Row(
                 Modifier
                     .background(Color.White)
-                    .height(37.dp)
+                    .height(BUTTON_SIZE.dp)
                     .fillMaxWidth()
             ) {
                 ToolbarButton(
@@ -459,7 +460,7 @@ fun Toolbar(
                 )
             } else null,
             contentDescription = "open toolbar",
-            modifier = Modifier.height(37.dp)
+            modifier = Modifier.height(BUTTON_SIZE.dp)
         )
     }
 }

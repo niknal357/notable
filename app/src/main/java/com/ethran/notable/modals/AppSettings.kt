@@ -49,8 +49,9 @@ import kotlin.concurrent.thread
 var NeoTools: Boolean = false
 
 // Define the target page size (A4 in points: 595 x 842)
-val A4_WIDTH = 595
-val A4_HEIGHT = 842
+const val A4_WIDTH = 595
+const val A4_HEIGHT = 842
+const val BUTTON_SIZE = 37
 
 @Serializable
 data class AppSettings(
