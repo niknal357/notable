@@ -1,7 +1,6 @@
 package com.ethran.notable.classes
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
+import android.content.Context
 import android.graphics.Rect
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
@@ -13,9 +12,8 @@ import com.ethran.notable.utils.Mode
 import com.ethran.notable.utils.Operation
 import com.ethran.notable.utils.PlacementMode
 import com.ethran.notable.utils.SimplePointF
+import com.ethran.notable.utils.copyBitmapToClipboard
 import com.ethran.notable.utils.divideStrokesFromCut
-import com.ethran.notable.utils.drawImage
-import com.ethran.notable.utils.imageBoundsInt
 import com.ethran.notable.utils.offsetImage
 import com.ethran.notable.utils.offsetStroke
 import com.ethran.notable.utils.pageAreaToCanvasArea
@@ -25,7 +23,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Date
 import java.util.UUID
-import androidx.core.graphics.createBitmap
 
 class EditorControlTower(
     private val scope: CoroutineScope,
@@ -181,56 +178,17 @@ class EditorControlTower(
     }
 
     fun changeSizeOfSelection(scale: Int) {
-        val selectedImages = state.selectionState.selectedImages?.map { image ->
-            image.copy(
-                height = image.height + (image.height * scale / 100),
-                width = image.width + (image.width * scale / 100)
-            )
-        }
-
-        // Ensure selected images are not null or empty
-        if (selectedImages.isNullOrEmpty()) {
-            showHint("For now, strokes cannot be resized", scope)
-            return
-        }
-
-        state.selectionState.selectedImages = selectedImages
-        // Adjust displacement offset by half the size change
-        val sizeChange = selectedImages.firstOrNull()?.let { image ->
-            IntOffset(
-                x = (image.width * scale / 200),
-                y = (image.height * scale / 200)
-            )
-        } ?: IntOffset.Zero
-
-        val pageBounds = imageBoundsInt(selectedImages)
-        state.selectionState.selectionRect = pageAreaToCanvasArea(pageBounds, page.scroll)
-
-        state.selectionState.selectionDisplaceOffset =
-            state.selectionState.selectionDisplaceOffset?.let { it - sizeChange }
-                ?: IntOffset.Zero
-
-        val selectedBitmap = createBitmap(pageBounds.width(), pageBounds.height())
-        val selectedCanvas = Canvas(selectedBitmap)
-        selectedImages.forEach {
-            drawImage(
-                page.context,
-                selectedCanvas,
-                it,
-                IntOffset(-it.x, -it.y)
-            )
-        }
-
-        // set state
-        state.selectionState.selectedBitmap = selectedBitmap
-
+        if (!state.selectionState.selectedImages.isNullOrEmpty())
+            state.selectionState.resizeImages(scale, scope, page)
+        if (!state.selectionState.selectedStrokes.isNullOrEmpty())
+            state.selectionState.resizeStrokes(scale, scope, page)
         // Emit a refresh signal to update UI
         scope.launch {
             DrawCanvas.refreshUi.emit(Unit)
         }
     }
 
-    fun copySelection() {
+    fun duplicateSelection() {
         // finish ongoing movement
         applySelectionDisplace()
 
@@ -262,35 +220,38 @@ class EditorControlTower(
         )
     }
 
-    fun cutSelectionToClipboard() {
-        val now = Date()
+    fun cutSelectionToClipboard(context: Context) {
+        selectionToClipboard(context)
+        deleteSelection()
+        showHint("Content cut to clipboard", scope)
+    }
 
-        // Remove the current scroll offset when copying items to the clipboard. When pasting, we
-        //   reapply the active scroll offset. This ensures items are not pasted off-screen.
-        val scrollPos = page.scroll;
-        val removePageScroll = IntOffset(0, -scrollPos).toOffset();
+    fun copySelectionToClipboard(context: Context) {
+        selectionToClipboard(context)
+    }
 
-        // Copy selected strokes to clipboard
+    private fun selectionToClipboard(context: Context) {
+        val scrollPos = page.scroll
+        val removePageScroll = IntOffset(0, -scrollPos).toOffset()
+
         val strokes = state.selectionState.selectedStrokes?.map {
             offsetStroke(it, offset = removePageScroll)
         }
 
-        // Copy selected images to clipboard
         val images = state.selectionState.selectedImages?.map {
             it.copy(y = it.y - scrollPos)
         }
 
-        this.state.clipboard = ClipboardContent(
+        state.clipboard = ClipboardContent(
             strokes = strokes ?: emptyList(),
-            images = images ?: emptyList(),
-        );
+            images = images ?: emptyList()
+        )
 
-        // After copying the selected strokes and images to the clipboard, delete them using the
-        // default deletion handler. This makes undo/redo work.
-        deleteSelection();
-
-        showHint("Content cut to clipboard", scope)
+        state.selectionState.selectedBitmap?.let {
+            copyBitmapToClipboard(context, it)
+        }
     }
+
 
     fun pasteFromClipboard() {
         // finish ongoing movement

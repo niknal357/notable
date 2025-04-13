@@ -35,6 +35,7 @@ import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.noRippleClickable
 import com.ethran.notable.utils.shareBitmap
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.Clipboard
 import compose.icons.feathericons.Copy
 import compose.icons.feathericons.Scissors
 import compose.icons.feathericons.Share2
@@ -106,17 +107,16 @@ fun SelectedBitmap(
                 .combinedClickable(
                     indication = null, interactionSource = remember { MutableInteractionSource() },
                     onClick = {},
-                    onDoubleClick = { controlTower.copySelection() }
+                    onDoubleClick = { controlTower.duplicateSelection() }
                 )
         )
 
         // TODO: improve this code
 
-        val isSelectionResizable =
-            selectionState.selectedImages?.count() == 1 &&
-                    selectionState.selectedStrokes.isNullOrEmpty()
+        val isSelectionResizable  =selectionState.isResizable()
 
-        val buttonCount = if (isSelectionResizable) 6 else 4
+
+        val buttonCount = if (isSelectionResizable) 7 else 5
         val toolbarPadding = 4;
 
         // If we can calculate offset of buttons show selection handling tools
@@ -167,13 +167,19 @@ fun SelectedBitmap(
                     ToolbarButton(
                         vectorIcon = FeatherIcons.Scissors,
                         isSelected = false,
-                        onSelect = { controlTower.cutSelectionToClipboard() },
+                        onSelect = { controlTower.cutSelectionToClipboard(context) },
+                        modifier = Modifier.height(BUTTON_SIZE.dp)
+                    )
+                    ToolbarButton(
+                        vectorIcon = FeatherIcons.Clipboard,
+                        isSelected = false,
+                        onSelect = { controlTower.copySelectionToClipboard(context) },
                         modifier = Modifier.height(BUTTON_SIZE.dp)
                     )
                     ToolbarButton(
                         vectorIcon = FeatherIcons.Copy,
                         isSelected = false,
-                        onSelect = { controlTower.copySelection() },
+                        onSelect = { controlTower.duplicateSelection() },
                         modifier = Modifier.height(BUTTON_SIZE.dp)
                     )
                 }
