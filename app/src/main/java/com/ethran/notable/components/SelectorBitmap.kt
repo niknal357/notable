@@ -113,26 +113,24 @@ fun SelectedBitmap(
 
         // TODO: improve this code
 
-        val isSelectionResizable  =selectionState.isResizable()
-
-
-        val buttonCount = if (isSelectionResizable) 7 else 5
+        val buttonCount = if (selectionState.isResizable()) 7 else 5
         val toolbarPadding = 4;
 
         // If we can calculate offset of buttons show selection handling tools
         selectionState.selectionStartOffset?.let { startOffset ->
             selectionState.selectionDisplaceOffset?.let { displaceOffset ->
+                // TODO: I think the toolbar is still not in the center.
                 val xPos = selectionState.selectionRect?.let { rect ->
-                    (rect.left - rect.right) / 2 + BUTTON_SIZE * buttonCount + (2 * toolbarPadding)
+                    (rect.right - rect.left)/2 - buttonCount * (BUTTON_SIZE + 5* toolbarPadding)
                 } ?: 0
-                val offset = startOffset + displaceOffset + IntOffset(x = -xPos, y = -100)
+                val offset = startOffset + displaceOffset + IntOffset(x = xPos, y = -100)
                 // Overlay buttons near the selection box
                 Row(
                     modifier = Modifier
                         .offset { offset }
                         .background(Color.White.copy(alpha = 0.8f))
                         .padding(toolbarPadding.dp)
-                        .height(35.dp)
+                        .height(BUTTON_SIZE.dp)
                 ) {
                     ToolbarButton(
                         vectorIcon = FeatherIcons.Share2,
@@ -150,20 +148,20 @@ fun SelectedBitmap(
                         },
                         modifier = Modifier.height(BUTTON_SIZE.dp)
                     )
-                    if (isSelectionResizable)
+                    if (selectionState.isResizable()) {
                         ToolbarButton(
                             iconId = R.drawable.plus,
                             isSelected = false,
                             onSelect = { controlTower.changeSizeOfSelection(10) },
                             modifier = Modifier.height(BUTTON_SIZE.dp)
                         )
-                    if (isSelectionResizable)
                         ToolbarButton(
                             iconId = R.drawable.minus,
                             isSelected = false,
                             onSelect = { controlTower.changeSizeOfSelection(-10) },
                             modifier = Modifier.height(BUTTON_SIZE.dp)
                         )
+                    }
                     ToolbarButton(
                         vectorIcon = FeatherIcons.Scissors,
                         isSelected = false,
