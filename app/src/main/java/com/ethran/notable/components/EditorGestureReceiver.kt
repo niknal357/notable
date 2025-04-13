@@ -32,8 +32,7 @@ import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.EditorControlTower
 import com.ethran.notable.classes.GestureState
-import com.ethran.notable.classes.SnackConf
-import com.ethran.notable.classes.SnackState
+import com.ethran.notable.classes.showHint
 import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.History
@@ -140,15 +139,7 @@ fun EditorGestureReceiver(
                                     isSelection = true
                                     crossPosition = gestureState.getLastPositionIO()
                                     rectangleBounds = gestureState.calculateRectangleBounds()
-                                    coroutineScope.launch {
-                                        state.isDrawing = false
-                                        SnackState.globalSnackFlow.emit(
-                                            SnackConf(
-                                                text = "Selection mode!",
-                                                duration = 1500,
-                                            )
-                                        )
-                                    }
+                                    showHint("Selection mode!", coroutineScope, 1500)
                                 }
 
                             }
@@ -189,14 +180,10 @@ fun EditorGestureReceiver(
                                             "Second down detected: ${secondDown.type}, position: ${secondDown.position}, deltaTime: $deltaTime"
                                         )
                                         if (deltaTime < DOUBLE_TAP_MIN_MS) {
-                                            coroutineScope.launch {
-                                                SnackState.globalSnackFlow.emit(
-                                                    SnackConf(
-                                                        text = "Too quick for double click! delta: $totalDelta, time between: $deltaTime",
-                                                        duration = 3000,
-                                                    )
-                                                )
-                                            }
+                                            showHint(
+                                                text = "Too quick for double click! delta: $totalDelta, time between: $deltaTime",
+                                                coroutineScope
+                                            )
                                             return@withTimeoutOrNull null
                                         } else {
                                             Log.v(TAG, "double click!")

@@ -147,3 +147,14 @@ fun SnackBar(state: SnackState) {
         }
     }
 }
+
+fun showHint(text: String, scope: CoroutineScope = CoroutineScope(Dispatchers.Default), duration: Int = 3000) {
+    scope.launch {
+        SnackState.globalSnackFlow.emit(
+            SnackConf(
+                text = text,
+                duration = duration,
+            )
+        )
+    }
+}

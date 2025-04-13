@@ -4,12 +4,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import com.ethran.notable.BuildConfig
 import com.ethran.notable.TAG
-import com.ethran.notable.classes.SnackConf
-import com.ethran.notable.classes.SnackState
+import com.ethran.notable.classes.showHint
 import io.shipbook.shipbooksdk.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.net.URL
 
@@ -95,14 +91,11 @@ fun isLatestVersion(context: Context, force: Boolean = false): Boolean {
 
         isLatestVersion = versionVersion.compareTo(latestVersionVersion) != -1
         if (!isLatestVersion!!) {
-            CoroutineScope(Dispatchers.Default).launch {
-                SnackState.globalSnackFlow.emit(
-                    SnackConf(
-                        text = "A newer version is available!\nYou are using version $version, while the latest version available is $latestVersion.",
-                        duration = 5000,
-                    )
-                )
-            }
+            showHint(
+                "A newer version is available!\nYou are using version $version, " +
+                        "while the latest version available is $latestVersion.",
+                duration = 5000
+            )
         }
         return isLatestVersion!!
     } catch (e: Exception) {

@@ -386,14 +386,7 @@ class PageView(
                         } else {
                             "Failed to load images."
                         }
-                    coroutineScope.launch {
-                        SnackState.globalSnackFlow.emit(
-                            SnackConf(
-                                text = errorMessage,
-                                duration = 3000,
-                            )
-                        )
-                    }
+                    showHint(errorMessage, coroutineScope)
                 }
                 try {
                     strokes.forEach { stroke ->
@@ -408,14 +401,7 @@ class PageView(
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "PageView.kt: Drawing strokes failed: ${e.message}", e)
-                    coroutineScope.launch {
-                        SnackState.globalSnackFlow.emit(
-                            SnackConf(
-                                text = "Error drawing strokes",
-                                duration = 3000,
-                            )
-                        )
-                    }
+                    showHint("Error drawing strokes", coroutineScope)
                 }
 
             }

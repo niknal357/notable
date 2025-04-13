@@ -201,15 +201,7 @@ object XoppFile {
             if (imgElement.textContent.isNotBlank())
                 layer.appendChild(imgElement)
             else
-                CoroutineScope(Dispatchers.Default).launch {
-                    SnackState.globalSnackFlow.emit(
-                        SnackConf(
-                            text = "Image cannot be loaded.",
-                            duration = 3000,
-                        )
-                    )
-                }
-
+                showHint("Image cannot be loaded.")
         }
 
         val xmlString = convertXmlToString(doc)
