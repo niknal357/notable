@@ -1,5 +1,7 @@
 package com.ethran.notable.utils
 
+import android.app.Activity
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -22,8 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
+import androidx.core.app.ShareCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.graphics.createBitmap
 import androidx.core.graphics.toRect
 import androidx.core.graphics.toRegion
 import com.ethran.notable.R
@@ -43,7 +47,6 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import android.content.ClipData
 
 fun Modifier.noRippleClickable(
     onClick: () -> Unit
@@ -55,7 +58,7 @@ fun Modifier.noRippleClickable(
 
 
 fun convertDpToPixel(dp: Dp, context: Context): Float {
-    val resources = context.resources
+//    val resources = context.resources
 //    val metrics: DisplayMetrics = resources.displayMetrics
     return TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP,
@@ -316,7 +319,7 @@ fun imagePoints(image: Image): Array<Point> {
         Point(image.x, image.y + image.height),
         Point(image.x + image.width, image.y),
         Point(image.x + image.width, image.y + image.height),
-    );
+    )
 }
 
 fun strokeBounds(strokes: List<Stroke>): Rect {
@@ -355,7 +358,7 @@ fun imageBoundsInt(images: List<Image>): Rect {
     return rect
 }
 
-data class SimplePoint(val x: Int, val y: Int)
+//data class SimplePoint(val x: Int, val y: Int)
 data class SimplePointF(val x: Float, val y: Float)
 
 fun pathToRegion(path: Path): Region {
@@ -465,8 +468,7 @@ fun offsetImage(image: Image, offset: Offset): Image {
 class Provider : FileProvider(R.xml.file_paths)
 
 fun shareBitmap(context: Context, bitmap: Bitmap) {
-    val bmpWithBackground =
-        Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+    val bmpWithBackground = createBitmap(bitmap.width, bitmap.height)
     val canvas = Canvas(bmpWithBackground)
     canvas.drawColor(Color.WHITE)
     canvas.drawBitmap(bitmap, 0f, 0f, null)
@@ -475,16 +477,12 @@ fun shareBitmap(context: Context, bitmap: Bitmap) {
     Log.i(TAG, cachePath.toString())
     cachePath.mkdirs()
     try {
-        val stream =
-            FileOutputStream("$cachePath/share.png")
-        bmpWithBackground.compress(
-            Bitmap.CompressFormat.PNG,
-            100,
-            stream
-        )
+        val stream = FileOutputStream(File(cachePath, "share.png"))
+        bmpWithBackground.compress(Bitmap.CompressFormat.PNG, 100, stream)
         stream.close()
     } catch (e: IOException) {
         e.printStackTrace()
+        return
     }
 
     val bitmapFile = File(cachePath, "share.png")
@@ -494,22 +492,21 @@ fun shareBitmap(context: Context, bitmap: Bitmap) {
         bitmapFile
     )
 
-    val sendIntent = Intent().apply {
-        if (contentUri != null) {
-            action = Intent.ACTION_SEND
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) // temp permission for receiving app to read this file
-            putExtra(Intent.EXTRA_STREAM, contentUri)
-            type = "image/png"
+    // Use ShareCompat for safe sharing
+    val shareIntent = ShareCompat.IntentBuilder.from(context as Activity)
+        .setStream(contentUri)
+        .setType("image/png")
+        .intent
+        .apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        context.grantUriPermission("android", contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-
-    ContextCompat.startActivity(context, Intent.createChooser(sendIntent, "Choose an app"), null)
+    context.startActivity(Intent.createChooser(shareIntent, "Choose an app"))
 }
 
 
 
+// move to SelectionState?
 fun copyBitmapToClipboard(context: Context, bitmap: Bitmap) {
     // Save bitmap to cache and get a URI
     val uri = saveBitmapToCache(context, bitmap) ?: return
@@ -530,8 +527,7 @@ fun copyBitmapToClipboard(context: Context, bitmap: Bitmap) {
 }
 
 fun saveBitmapToCache(context: Context, bitmap: Bitmap): Uri? {
-    val bmpWithBackground =
-        Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+    val bmpWithBackground = createBitmap(bitmap.width, bitmap.height)
     val canvas = Canvas(bmpWithBackground)
     canvas.drawColor(Color.WHITE)
     canvas.drawBitmap(bitmap, 0f, 0f, null)

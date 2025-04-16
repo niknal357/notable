@@ -10,7 +10,6 @@ import com.ethran.notable.utils.Mode
 import com.ethran.notable.utils.Operation
 import com.ethran.notable.utils.PlacementMode
 import com.ethran.notable.utils.SimplePointF
-import com.ethran.notable.utils.copyBitmapToClipboard
 import com.ethran.notable.utils.divideStrokesFromCut
 import com.ethran.notable.utils.offsetStroke
 import com.ethran.notable.utils.pageAreaToCanvasArea
@@ -113,52 +112,30 @@ class EditorControlTower(
     fun duplicateSelection() {
         // finish ongoing movement
         applySelectionDisplace()
-        state.selectionState.duplicateSelection(page)
+        state.selectionState.duplicateSelection()
 
     }
 
     fun cutSelectionToClipboard(context: Context) {
-        selectionToClipboard(context)
+        state.clipboard = state.selectionState.selectionToClipboard(page.scroll, context)
         deleteSelection()
         showHint("Content cut to clipboard", scope)
     }
 
     fun copySelectionToClipboard(context: Context) {
-        selectionToClipboard(context)
-    }
-
-    private fun selectionToClipboard(context: Context) {
-        val scrollPos = page.scroll
-        val removePageScroll = IntOffset(0, -scrollPos).toOffset()
-
-        val strokes = state.selectionState.selectedStrokes?.map {
-            offsetStroke(it, offset = removePageScroll)
-        }
-
-        val images = state.selectionState.selectedImages?.map {
-            it.copy(y = it.y - scrollPos)
-        }
-
-        state.clipboard = ClipboardContent(
-            strokes = strokes ?: emptyList(),
-            images = images ?: emptyList()
-        )
-
-        state.selectionState.selectedBitmap?.let {
-            copyBitmapToClipboard(context, it)
-        }
+        state.clipboard = state.selectionState.selectionToClipboard(page.scroll, context)
     }
 
 
     fun pasteFromClipboard() {
         // finish ongoing movement
-        applySelectionDisplace();
+        applySelectionDisplace()
 
-        val (strokes, images) = state.clipboard ?: return;
+        val (strokes, images) = state.clipboard ?: return
 
         val now = Date()
-        val scrollPos = page.scroll;
-        val addPageScroll = IntOffset(0, scrollPos).toOffset();
+        val scrollPos = page.scroll
+        val addPageScroll = IntOffset(0, scrollPos).toOffset()
 
         val pastedStrokes = strokes.map {
             offsetStroke(it, offset = addPageScroll).copy(
@@ -170,7 +147,7 @@ class EditorControlTower(
                 // set the pageId to the current page
                 pageId = this.page.id
             )
-        };
+        }
 
         val pastedImages = images.map {
             it.copy(
@@ -192,10 +169,10 @@ class EditorControlTower(
             )
         )
 
-        selectImagesAndStrokes(scope, page, state, pastedImages, pastedStrokes);
-        state.selectionState.placementMode = PlacementMode.Paste;
+        selectImagesAndStrokes(scope, page, state, pastedImages, pastedStrokes)
+        state.selectionState.placementMode = PlacementMode.Paste
 
-        showHint("Pasted content from clipboard", scope);
+        showHint("Pasted content from clipboard", scope)
     }
 }
 

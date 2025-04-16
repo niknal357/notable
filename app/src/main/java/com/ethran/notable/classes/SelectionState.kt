@@ -1,5 +1,6 @@
 package com.ethran.notable.classes
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
@@ -15,6 +16,7 @@ import com.ethran.notable.db.Stroke
 import com.ethran.notable.utils.Operation
 import com.ethran.notable.utils.PlacementMode
 import com.ethran.notable.utils.SimplePointF
+import com.ethran.notable.utils.copyBitmapToClipboard
 import com.ethran.notable.utils.drawImage
 import com.ethran.notable.utils.imageBoundsInt
 import com.ethran.notable.utils.offsetImage
@@ -98,6 +100,11 @@ class SelectionState {
         selectedBitmap = selectedBitmapNew
     }
 
+    @Suppress("UNUSED_PARAMETER")
+    fun resizeStrokes(scale: Int, scope: CoroutineScope, page: PageView) {
+        //TODO: implement this
+    }
+
     fun deleteSelection(page: PageView): List<Operation> {
         val operationList = listOf<Operation>()
         val selectedImagesToRemove = selectedImages
@@ -114,10 +121,10 @@ class SelectionState {
             operationList.plus(Operation.AddStroke(selectedStrokesToRemove))
         }
         reset()
-        return listOf()
+        return operationList
     }
 
-    fun duplicateSelection(page: PageView) {
+    fun duplicateSelection() {
         // set operation to paste only
         placementMode = PlacementMode.Paste
         if (!selectedStrokes.isNullOrEmpty())
@@ -151,6 +158,7 @@ class SelectionState {
         if (selectionDisplaceOffset == null) return null
         if (selectionRect == null) return null
 
+        // get snapshot of the selection
         val selectedStrokesCopy = selectedStrokes
         val selectedImagesCopy = selectedImages
         val offset = selectionDisplaceOffset!!
@@ -161,7 +169,6 @@ class SelectionState {
         val operationList = mutableListOf<Operation>()
 
         if (selectedStrokesCopy != null) {
-
             val displacedStrokes = selectedStrokesCopy.map {
                 offsetStroke(it, offset = offset.toOffset())
             }
@@ -206,7 +213,23 @@ class SelectionState {
         return operationList
     }
 
-    fun resizeStrokes(scale: Int, scope: CoroutineScope, page: PageView) {
-        //TODO: implement this
+    fun selectionToClipboard(scrollPos: Int, context: Context): ClipboardContent {
+        val removePageScroll = IntOffset(0, -scrollPos).toOffset()
+
+        val strokes = selectedStrokes?.map {
+            offsetStroke(it, offset = removePageScroll)
+        }
+
+        val images = selectedImages?.map {
+            it.copy(y = it.y - scrollPos)
+        }
+
+        selectedBitmap?.let {
+            copyBitmapToClipboard(context, it)
+        }
+        return ClipboardContent(
+            strokes = strokes ?: emptyList(),
+            images = images ?: emptyList()
+        )
     }
 }
