@@ -17,7 +17,6 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,13 +40,22 @@ import com.ethran.notable.utils.noRippleClickable
 import kotlinx.serialization.Serializable
 import kotlin.concurrent.thread
 
-// it is workaround for now
-var NeoTools: Boolean = false
-
 // Define the target page size (A4 in points: 595 x 842)
 const val A4_WIDTH = 595
 const val A4_HEIGHT = 842
 const val BUTTON_SIZE = 37
+
+
+object GlobalAppSettings {
+    private val _current = mutableStateOf<AppSettings>(AppSettings(version = 1))
+    val current: AppSettings
+        get() = _current.value
+
+    fun update(settings: AppSettings) {
+        _current.value = settings
+    }
+}
+
 
 @Serializable
 data class AppSettings(
@@ -89,9 +97,7 @@ fun AppSettingsModal(onClose: () -> Unit) {
     var isLatestVersion by remember { mutableStateOf(true) }
     LaunchedEffect(key1 = Unit, block = { thread { isLatestVersion = isLatestVersion(context) } })
 
-    val settings by
-    kv.observeKv("APP_SETTINGS", AppSettings.serializer(), AppSettings(version = 1))
-        .observeAsState()
+    val settings = GlobalAppSettings.current
 
     if (settings == null) return
 
@@ -129,13 +135,9 @@ fun AppSettingsModal(onClose: () -> Unit) {
                             "hexed" to "Hexagon grid",
                         ),
                         onChange = {
-                            kv.setKv(
-                                "APP_SETTINGS",
-                                settings!!.copy(defaultNativeTemplate = it),
-                                AppSettings.serializer()
-                            )
+                            kv.setAppSettings(settings!!.copy(defaultNativeTemplate = it))
                         },
-                        value = settings?.defaultNativeTemplate ?: "blank"
+                        value = settings.defaultNativeTemplate
                     )
                 }
                 Spacer(Modifier.height(10.dp))
@@ -148,11 +150,7 @@ fun AppSettingsModal(onClose: () -> Unit) {
                     Switch(
                         checked = settings?.debugMode ?: false,
                         onCheckedChange = { isChecked ->
-                            kv.setKv(
-                                "APP_SETTINGS",
-                                settings!!.copy(debugMode = isChecked),
-                                AppSettings.serializer()
-                            )
+                            kv.setAppSettings(settings!!.copy(debugMode = isChecked))
                         }
                     )
                 }
@@ -165,13 +163,7 @@ fun AppSettingsModal(onClose: () -> Unit) {
                     Switch(
                         checked = settings?.neoTools ?: false,
                         onCheckedChange = { isChecked ->
-                            kv.setKv(
-                                "APP_SETTINGS",
-                                settings!!.copy(neoTools = isChecked),
-                                AppSettings.serializer()
-                            )
-                            // it is workaround for now
-                            NeoTools = isChecked
+                            kv.setAppSettings(settings!!.copy(neoTools = isChecked))
                         }
                     )
                 }
@@ -301,11 +293,7 @@ fun GestureSelectorRow(
             value = if (settings != null) settings.override() else default,
             onChange = {
                 if (settings != null) {
-                    kv.setKv(
-                        "APP_SETTINGS",
-                        settings.update(it),
-                        AppSettings.serializer(),
-                    )
+                    kv.setAppSettings(settings.update(it))
                 }
             },
         )

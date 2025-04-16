@@ -37,9 +37,8 @@ import com.ethran.notable.R
 import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.EditorControlTower
-import com.ethran.notable.db.KvProxy
-import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.modals.BUTTON_SIZE
+import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.modals.PageSettingsModal
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.History
@@ -225,8 +224,7 @@ fun Toolbar(
                     onChangeSetting = { onChangeStrokeSetting(Pen.GREENBALLPEN.penName, it) },
                 )
 
-                val appSettings = KvProxy(context).get("APP_SETTINGS", AppSettings.serializer())
-                if (appSettings?.neoTools == true) {
+                if (GlobalAppSettings.current.neoTools) {
                     PenToolbarButton(
                         onStrokeMenuOpenChange = { state.isDrawing = !it },
                         pen = Pen.PENCIL,
