@@ -64,6 +64,7 @@ data class AppSettings(
     val quickNavPages: List<String> = listOf(),
     val debugMode: Boolean = false,
     val neoTools: Boolean = false,
+    val toolbarPosition: Position = Position.Top,
 
     val doubleTapAction: GestureAction? = defaultDoubleTapAction,
     val twoFingerTapAction: GestureAction? = defaultTwoFingerTapAction,
@@ -87,6 +88,11 @@ data class AppSettings(
     enum class GestureAction {
         Undo, Redo, PreviousPage, NextPage, ChangeTool, ToggleZen, Select
     }
+
+    enum class Position {
+        Top, Bottom, // Left,Right,
+    }
+
 }
 
 @Composable
@@ -166,6 +172,27 @@ fun AppSettingsModal(onClose: () -> Unit) {
                             kv.setAppSettings(settings!!.copy(neoTools = isChecked))
                         }
                     )
+                }
+                Spacer(Modifier.height(10.dp))
+
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "Toolbar Position")
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        SelectMenu(
+                            options = listOf(
+                                AppSettings.Position.Top to "Top",
+                                AppSettings.Position.Bottom to "Bottom"
+                            ),
+                            value = settings.toolbarPosition,
+                            onChange = { newPosition ->
+                                settings?.let {
+                                    kv.setAppSettings(it.copy(toolbarPosition = newPosition))
+                                }
+                            }
+                        )
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
 

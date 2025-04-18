@@ -162,6 +162,7 @@ fun Toolbar(
     if (state.isToolbarOpen) {
         Column(
             modifier = Modifier.fillMaxWidth()
+                .height((BUTTON_SIZE+50).dp).padding(bottom = 50.dp)
         ) {
             Row(
                 Modifier
@@ -458,7 +459,7 @@ fun Toolbar(
                 )
             } else null,
             contentDescription = "open toolbar",
-            modifier = Modifier.height(BUTTON_SIZE.dp)
+            modifier = Modifier.height((BUTTON_SIZE+50).dp).padding(bottom = 50.dp)
         )
     }
 }
