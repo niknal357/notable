@@ -1,46 +1,65 @@
 <!-- markdownlint-configure-file {
-  "MD013": {
-    "code_blocks": false,
-    "tables": false
-  },
+  "MD013": {"code_blocks": false, "tables": false},
   "MD033": false,
   "MD041": false
 } -->
 
 <div align="center">
 
-![Notable App](https://github.com/Ethran/notable/blob/main/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png?raw=true "Notable Logo")
+[//]: # ([![Contributors][contributors-shield]][contributors-url])
+
+[//]: # ([![Forks][forks-shield]][forks-url])
+
+[//]: # ([![Stargazers][stars-shield]][stars-url])
+
+[//]: # ([![Issues][issues-shield]][issues-url])
+[![License][license-shield]][license-url]
+[![Total Downloads][downloads-shield]][downloads-url]
+[![Discord][discord-shield]][discord-url]
+[![Ko-fi][kofi-shield]][kofi-url]
+
+
+![Notable App][logo]
+
 # Notable (Fork)
 
-<a href="https://github.com/Ethran/notable/releases/latest">
-  <img src="https://img.shields.io/badge/-download%20here-informational" alt="Download here">
-</a><br/>
+A maintained and customized fork of the archived [olup/notable](https://github.com/olup/notable) project.
 
-<a href="https://github.com/Ethran/notable/releases/latest">
-  <img src="https://img.shields.io/github/downloads/Ethran/notable/total?color=47c219" alt="Downloads">
-</a>
-<a href="https://discord.com/invite/X3tHWZHUQg">
-  <img src="https://img.shields.io/badge/discord-7289da.svg" alt="Discord">
-</a>
 
-[Features](#features) •
-[Download](#download) •
-[Gestures](#gestures) •
-[Supported Devices](#supported-devices) •
-[Contribute](#contribute)
+[//]: # ([📖 Explore the docs »][docs-url] ·)
+[![🐛 Report Bug][bug-shield]][bug-url]
+[![Download Latest][download-shield]][download-url]
+[![💡 Request Feature][feature-shield]][feature-url]
+
+<a href="https://ko-fi.com/rethran" target="_blank">
+    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi">
+  </a>
 
 </div>
 
+---
+<details>
+  <summary>Table of Contents</summary>
+    - [About This Fork](#about-this-fork)
+    - [Features](#features)
+    - [Download](#download)
+    - [Gestures](#gestures)
+    - [Supported Devices](#supported-devices)
+    - [Screenshots](#screenshots)
+    - [Contribute](#contribute)
+</details>
+
+---
+
 ## About This Fork
+This fork is maintained by **Ethran** as a continuation and personal enhancement of the original Notable app. Development is semi-active and tailored toward personal utility while welcoming community suggestions.
 
-This repository, maintained by **Ethran**, is a personal project based on the original [olup/notable](https://github.com/olup/notable) repository, which has since been archived. This fork focuses on maintaining and improving the project with ongoing updates and enhancements, mainly tailored to my specific needs and preferences.
+### What's New?
+- Regular updates and experimental features
+- Improved usability and speed
+- Custom features suited for e-ink devices and note-taking
 
-### What's New in This Fork?
-- Semi-active development with regular updates.
-- Personal features and optimizations that make the app more functional for my use.
-- Pre-release builds with experimental features and enhancements.
-
-> ⚠️ Please note: Since this is a personal project, the features and updates reflect what I find useful. However, feedback and suggestions are welcome!
+> ⚠️ Note: Features may reflect personal preferences.
 
 ---
 
@@ -69,6 +88,8 @@ You can go to original olup <a href="https://github.com/olup/notable/tags" targe
 The 'next' release is a pre-release, and will contain features implemented but not yet released as part of a version - and sometimes experiments that could very well not be part a release.
 </details>
 
+---
+
 ## Gestures
 Notable features intuitive gestures controls within Editor's Mode, to optimize the editing experience:
 #### ☝️ 1 Finger
@@ -88,42 +109,69 @@ Notable features intuitive gestures controls within Editor's Mode, to optimize t
 
 The following table lists devices confirmed by users to be compatible with specific versions of Notable.  
 This does not imply any commitment from the developers.
-| Device Name                                                                           | v0.0.10 | v0.0.11dev |        |        |        |
+| Device Name                                                                           | v0.0.10 | v0.0.11dev |   v0.0.14+     |        |        |
 |---------------------------------------------------------------------------------------|---------|------------|--------|--------|--------|
-| [ONYX BOOX Go 10.3](https://onyxboox.com/boox_go103)                                  | ✔       | ?          |        |        |        |
-| [Onyx Boox Note Air 4 C](https://onyxboox.pl/en/ebook-readers/onyx-boox-note-air-4-c) | ✘       | ✔          |        |        |        |
-| [Onyx Boox Note Air 3 C](https://onyxboox.pl/en/ebook-readers/onyx-boox-note-air-3-c) | ✘       | ✔          |        |        |        |
-| [Onyx Boox Note Max](https://shop.boox.com/products/notemax)                          | ✘       | ✔          |        |        |        |
-| [Boox Note 3](https://onyxboox.pl/en/ebook-readers/onyx-boox-note-3)    | ✔       |  ✘   https://github.com/Ethran/notable/issues/24        |        |        |        |
+| [ONYX BOOX Go 10.3](https://onyxboox.com/boox_go103)                                  | ✔       | ?          |    ✔    |        |        |
+| [Onyx Boox Note Air 4 C](https://onyxboox.pl/en/ebook-readers/onyx-boox-note-air-4-c) | ✘       | ✔          |    ✔    |        |        |
+| [Onyx Boox Note Air 3 C](https://onyxboox.pl/en/ebook-readers/onyx-boox-note-air-3-c) | ✘       | ✔          |    ✔    |        |        |
+| [Onyx Boox Note Max](https://shop.boox.com/products/notemax)                          | ✘       | ✔          |    ✔    |        |        |
+| [Boox Note 3](https://onyxboox.pl/en/ebook-readers/onyx-boox-note-3)    | ✔       |  ✘   https://github.com/Ethran/notable/issues/24        |    ✔    |        |        |
 
 Feel free to add your device if tested successfully!
 
 
+---
+
 ## Screenshots
-
 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-
-<img src="https://github.com/user-attachments/assets/1dc04156-06f3-424c-92ee-9671c48fb83d" alt="screenshot-1" style="width:200px;"/>
-
-<img src="https://github.com/user-attachments/assets/83895c63-7ffa-4558-8a5e-4742460d0e17" alt="screenshot-2" style="width:200px;"/>
-
-<img src="https://github.com/user-attachments/assets/784c1954-d83b-4d43-8dfb-65478a8a1d9e" alt="screenshot-3" style="width:200px;"/>
-
-
-<img src="https://github.com/user-attachments/assets/152265d5-b520-4d99-919c-754c8e6a7f8e" alt="screenshot-5" style="width:200px;"/>
-
-<img src="https://github.com/user-attachments/assets/15a9f0a7-5326-4b5d-880c-a31b95a4d9bd" alt="screenshot-6" style="width:200px;"/>
-
-<img src="https://github.com/user-attachments/assets/ac9f9138-948d-47d5-b94f-e721429f886f" alt="screenshot-7" style="width:200px;"/>
-
+  <img src="https://github.com/user-attachments/assets/1dc04156-06f3-424c-92ee-9671c48fb83d" alt="screenshot-1" width="200"/>
+  <img src="https://github.com/user-attachments/assets/83895c63-7ffa-4558-8a5e-4742460d0e17" alt="screenshot-2" width="200"/>
+  <img src="https://github.com/user-attachments/assets/784c1954-d83b-4d43-8dfb-65478a8a1d9e" alt="screenshot-3" width="200"/>
+  <img src="https://github.com/user-attachments/assets/152265d5-b520-4d99-919c-754c8e6a7f8e" alt="screenshot-5" width="200"/>
+  <img src="https://github.com/user-attachments/assets/15a9f0a7-5326-4b5d-880c-a31b95a4d9bd" alt="screenshot-6" width="200"/>
+  <img src="https://github.com/user-attachments/assets/ac9f9138-948d-47d5-b94f-e721429f886f" alt="screenshot-7" width="200"/>
 </div>
 
-
+---
 
 ## Contribute
-Notable is an open-source project and welcomes contributions from the community. 
-To start working with the project, see [the guide on how to start contributing](https://docs.github.com/en/get-started/quickstart/contributing-to-projects) to the project. 
 
-***Important:*** Be sure to edit the `DEBUG_STORE_FILE` variable in the `/app/gradle.properties` file to the keystore on your own device. This is likely stored in the `.android` directory on your device.
+Notable is an open-source project, and contributions are welcome. If you'd like to get started, please refer to [GitHub's contributing guide](https://docs.github.com/en/get-started/quickstart/contributing-to-projects).
 
-***Important:*** To use your BOOX device for debugging, an application will be required to enable developer mode on your BOOX device. [See a short guide here for older devices.](https://imgur.com/a/i1kb2UQ) For newer, there should be option in Settings→More Settings → USB Debug Mode   
+### Development Notes
+
+- Edit the `DEBUG_STORE_FILE` in `/app/gradle.properties` to point to your local keystore file. This is typically located in the `.android` directory.
+- To debug on a BOOX device, enable developer mode. You can follow [this guide](https://imgur.com/a/i1kb2UQ).
+
+Feel free to open issues or submit pull requests. I appreciate your help!
+
+---
+
+<!-- MARKDOWN LINKS -->
+[logo]: https://github.com/Ethran/notable/blob/main/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png?raw=true "Notable Logo"
+[contributors-shield]: https://img.shields.io/github/contributors/Ethran/notable.svg?style=for-the-badge
+[contributors-url]: https://github.com/Ethran/notable/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/Ethran/notable.svg?style=for-the-badge
+[forks-url]: https://github.com/Ethran/notable/network/members
+[stars-shield]: https://img.shields.io/github/stars/Ethran/notable.svg?style=for-the-badge
+[stars-url]: https://github.com/Ethran/notable/stargazers
+[issues-shield]: https://img.shields.io/github/issues/Ethran/notable.svg?style=for-the-badge
+[issues-url]: https://github.com/Ethran/notable/issues
+[license-shield]: https://img.shields.io/github/license/Ethran/notable.svg?style=for-the-badge
+
+[license-url]: https://github.com/Ethran/notable/blob/master/LICENSE.txt
+[download-shield]: https://img.shields.io/github/v/release/Ethran/notable?style=for-the-badge&label=⬇️%20Download
+[download-url]: https://github.com/Ethran/notable/releases/latest
+[downloads-shield]: https://img.shields.io/github/downloads/Ethran/notable/total?style=for-the-badge&color=47c219&logo=cloud-download
+[downloads-url]: https://github.com/Ethran/notable/releases/latest
+
+[discord-shield]: https://img.shields.io/badge/Discord-Join%20Chat-7289DA?style=for-the-badge&logo=discord
+[discord-url]: https://discord.gg/rvNHgaDmN2
+[kofi-shield]: https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ko--fi-ff5f5f?style=for-the-badge&logo=ko-fi&logoColor=white
+[kofi-url]: https://ko-fi.com/rethran
+
+[docs-url]: https://github.com/Ethran/notable
+[bug-url]: https://github.com/Ethran/notable/issues/new?labels=bug&template=bug-report---.md
+[feature-url]: https://github.com/Ethran/notable/issues/new?labels=enhancement&template=feature-request---.md
+[bug-shield]: https://img.shields.io/badge/🐛%20Report%20Bug-red?style=for-the-badge
+[feature-shield]: https://img.shields.io/badge/💡%20Request%20Feature-blueviolet?style=for-the-badge
