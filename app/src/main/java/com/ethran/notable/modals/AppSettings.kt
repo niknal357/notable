@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.Button
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Switch
+import androidx.compose.material.TabRowDefaults.Divider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,13 +43,22 @@ import com.ethran.notable.utils.noRippleClickable
 import kotlinx.serialization.Serializable
 import kotlin.concurrent.thread
 
-// it is workaround for now
-var NeoTools: Boolean = false
-
 // Define the target page size (A4 in points: 595 x 842)
 const val A4_WIDTH = 595
 const val A4_HEIGHT = 842
 const val BUTTON_SIZE = 37
+
+
+object GlobalAppSettings {
+    private val _current = mutableStateOf<AppSettings>(AppSettings(version = 1))
+    val current: AppSettings
+        get() = _current.value
+
+    fun update(settings: AppSettings) {
+        _current.value = settings
+    }
+}
+
 
 @Serializable
 data class AppSettings(
@@ -56,6 +67,7 @@ data class AppSettings(
     val quickNavPages: List<String> = listOf(),
     val debugMode: Boolean = false,
     val neoTools: Boolean = false,
+    val toolbarPosition: Position = Position.Top,
 
     val doubleTapAction: GestureAction? = defaultDoubleTapAction,
     val twoFingerTapAction: GestureAction? = defaultTwoFingerTapAction,
@@ -79,6 +91,11 @@ data class AppSettings(
     enum class GestureAction {
         Undo, Redo, PreviousPage, NextPage, ChangeTool, ToggleZen, Select
     }
+
+    enum class Position {
+        Top, Bottom, // Left,Right,
+    }
+
 }
 
 @Composable
@@ -89,9 +106,7 @@ fun AppSettingsModal(onClose: () -> Unit) {
     var isLatestVersion by remember { mutableStateOf(true) }
     LaunchedEffect(key1 = Unit, block = { thread { isLatestVersion = isLatestVersion(context) } })
 
-    val settings by
-    kv.observeKv("APP_SETTINGS", AppSettings.serializer(), AppSettings(version = 1))
-        .observeAsState()
+    val settings = GlobalAppSettings.current
 
     if (settings == null) return
 
@@ -107,7 +122,10 @@ fun AppSettingsModal(onClose: () -> Unit) {
                 .border(2.dp, Color.Black, RectangleShape)
         ) {
             Column(Modifier.padding(20.dp, 10.dp)) {
-                Text(text = "App setting - v${BuildConfig.VERSION_NAME}${if (isNext) " [NEXT]" else ""}")
+                Text(
+                    text = "App setting - v${BuildConfig.VERSION_NAME}${if (isNext) " [NEXT]" else ""}",
+                    style = MaterialTheme.typography.h5,
+                )
             }
             Box(
                 Modifier
@@ -129,13 +147,9 @@ fun AppSettingsModal(onClose: () -> Unit) {
                             "hexed" to "Hexagon grid",
                         ),
                         onChange = {
-                            kv.setKv(
-                                "APP_SETTINGS",
-                                settings!!.copy(defaultNativeTemplate = it),
-                                AppSettings.serializer()
-                            )
+                            kv.setAppSettings(settings!!.copy(defaultNativeTemplate = it))
                         },
-                        value = settings?.defaultNativeTemplate ?: "blank"
+                        value = settings.defaultNativeTemplate
                     )
                 }
                 Spacer(Modifier.height(10.dp))
@@ -148,11 +162,7 @@ fun AppSettingsModal(onClose: () -> Unit) {
                     Switch(
                         checked = settings?.debugMode ?: false,
                         onCheckedChange = { isChecked ->
-                            kv.setKv(
-                                "APP_SETTINGS",
-                                settings!!.copy(debugMode = isChecked),
-                                AppSettings.serializer()
-                            )
+                            kv.setAppSettings(settings!!.copy(debugMode = isChecked))
                         }
                     )
                 }
@@ -165,18 +175,48 @@ fun AppSettingsModal(onClose: () -> Unit) {
                     Switch(
                         checked = settings?.neoTools ?: false,
                         onCheckedChange = { isChecked ->
-                            kv.setKv(
-                                "APP_SETTINGS",
-                                settings!!.copy(neoTools = isChecked),
-                                AppSettings.serializer()
-                            )
-                            // it is workaround for now
-                            NeoTools = isChecked
+                            kv.setAppSettings(settings!!.copy(neoTools = isChecked))
                         }
                     )
                 }
                 Spacer(Modifier.height(10.dp))
 
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "Toolbar Position (Work in progress)")
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        SelectMenu(
+                            options = listOf(
+                                AppSettings.Position.Top to "Top",
+                                AppSettings.Position.Bottom to "Bottom"
+                            ),
+                            value = settings.toolbarPosition,
+                            onChange = { newPosition ->
+                                settings?.let {
+                                    kv.setAppSettings(it.copy(toolbarPosition = newPosition))
+                                }
+                            }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = "Gesture Settings",
+                    style = MaterialTheme.typography.h6,
+                    modifier = Modifier.padding(start = 35.dp, bottom = 8.dp)
+                )
+
+                Divider(
+                    color = Color.LightGray,
+                    thickness = 1.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+
+                Spacer(Modifier.height(8.dp))
                 GestureSelectorRow(
                     title = "Double Tap Action",
                     kv = kv,
@@ -238,38 +278,49 @@ fun AppSettingsModal(onClose: () -> Unit) {
                 Spacer(Modifier.height(10.dp))
 
                 if (!isLatestVersion) {
-                    Text(
-                        text = "It seems a new version of Notable is available on github.",
-                        fontStyle = FontStyle.Italic
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = "See release in browser",
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.noRippleClickable {
-                            val urlIntent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("https://github.com/ethran/notable/releases")
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "It seems a new version of Notable is available on GitHub.",
+                            fontStyle = FontStyle.Italic,
+                            style = MaterialTheme.typography.h6,
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        Button(
+                            onClick = {
+                                val urlIntent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://github.com/ethran/notable/releases")
+                                )
+                                context.startActivity(urlIntent)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "See release in browser",
                             )
-                            context.startActivity(urlIntent)
                         }
-                    )
+                    }
                     Spacer(Modifier.height(10.dp))
                 } else {
-                    Text(
-                        text = "Check for newer version",
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.noRippleClickable {
+                    Button(
+                        onClick = {
                             thread {
                                 isLatestVersion = isLatestVersion(context, true)
-                                if (isLatestVersion)
+                                if (isLatestVersion) {
                                     showHint(
-                                        "You are on latest version.",
+                                        "You are on the latest version.",
                                         duration = 1000
                                     )
+                                }
                             }
-                        }
-                    )
+                        },
+                        modifier = Modifier.fillMaxWidth() // Adjust the modifier as needed
+                    ) {
+                        Text(text = "Check for newer version")
+                    }
+
                 }
             }
         }
@@ -301,11 +352,7 @@ fun GestureSelectorRow(
             value = if (settings != null) settings.override() else default,
             onChange = {
                 if (settings != null) {
-                    kv.setKv(
-                        "APP_SETTINGS",
-                        settings.update(it),
-                        AppSettings.serializer(),
-                    )
+                    kv.setAppSettings(settings.update(it))
                 }
             },
         )
