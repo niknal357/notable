@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.Button
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Switch
+import androidx.compose.material.TabRowDefaults.Divider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -119,7 +122,10 @@ fun AppSettingsModal(onClose: () -> Unit) {
                 .border(2.dp, Color.Black, RectangleShape)
         ) {
             Column(Modifier.padding(20.dp, 10.dp)) {
-                Text(text = "App setting - v${BuildConfig.VERSION_NAME}${if (isNext) " [NEXT]" else ""}")
+                Text(
+                    text = "App setting - v${BuildConfig.VERSION_NAME}${if (isNext) " [NEXT]" else ""}",
+                    style = MaterialTheme.typography.h5,
+                )
             }
             Box(
                 Modifier
@@ -177,7 +183,7 @@ fun AppSettingsModal(onClose: () -> Unit) {
 
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "Toolbar Position")
+                        Text(text = "Toolbar Position (Work in progress)")
                         Spacer(modifier = Modifier.width(10.dp))
 
                         SelectMenu(
@@ -194,8 +200,23 @@ fun AppSettingsModal(onClose: () -> Unit) {
                         )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(16.dp))
 
+                Text(
+                    text = "Gesture Settings",
+                    style = MaterialTheme.typography.h6,
+                    modifier = Modifier.padding(start = 35.dp, bottom = 8.dp)
+                )
+
+                Divider(
+                    color = Color.LightGray,
+                    thickness = 1.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+
+                Spacer(Modifier.height(8.dp))
                 GestureSelectorRow(
                     title = "Double Tap Action",
                     kv = kv,
@@ -257,38 +278,49 @@ fun AppSettingsModal(onClose: () -> Unit) {
                 Spacer(Modifier.height(10.dp))
 
                 if (!isLatestVersion) {
-                    Text(
-                        text = "It seems a new version of Notable is available on github.",
-                        fontStyle = FontStyle.Italic
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = "See release in browser",
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.noRippleClickable {
-                            val urlIntent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("https://github.com/ethran/notable/releases")
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "It seems a new version of Notable is available on GitHub.",
+                            fontStyle = FontStyle.Italic,
+                            style = MaterialTheme.typography.h6,
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        Button(
+                            onClick = {
+                                val urlIntent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://github.com/ethran/notable/releases")
+                                )
+                                context.startActivity(urlIntent)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "See release in browser",
                             )
-                            context.startActivity(urlIntent)
                         }
-                    )
+                    }
                     Spacer(Modifier.height(10.dp))
                 } else {
-                    Text(
-                        text = "Check for newer version",
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.noRippleClickable {
+                    Button(
+                        onClick = {
                             thread {
                                 isLatestVersion = isLatestVersion(context, true)
-                                if (isLatestVersion)
+                                if (isLatestVersion) {
                                     showHint(
-                                        "You are on latest version.",
+                                        "You are on the latest version.",
                                         duration = 1000
                                     )
+                                }
                             }
-                        }
-                    )
+                        },
+                        modifier = Modifier.fillMaxWidth() // Adjust the modifier as needed
+                    ) {
+                        Text(text = "Check for newer version")
+                    }
+
                 }
             }
         }

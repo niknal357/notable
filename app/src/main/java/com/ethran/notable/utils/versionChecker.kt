@@ -70,6 +70,9 @@ fun isLatestVersion(context: Context, force: Boolean = false): Boolean {
     if (!force && isLatestVersion != null) return isLatestVersion!!
 
     try {
+        if (BuildConfig.VERSION_NAME.contains("next")) {
+            // TODO
+        }
         val version = getCurrentVersionName(context)
         val latestVersion = getLatestReleaseVersion("ethran", "notable")
         Log.i(TAG, "Version is $version and latest on repo is $latestVersion")

@@ -37,6 +37,7 @@ import com.ethran.notable.R
 import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.EditorControlTower
+import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.modals.BUTTON_SIZE
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.modals.PageSettingsModal
@@ -161,9 +162,19 @@ fun Toolbar(
     }
     if (state.isToolbarOpen) {
         Column(
-            modifier = Modifier.fillMaxWidth()
-                .height((BUTTON_SIZE+50).dp).padding(bottom = 50.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height((BUTTON_SIZE + 51).dp)
+                .padding(bottom = 50.dp) // TODO: fix this
         ) {
+            if (GlobalAppSettings.current.toolbarPosition == AppSettings.Position.Bottom) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(Color.Black)
+                )
+            }
             Row(
                 Modifier
                     .background(Color.White)
@@ -459,7 +470,9 @@ fun Toolbar(
                 )
             } else null,
             contentDescription = "open toolbar",
-            modifier = Modifier.height((BUTTON_SIZE+50).dp).padding(bottom = 50.dp)
+            modifier = Modifier
+                .height((BUTTON_SIZE + 51).dp)
+                .padding(bottom = 50.dp)
         )
     }
 }
