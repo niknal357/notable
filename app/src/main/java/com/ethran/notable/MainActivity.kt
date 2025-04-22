@@ -81,8 +81,10 @@ class MainActivity : ComponentActivity() {
         // Refactor - we prob don't need this
         EditorSettingCacheManager.init(applicationContext)
 
-        GlobalAppSettings.update(KvProxy(this).get("APP_SETTINGS", AppSettings.serializer())
-            ?: AppSettings(version = 1))
+        GlobalAppSettings.update(
+            KvProxy(this).get("APP_SETTINGS", AppSettings.serializer())
+                ?: AppSettings(version = 1)
+        )
 
         //EpdDeviceManager.enterAnimationUpdate(true);
 
@@ -120,6 +122,8 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         this.lifecycleScope.launch {
+            Log.d("QuickSettings", "App is paused - maybe quick settings opened?")
+
             DrawCanvas.refreshUi.emit(Unit)
         }
     }
@@ -129,10 +133,15 @@ class MainActivity : ComponentActivity() {
         // It is really necessary?
         if (hasFocus) {
             enableFullScreen() // Re-apply full-screen mode when focus is regained
+            this.lifecycleScope.launch {
+                DrawCanvas.refreshUi.emit(Unit)
+            }
+        } else {
+            lifecycleScope.launch {
+                DrawCanvas.isDrawing.emit(false)
+            }
         }
-        this.lifecycleScope.launch {
-            DrawCanvas.refreshUi.emit(Unit)
-        }
+
     }
 
     // when the screen orientation is changed, set new screen width  restart is not necessary,
