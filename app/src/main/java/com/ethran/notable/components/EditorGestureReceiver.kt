@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -69,25 +70,28 @@ fun EditorGestureReceiver(
     var crossPosition by remember { mutableStateOf<IntOffset?>(null) }
     var rectangleBounds by remember { mutableStateOf<Rect?>(null) }
     var isSelection by remember { mutableStateOf(false) }
+    val view = LocalView.current
     Box(
         modifier = Modifier
             .pointerInput(Unit) {
                 awaitEachGesture {
                     try {
+                        // Detect initial touch
+                        val down = awaitFirstDown()
                         // testing if it will fixed exception:
                         // kotlinx.coroutines.CompletionHandlerException: Exception in resume
                         // onCancellation handler for CancellableContinuation(DispatchedContinuation[AndroidUiDispatcher@145d639,
                         // Continuation at androidx.compose.foundation.gestures.PressGestureScopeImpl.reset(TapGestureDetector.kt:357)
                         // @8b7a2c]){Completed}@4a49cf5
                         if (!coroutineScope.isActive) return@awaitEachGesture
+                        // if window lost focus, ignore input
+                        if (!view.hasWindowFocus()) return@awaitEachGesture
 
                         val gestureState = GestureState()
                         if (!state.isDrawing && !isSelection) {
                             state.isDrawing = true
                         }
                         isSelection = false
-                        // Detect initial touch
-                        val down = awaitFirstDown()
 
                         // Ignore non-touch input
                         if (down.type != PointerType.Touch) {
@@ -101,6 +105,8 @@ fun EditorGestureReceiver(
                             // wait for second gesture
                             val event = withTimeoutOrNull(1000L) { awaitPointerEvent() }
                             if (!coroutineScope.isActive) return@awaitEachGesture
+                            // if window lost focus, ignore input
+                            if (!view.hasWindowFocus()) return@awaitEachGesture
 
                             if (event != null) {
                                 val fingerChange =
@@ -162,6 +168,9 @@ fun EditorGestureReceiver(
                             "Leaving gesture. totalDelta: ${totalDelta}, gestureDuration: $gestureDuration "
                         )
                         if (!coroutineScope.isActive) return@awaitEachGesture
+                        // if window lost focus, ignore input
+                        if (!view.hasWindowFocus()) return@awaitEachGesture
+
 
                         if (gestureState.getInputCount() == 1) {
                             if (totalDelta < TAP_MOVEMENT_TOLERANCE && gestureDuration < ONE_FINGER_TOUCH_TAP_TIME) {

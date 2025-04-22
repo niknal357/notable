@@ -412,6 +412,9 @@ class PageView(
         var delta = _delta
         if (scroll + delta < 0) delta = 0 - scroll
 
+        // There is nothing to do, return.
+        if (delta == 0) return
+
         scroll += delta
 
         // scroll bitmap
