@@ -6,18 +6,9 @@
 
 <div align="center">
 
-[//]: # ([![Contributors][contributors-shield]][contributors-url])
-
-[//]: # ([![Forks][forks-shield]][forks-url])
-
-[//]: # ([![Stargazers][stars-shield]][stars-url])
-
-[//]: # ([![Issues][issues-shield]][issues-url])
 [![License][license-shield]][license-url]
 [![Total Downloads][downloads-shield]][downloads-url]
 [![Discord][discord-shield]][discord-url]
-[![Ko-fi][kofi-shield]][kofi-url]
-
 
 ![Notable App][logo]
 
@@ -25,29 +16,35 @@
 
 A maintained and customized fork of the archived [olup/notable](https://github.com/olup/notable) project.
 
-
-[//]: # ([📖 Explore the docs »][docs-url] ·)
 [![🐛 Report Bug][bug-shield]][bug-url]
 [![Download Latest][download-shield]][download-url]
 [![💡 Request Feature][feature-shield]][feature-url]
 
+<a href="https://github.com/sponsors/ethran">
+  <img src="https://img.shields.io/badge/Sponsor_on-GitHub-%23ea4aaa?logo=githubsponsors&style=for-the-badge" alt="Sponsor on GitHub">
+</a>
+
 <a href="https://ko-fi.com/rethran" target="_blank">
-    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi">
-  </a>
+  <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi">
+</a>
 
 </div>
 
 ---
 <details>
   <summary>Table of Contents</summary>
-    - [About This Fork](#about-this-fork)
-    - [Features](#features)
-    - [Download](#download)
-    - [Gestures](#gestures)
-    - [Supported Devices](#supported-devices)
-    - [Screenshots](#screenshots)
-    - [Contribute](#contribute)
+
+- [About This Fork](#about-this-fork)  
+- [Features](#features)  
+- [Download](#download)  
+- [Gestures](#gestures)  
+- [Supported Devices](#supported-devices)  
+- [Roadmap](#roadmap)  
+- [Screenshots](#screenshots)  
+- [Contribute](#contribute)  
+
 </details>
+
 
 ---
 
@@ -119,6 +116,33 @@ This does not imply any commitment from the developers.
 
 Feel free to add your device if tested successfully!
 
+## Roadmap
+
+Features I’d like to implement in the future (some might take a while — or a long while):
+
+- [ ] Bookmarks support, tags, and internal links — [Issue #52](https://github.com/Ethran/notable/issues/52)  
+  - [ ] Export links to PDF  
+
+- [ ] Better notebook covers, provide default styles of title page
+
+- [ ] PDF annotation  
+
+- [ ] Figure and text recognition — [Issue #44](https://github.com/Ethran/notable/issues/44)  
+  - [ ] Searchable notes  
+  - [ ] Automatic creation of tag descriptions  
+  - [ ] Shape recognition  
+
+- [ ] Better selection tools  
+  - [ ] Stroke editing: color, size, etc.  
+  - [ ] Rotate  
+  - [ ] Flip selection  
+  - [ ] Auto-scroll when dragging selection to screen edges  
+  - [ ] Easier selection movement (e.g. dragging to scroll page)
+
+- [ ] More dynamic page and notebook movement. Currently, pages can only be moved left/right — add drag-and-drop support
+
+- [ ] Custom drawing tools, might not be possible.
+
 
 ---
 
@@ -169,6 +193,9 @@ Feel free to open issues or submit pull requests. I appreciate your help!
 [discord-url]: https://discord.gg/rvNHgaDmN2
 [kofi-shield]: https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ko--fi-ff5f5f?style=for-the-badge&logo=ko-fi&logoColor=white
 [kofi-url]: https://ko-fi.com/rethran
+
+[sponsor-shield]: https://img.shields.io/badge/Sponsor-GitHub-%23ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white
+[sponsor-url]: https://github.com/sponsors/rethran
 
 [docs-url]: https://github.com/Ethran/notable
 [bug-url]: https://github.com/Ethran/notable/issues/new?labels=bug&template=bug-report---.md
