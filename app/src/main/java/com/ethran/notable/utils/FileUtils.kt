@@ -11,7 +11,7 @@ import java.io.InputStream
 
 // adapted from:
 // https://stackoverflow.com/questions/71241337/copy-image-from-uri-in-another-folder-with-another-name-in-kotlin-android
-fun createFileFromContentUri(context: Context, fileUri: Uri): File {
+fun createFileFromContentUri(context: Context, fileUri: Uri, subfolder: String? = null): File {
     var fileName = ""
 
     // Get the display name of the file
@@ -29,8 +29,12 @@ fun createFileFromContentUri(context: Context, fileUri: Uri): File {
 
     // Set up the output file destination
 
-    val outputDir = ensureImagesFolder()
-
+    var outputDir = ensureImagesFolder()
+    if (subfolder != null) {
+        outputDir = File(outputDir, subfolder)
+        if (!outputDir.exists())
+            outputDir.mkdirs()
+    }
 
     fileName = sanitizeFileName(fileName)
     val outputFile = File(outputDir, fileName)

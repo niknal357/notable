@@ -38,7 +38,7 @@ fun drawCanvas(context: Context, pageId: String): Bitmap {
     val canvas = Canvas(bitmap)
 
     // Draw background
-    drawBg(canvas, page.nativeTemplate, 0)
+    drawBg(context, canvas, page.backgroundType, page.background)
 
     // Draw strokes
     for (stroke in strokes) {
@@ -77,7 +77,7 @@ fun PdfDocument.writePage(context: Context, number: Int, repo: PageRepository, i
     val offsetY = (A4_HEIGHT - (contentHeight * scaleFactor)) / 2
 
     documentPage.canvas.scale(scaleFactor, scaleFactor)
-    drawBg(documentPage.canvas, page.nativeTemplate, 0, scaleFactor)
+    drawBg(context, documentPage.canvas, page.backgroundType, page.background, 0, scaleFactor)
 
     for (image in images) {
         drawImage(context, documentPage.canvas, image, IntOffset(0, 0))

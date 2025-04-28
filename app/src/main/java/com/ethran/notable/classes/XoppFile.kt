@@ -31,9 +31,6 @@ import com.ethran.notable.utils.Pen
 import com.ethran.notable.utils.ensureImagesFolder
 import com.onyx.android.sdk.api.device.epd.EpdController
 import io.shipbook.shipbooksdk.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
 import org.w3c.dom.Document
@@ -310,7 +307,7 @@ object XoppFile {
 
         for (i in 0 until pages.length) {
             val pageElement = pages.item(i) as Element
-            val page = Page(notebookId = book.id, nativeTemplate = "blank")
+            val page = Page(notebookId = book.id)
             pageRepo.create(page)
             parseStrokes(context, pageElement, page)
             parseImages(context, pageElement, page)

@@ -20,7 +20,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.db.Page
-import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.ui.theme.InkaTheme
 import com.ethran.notable.utils.exportBook
 import com.ethran.notable.utils.exportPageToPng
@@ -103,8 +102,7 @@ class FloatingEditorActivity : ComponentActivity() {
                 page = Page(
                     id = pageId,
                     notebookId = null,
-                    parentFolderId = null,
-                    nativeTemplate = GlobalAppSettings.current.defaultNativeTemplate
+                    parentFolderId = null
                 )
                 appRepository.pageRepository.create(page)
             }

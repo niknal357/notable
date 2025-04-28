@@ -72,6 +72,12 @@ class PageView(
     var images = listOf<Image>()
     private var imagesById: HashMap<String, Image> = hashMapOf()
     var scroll by mutableIntStateOf(0) // is observed by ui
+    val scrolable: Boolean
+        get() = when (pageFromDb?.backgroundType) {
+            "native", null -> true
+            "coverImage" -> false
+            else -> true
+        }
     private val saveTopic = MutableSharedFlow<Unit>()
 
     var height by mutableIntStateOf(viewHeight) // is observed by ui
@@ -91,8 +97,10 @@ class PageView(
         }
 
         windowedCanvas.drawColor(Color.WHITE)
-        drawBg(windowedCanvas, pageFromDb?.nativeTemplate!!, scroll)
-
+        drawBg(
+            context, windowedCanvas, pageFromDb?.backgroundType ?: "native",
+            pageFromDb?.background ?: "blank", scroll
+        )
         val isCached = loadBitmap()
         initFromPersistLayer(isCached)
     }
@@ -148,7 +156,10 @@ class PageView(
             if (!isCached) {
                 // we draw and cache
 //                Log.d(TAG, "We do not have cashed.")
-                drawBg(windowedCanvas, page.nativeTemplate, scroll)
+                drawBg(
+                    context, windowedCanvas, pageFromDb?.backgroundType ?: "native",
+                    pageFromDb?.background ?: "blank", scroll
+                )
                 drawArea(viewRectangle)
                 persistBitmap()
                 persistBitmapThumbnail()
@@ -353,7 +364,10 @@ class PageView(
 
 
             val timeToDraw = measureTimeMillis {
-                drawBg(this, pageFromDb?.nativeTemplate ?: "blank", scroll)
+                drawBg(
+                    context, this, pageFromDb?.backgroundType ?: "native",
+                    pageFromDb?.background ?: "blank", scroll
+                )
                 val appSettings = GlobalAppSettings.current
 
                 if (appSettings?.debugMode == true) {
@@ -419,8 +433,10 @@ class PageView(
 
         // scroll bitmap
         val tmp = windowedBitmap.copy(windowedBitmap.config!!, false)
-        drawBg(windowedCanvas, pageFromDb?.nativeTemplate ?: "blank", scroll)
-
+        drawBg(
+            context, windowedCanvas, pageFromDb?.backgroundType ?: "native",
+            pageFromDb?.background ?: "blank", scroll
+        )
         windowedCanvas.drawBitmap(tmp, 0f, -delta.toFloat(), Paint())
         tmp.recycle()
 

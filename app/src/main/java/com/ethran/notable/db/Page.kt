@@ -32,7 +32,8 @@ import java.util.UUID
 data class Page(
     @PrimaryKey val id: String = UUID.randomUUID().toString(), val scroll: Int = 0,
     @ColumnInfo(index = true) val notebookId: String? = null,
-    @ColumnInfo(defaultValue = "blank") val nativeTemplate: String = "blank",
+    @ColumnInfo(defaultValue = "blank") val background : String = "blank",
+    @ColumnInfo(defaultValue = "native") val backgroundType: String = "native",
     @ColumnInfo(index = true) val parentFolderId: String? = null,
     val createdAt: Date = Date(), val updatedAt: Date = Date()
 )
@@ -105,7 +106,7 @@ class PageRepository(context: Context) {
         return db.getPageWithStrokesById(pageId)
     }
 
-   suspend fun getWithStrokeByIdSuspend(pageId: String): PageWithStrokes {
+    suspend fun getWithStrokeByIdSuspend(pageId: String): PageWithStrokes {
         return db.getPageWithStrokesByIdSuspend(pageId)
     }
 
