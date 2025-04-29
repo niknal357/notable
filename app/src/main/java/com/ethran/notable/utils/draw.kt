@@ -372,7 +372,8 @@ fun drawBackgroundImages(
     canvas: Canvas,
     backgroundImage: String,
     scroll: Int,
-    repeat: Boolean = false
+    scale: Float,
+    repeat: Boolean = false,
 ) {
     try {
         val imageBitmap = when (backgroundImage) {
@@ -395,8 +396,8 @@ fun drawBackgroundImages(
             val imageWidth = softwareBitmap.width
             val imageHeight = softwareBitmap.height
 
-            val canvasWidth = canvas.width
-            val canvasHeight = canvas.height
+            val canvasWidth = (canvas.width/scale).toInt()
+            val canvasHeight = (canvas.height/scale).toInt()
 
             val scaleFactor = canvasWidth.toFloat() / imageWidth
             val scaledHeight = (imageHeight * scaleFactor).toInt()
@@ -464,13 +465,13 @@ fun drawBg(
     scale: Float = 1f
 ) {
     if (backgroundType == "coverImage") {
-        drawBackgroundImages(context, canvas, background, 0)
+        drawBackgroundImages(context, canvas, background, 0, scale)
     }
     if (backgroundType == "imagerepeating") {
-        drawBackgroundImages(context, canvas, background, scroll, true)
+        drawBackgroundImages(context, canvas, background, scroll, scale, true)
     }
     if (backgroundType == "image") {
-        drawBackgroundImages(context, canvas, background, scroll)
+        drawBackgroundImages(context, canvas, background, scroll, scale)
     }
     if (backgroundType == "native") {
         when (background) {
