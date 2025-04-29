@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import com.ethran.notable.R
+import com.ethran.notable.db.BackgroundType
 import com.ethran.notable.utils.ensureImagesFolder
 import com.ethran.notable.utils.noRippleClickable
 import java.io.File
@@ -90,24 +91,23 @@ fun <T> SelectMenu(options: List<Pair<T, String>>, value: T, onChange: (T) -> Un
 
 @Composable
 fun BackgroundSelector(
-    currentBackground: String?,
-    currentBackgroundType: String?,
-    onBackgroundChange: (String, String) -> Unit,
+    currentBackground: String,
+    currentBackgroundType: BackgroundType,
+    onBackgroundChange: (String, BackgroundType) -> Unit,
     onRequestFilePicker: () -> Unit
 ) {
 //    val context = LocalContext.current
 
     Column {
         when (currentBackgroundType) {
-            "image", "imagerepeating", "coverImage" -> {
+            BackgroundType.CoverImage, BackgroundType.Image, BackgroundType.ImageRepeating -> {
                 Text("Choose Cover Image", fontWeight = FontWeight.Bold)
 
                 val baseOptions = listOf(
                     Triple("iris", "Iris", painterResource(id = R.drawable.iris)),
                 )
 
-                val folderName =
-                    if (currentBackgroundType == "coverImage") "covers" else "backgrounds"
+                val folderName = currentBackgroundType.folderName
                 val folder = File(ensureImagesFolder(), folderName)
 
                 val uriOptions = folder.listFiles()
@@ -203,7 +203,7 @@ fun BackgroundSelector(
                 }
             }
 
-            "native" -> {
+            BackgroundType.Native -> {
                 Text("Choose Native Template", fontWeight = FontWeight.Bold)
 
                 val nativeOptions = listOf(

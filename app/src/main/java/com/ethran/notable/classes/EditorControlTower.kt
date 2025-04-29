@@ -29,7 +29,6 @@ class EditorControlTower(
 ) {
 
     fun onSingleFingerVerticalSwipe(startPosition: SimplePointF, delta: Int) {
-        page.pageFromDb?.let { Log.e(TAG, it.backgroundType) }
         if (!page.scrolable)
             return
         if (state.mode == Mode.Select) {

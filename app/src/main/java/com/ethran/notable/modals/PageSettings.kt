@@ -25,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +38,7 @@ import com.ethran.notable.TAG
 import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.PageView
 import com.ethran.notable.components.BackgroundSelector
+import com.ethran.notable.db.BackgroundType
 import com.ethran.notable.utils.createFileFromContentUri
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.launch
@@ -47,10 +47,26 @@ import kotlinx.coroutines.launch
 fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    var pageBackground by remember { mutableStateOf(pageView.pageFromDb?.background) }
+    var pageBackground by remember { mutableStateOf(pageView.pageFromDb?.background ?: "blank") }
+
     val initialBackgroundType = pageView.pageFromDb?.backgroundType ?: "native"
-    var pageBackgroundType by remember { mutableStateOf(initialBackgroundType) }
-    var backgroundMode by remember { mutableStateOf(if (pageBackgroundType == "coverImage") "Cover" else if (pageBackgroundType == "image" || pageBackgroundType == "imagerepeating") "Image" else "Native") }
+    var pageBackgroundType: BackgroundType by remember {
+        mutableStateOf(
+            BackgroundType.fromKey(
+                initialBackgroundType
+            )
+        )
+    }
+
+    var backgroundMode by remember {
+        mutableStateOf(
+            when (pageBackgroundType) {
+                is BackgroundType.CoverImage -> "Cover"
+                is BackgroundType.Image, is BackgroundType.ImageRepeating -> "Image"
+                else -> "Native"
+            }
+        )
+    }
 
     // Create an activity result launcher for picking visual media (images in this case)
     val pickMedia =
@@ -60,7 +76,7 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                 val flag = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 context.contentResolver.takePersistableUriPermission(uri, flag)
                 Log.e(TAG, "PageSettingsModal: $pageBackgroundType")
-                val subfolder = if (pageBackgroundType == "coverImage") "covers" else "backgrounds"
+                val subfolder = pageBackgroundType.folderName
                 //  copy image to documents/notabledb/images/filename
                 val copiedFile = createFileFromContentUri(context, uri, subfolder)
 
@@ -71,12 +87,11 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
 //                            DrawCanvas.addImageByUri.value = copiedFile.toUri()
                 val updatedPage = pageView.pageFromDb!!.copy(
                     background = copiedFile.toString(),
-                    backgroundType = if (pageBackgroundType == "imagerepeating") "imagerepeating" else "image"
+                    backgroundType = pageBackgroundType.key
                 )
                 pageView.updatePageSettings(updatedPage)
                 scope.launch { DrawCanvas.refreshUi.emit(Unit) }
                 pageBackground = it.toString()
-                pageBackgroundType = updatedPage.backgroundType
             }
         }
 
@@ -106,7 +121,7 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                     Button(
                         onClick = {
                             backgroundMode = "Native"
-                            pageBackgroundType = "native"
+                            pageBackgroundType = BackgroundType.Native
                         },
                         modifier = Modifier.padding(5.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -120,7 +135,7 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                     Button(
                         onClick = {
                             backgroundMode = "Image"
-                            pageBackgroundType = "image"
+                            pageBackgroundType = BackgroundType.Image
                         },
                         modifier = Modifier.padding(5.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -134,7 +149,7 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                     Button(
                         onClick = {
                             backgroundMode = "Cover"
-                            pageBackgroundType = "coverImage"
+                            pageBackgroundType = BackgroundType.CoverImage
                         },
                         modifier = Modifier.padding(5.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -155,12 +170,12 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                             Text("Repeat background")
                             Spacer(Modifier.width(10.dp))
                             Switch(
-                                checked = pageBackgroundType == "imagerepeating",
+                                checked = pageBackgroundType == BackgroundType.ImageRepeating,
                                 onCheckedChange = { isChecked ->
                                     pageBackgroundType =
-                                        if (isChecked) "imagerepeating" else "image"
+                                        if (isChecked) BackgroundType.ImageRepeating else BackgroundType.Image
                                     val updatedPage =
-                                        pageView.pageFromDb!!.copy(backgroundType = pageBackgroundType)
+                                        pageView.pageFromDb!!.copy(backgroundType = pageBackgroundType.key)
                                     pageView.updatePageSettings(updatedPage)
                                     scope.launch { DrawCanvas.refreshUi.emit(Unit) }
                                 }
@@ -176,7 +191,7 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                             onBackgroundChange = { background, type ->
                                 val updatedPage = pageView.pageFromDb!!.copy(
                                     background = background,
-                                    backgroundType = type
+                                    backgroundType = type.key
                                 )
                                 pageView.updatePageSettings(updatedPage)
                                 scope.launch { DrawCanvas.refreshUi.emit(Unit) }
@@ -196,7 +211,7 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                             onBackgroundChange = { background, type ->
                                 val updatedPage = pageView.pageFromDb!!.copy(
                                     background = background,
-                                    backgroundType = type
+                                    backgroundType = type.key
                                 )
                                 pageView.updatePageSettings(updatedPage)
                                 scope.launch { DrawCanvas.refreshUi.emit(Unit) }
@@ -234,7 +249,7 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                                             pageView.updatePageSettings(updatedPage)
                                             scope.launch { DrawCanvas.refreshUi.emit(Unit) }
                                             pageBackground = value
-                                            pageBackgroundType = "native"
+                                            pageBackgroundType = BackgroundType.Native
                                         }
                                 ) {
                                     Text(label)

@@ -11,6 +11,8 @@ import android.graphics.Rect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.core.graphics.toRect
 import androidx.core.graphics.withClip
@@ -18,9 +20,11 @@ import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.db.AppDatabase
+import com.ethran.notable.db.BackgroundType
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.Page
 import com.ethran.notable.db.Stroke
+import com.ethran.notable.db.getBackgroundType
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.utils.drawBg
 import com.ethran.notable.utils.drawImage
@@ -87,6 +91,20 @@ class PageView(
     private var dbStrokes = AppDatabase.getDatabase(context).strokeDao()
     private var dbImages = AppDatabase.getDatabase(context).ImageDao()
 
+    // Save bitmap, to avoid loading from disk every time.
+    data class CachedBackground(val bitmap: ImageBitmap?, val path: String)
+
+    private var currentBackground = CachedBackground(null, "")
+        private set
+
+    fun getOrLoadBackground(filePath: String): ImageBitmap? {
+        if (currentBackground.path != filePath) {
+            currentBackground =
+                CachedBackground(BitmapFactory.decodeFile(filePath)?.asImageBitmap(), filePath)
+        }
+        return currentBackground.bitmap
+    }
+
 
     init {
         coroutineScope.launch {
@@ -97,9 +115,10 @@ class PageView(
         }
 
         windowedCanvas.drawColor(Color.WHITE)
+
         drawBg(
-            context, windowedCanvas, pageFromDb?.backgroundType ?: "native",
-            pageFromDb?.background ?: "blank", scroll
+            context, windowedCanvas, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+            pageFromDb?.background ?: "blank", scroll, 1f, this
         )
         val isCached = loadBitmap()
         initFromPersistLayer(isCached)
@@ -157,8 +176,11 @@ class PageView(
                 // we draw and cache
 //                Log.d(TAG, "We do not have cashed.")
                 drawBg(
-                    context, windowedCanvas, pageFromDb?.backgroundType ?: "native",
-                    pageFromDb?.background ?: "blank", scroll
+                    context,
+                    windowedCanvas,
+                    pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+                    pageFromDb?.background ?: "blank",
+                    scroll, 1f, this@PageView
                 )
                 drawArea(viewRectangle)
                 persistBitmap()
@@ -365,8 +387,8 @@ class PageView(
 
             val timeToDraw = measureTimeMillis {
                 drawBg(
-                    context, this, pageFromDb?.backgroundType ?: "native",
-                    pageFromDb?.background ?: "blank", scroll
+                    context, this, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+                    pageFromDb?.background ?: "blank", scroll, 1f, this@PageView
                 )
                 val appSettings = GlobalAppSettings.current
 
@@ -434,8 +456,8 @@ class PageView(
         // scroll bitmap
         val tmp = windowedBitmap.copy(windowedBitmap.config!!, false)
         drawBg(
-            context, windowedCanvas, pageFromDb?.backgroundType ?: "native",
-            pageFromDb?.background ?: "blank", scroll
+            context, windowedCanvas, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+            pageFromDb?.background ?: "blank", scroll, 1f, this
         )
         windowedCanvas.drawBitmap(tmp, 0f, -delta.toFloat(), Paint())
         tmp.recycle()

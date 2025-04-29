@@ -50,6 +50,23 @@ data class PageWithImages(
     ) val images: List<Image>
 )
 
+
+sealed class BackgroundType(val key: String, val folderName: String) {
+    object Image : BackgroundType("image", "backgrounds")
+    object ImageRepeating : BackgroundType("imagerepeating", "backgrounds")
+    object CoverImage : BackgroundType("coverImage", "covers")
+    object Native : BackgroundType("native", "") // no folder needed for native
+    companion object {
+        fun fromKey(key: String): BackgroundType = when (key) {
+            Image.key -> Image
+            ImageRepeating.key -> ImageRepeating
+            CoverImage.key -> CoverImage
+            Native.key -> Native
+            else -> Native // fallback
+        }
+    }
+}
+
 // DAO
 @Dao
 interface PageDao {
@@ -124,5 +141,16 @@ class PageRepository(context: Context) {
 
     fun delete(pageId: String) {
         return db.delete(pageId)
+    }
+
+
+}
+
+fun Page.getBackgroundType(): BackgroundType {
+    return when (this.backgroundType) {
+        BackgroundType.Image.key -> BackgroundType.Image
+        BackgroundType.ImageRepeating.key -> BackgroundType.ImageRepeating
+        BackgroundType.CoverImage.key -> BackgroundType.CoverImage
+        else -> BackgroundType.Native
     }
 }

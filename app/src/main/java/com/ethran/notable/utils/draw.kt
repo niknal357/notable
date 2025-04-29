@@ -23,7 +23,9 @@ import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.DrawCanvas
+import com.ethran.notable.classes.PageView
 import com.ethran.notable.classes.pressure
+import com.ethran.notable.db.BackgroundType
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.Stroke
 import com.ethran.notable.modals.GlobalAppSettings
@@ -373,6 +375,7 @@ fun drawBackgroundImages(
     backgroundImage: String,
     scroll: Int,
     scale: Float,
+    page: PageView? = null,
     repeat: Boolean = false,
 ) {
     try {
@@ -383,9 +386,13 @@ fun drawBackgroundImages(
             }
 
             else -> {
-                val backgroundFile = File(backgroundImage)
-                val bitmap = BitmapFactory.decodeFile(backgroundFile.absolutePath)
-                bitmap?.asImageBitmap()
+                if (page != null) {
+                    page.getOrLoadBackground(backgroundImage)
+                } else {
+                    val backgroundFile = File(backgroundImage)
+                    val bitmap = BitmapFactory.decodeFile(backgroundFile.absolutePath)
+                    bitmap?.asImageBitmap()
+                }
             }
         }
 
@@ -396,8 +403,8 @@ fun drawBackgroundImages(
             val imageWidth = softwareBitmap.width
             val imageHeight = softwareBitmap.height
 
-            val canvasWidth = (canvas.width/scale).toInt()
-            val canvasHeight = (canvas.height/scale).toInt()
+            val canvasWidth = (canvas.width / scale).toInt()
+            val canvasHeight = (canvas.height / scale).toInt()
 
             val scaleFactor = canvasWidth.toFloat() / imageWidth
             val scaledHeight = (imageHeight * scaleFactor).toInt()
@@ -459,27 +466,34 @@ fun drawBackgroundImages(
 fun drawBg(
     context: Context,
     canvas: Canvas,
-    backgroundType: String,
+    backgroundType: BackgroundType,
     background: String,
     scroll: Int = 0,
-    scale: Float = 1f
+    scale: Float = 1f,
+    page: PageView? = null
 ) {
-    if (backgroundType == "coverImage") {
-        drawBackgroundImages(context, canvas, background, 0, scale)
-    }
-    if (backgroundType == "imagerepeating") {
-        drawBackgroundImages(context, canvas, background, scroll, scale, true)
-    }
-    if (backgroundType == "image") {
-        drawBackgroundImages(context, canvas, background, scroll, scale)
-    }
-    if (backgroundType == "native") {
-        when (background) {
-            "blank" -> canvas.drawColor(Color.WHITE)
-            "dotted" -> drawDottedBg(canvas, scroll, scale)
-            "lined" -> drawLinedBg(canvas, scroll, scale)
-            "squared" -> drawSquaredBg(canvas, scroll, scale)
-            "hexed" -> drawHexedBg(canvas, scroll, scale)
+    when (backgroundType) {
+        is BackgroundType.Image -> {
+            drawBackgroundImages(context, canvas, background, scroll, scale, page)
+        }
+
+        is BackgroundType.ImageRepeating -> {
+            drawBackgroundImages(context, canvas, background, scroll, scale, page, true)
+
+        }
+
+        is BackgroundType.CoverImage -> {
+            drawBackgroundImages(context, canvas, background, 0, scale, page)
+        }
+
+        is BackgroundType.Native -> {
+            when (background) {
+                "blank" -> canvas.drawColor(Color.WHITE)
+                "dotted" -> drawDottedBg(canvas, scroll, scale)
+                "lined" -> drawLinedBg(canvas, scroll, scale)
+                "squared" -> drawSquaredBg(canvas, scroll, scale)
+                "hexed" -> drawHexedBg(canvas, scroll, scale)
+            }
         }
     }
 
