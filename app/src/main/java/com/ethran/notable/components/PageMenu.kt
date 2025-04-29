@@ -78,7 +78,8 @@ fun PageMenu(
                             val book = appRepository.bookRepository.getById(notebookId)
                                 ?: return@noRippleClickable
                             val page = Page(
-                                notebookId = notebookId
+                                notebookId = notebookId,
+                                background = book.defaultNativeTemplate,
                             )
                             appRepository.pageRepository.create(page)
                             appRepository.bookRepository.addPage(notebookId, page.id, index + 1)
