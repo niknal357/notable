@@ -60,14 +60,6 @@ class PageView(
     private var strokeRemainingLoadingJob: Job? = null
 
     private var snack: SnackConf? = null
-    fun cleanJob() {
-        //ensure that snack is canceled, even on dispose of the page.
-        CoroutineScope(Dispatchers.IO).launch {
-            snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
-        }
-        strokeInitialLoadingJob?.cancel()
-        strokeRemainingLoadingJob?.cancel()
-    }
 
     var windowedBitmap = Bitmap.createBitmap(viewWidth, viewHeight, Bitmap.Config.ARGB_8888)
     var windowedCanvas = Canvas(windowedBitmap)
@@ -363,6 +355,24 @@ class PageView(
         Bitmap.createScaledBitmap(windowedBitmap, 500, (500 * ratio).toInt(), false)
             .compress(Bitmap.CompressFormat.JPEG, 80, os)
         os.close()
+    }
+
+    private fun cleanJob() {
+        //ensure that snack is canceled, even on dispose of the page.
+        CoroutineScope(Dispatchers.IO).launch {
+            snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
+        }
+        strokeInitialLoadingJob?.cancel()
+        strokeRemainingLoadingJob?.cancel()
+    }
+
+    /*
+        Cancel loading strokes, and save bitmap to disk
+    */
+    fun onDispose() {
+        cleanJob()
+        persistBitmap()
+        persistBitmapThumbnail()
     }
 
     // ignored strokes are used in handleSelect

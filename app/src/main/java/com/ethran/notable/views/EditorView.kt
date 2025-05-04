@@ -79,10 +79,9 @@ fun EditorView(
             )
         }
 
-        //cancel loading strokes.
         DisposableEffect(Unit) {
             onDispose {
-                page.cleanJob()
+                page.onDispose()
             }
         }
 
