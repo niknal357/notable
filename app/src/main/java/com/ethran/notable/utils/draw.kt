@@ -11,6 +11,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.Rect
+import android.graphics.RectF
 import android.net.Uri
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -40,6 +41,7 @@ import java.io.File
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -405,18 +407,21 @@ fun drawBackgroundImages(
 
             val canvasWidth = (canvas.width / scale).toInt()
             val canvasHeight = (canvas.height / scale).toInt()
+            val widthOnCanvas = (min(SCREEN_WIDTH, SCREEN_HEIGHT) / scale).toInt()
 
-            val scaleFactor = canvasWidth.toFloat() / imageWidth
+            val scaleFactor = widthOnCanvas.toFloat() / imageWidth
             val scaledHeight = (imageHeight * scaleFactor).toInt()
 
             val paint = Paint()
+            paint.color = Color.WHITE
+
             // Draw the first image, considering the scroll offset
             val srcTop = (scroll / scaleFactor).toInt() % imageHeight
             val rectOnImage = Rect(0, srcTop.coerceAtLeast(0), imageWidth, imageHeight)
             val rectOnCanvas = Rect(
                 0,
                 0,
-                canvasWidth,
+                widthOnCanvas,
                 ((imageHeight - srcTop) * scaleFactor).toInt()
             )
             var filledHeight = 0
@@ -424,6 +429,20 @@ fun drawBackgroundImages(
                 canvas.drawBitmap(softwareBitmap, rectOnImage, rectOnCanvas, paint)
                 filledHeight = rectOnCanvas.bottom
             }
+            if (widthOnCanvas < canvasWidth) {
+                Log.e(
+                    TAG,
+                    "left: $filledHeight, top: 0, right: $canvasWidth, bottom: $canvasHeight"
+                )
+                canvas.drawRect(
+                    widthOnCanvas.toFloat(),
+                    0f,
+                    canvasWidth.toFloat(),
+                    canvasHeight.toFloat(),
+                    paint
+                )
+            }
+
             if (repeat) {
                 var currentTop = filledHeight
                 val srcRect = Rect(0, 0, imageWidth, imageHeight)
@@ -432,7 +451,7 @@ fun drawBackgroundImages(
                     val dstRect = Rect(
                         0,
                         currentTop,
-                        canvasWidth,
+                        widthOnCanvas,
                         currentTop + scaledHeight
                     )
 
@@ -442,7 +461,6 @@ fun drawBackgroundImages(
             } else {
                 // Fill the remaining area with white if necessary
                 if (filledHeight < canvasHeight) {
-                    paint.color = android.graphics.Color.WHITE
                     canvas.drawRect(
                         0f,
                         filledHeight.toFloat(),
@@ -462,6 +480,41 @@ fun drawBackgroundImages(
     }
 }
 
+fun drawTitleBox(canvas: Canvas, scale: Float) {
+
+    // Draw label-like area in center
+    val paint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+
+    val borderPaint = Paint().apply {
+        color = Color.DKGRAY
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+        isAntiAlias = true
+    }
+
+    // This might not be actual width in some situations
+    // investigate it, in case of problems
+    val canvasHeight = (max(SCREEN_WIDTH, SCREEN_HEIGHT) / scale).toInt()
+    val canvasWidth = (min(SCREEN_WIDTH, SCREEN_HEIGHT) / scale).toInt()
+
+    // Dimensions for the label box
+    val labelWidth = canvasWidth * 0.8f
+    val labelHeight = canvasHeight * 0.25f
+    val left = (canvasWidth - labelWidth) / 2
+    val top = (canvasHeight - labelHeight) / 2
+    val right = left + labelWidth
+    val bottom = top + labelHeight
+
+    val rectF = RectF(left, top, right, bottom)
+    val cornerRadius = 64f
+
+    canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, paint)
+    canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint)
+}
 
 fun drawBg(
     context: Context,
@@ -479,11 +532,11 @@ fun drawBg(
 
         is BackgroundType.ImageRepeating -> {
             drawBackgroundImages(context, canvas, background, scroll, scale, page, true)
-
         }
 
         is BackgroundType.CoverImage -> {
             drawBackgroundImages(context, canvas, background, 0, scale, page)
+            drawTitleBox(canvas, scale)
         }
 
         is BackgroundType.Native -> {
