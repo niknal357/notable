@@ -79,12 +79,6 @@ fun EditorView(
             )
         }
 
-        //cancel loading strokes.
-        DisposableEffect(Unit) {
-            onDispose {
-                page.cleanJob()
-            }
-        }
 
         // Dynamically update the page width when the Box constraints change
         LaunchedEffect(width, height) {
@@ -110,6 +104,14 @@ fun EditorView(
         LaunchedEffect(Unit) {
             if (_bookId != null) {
                 appRepository.bookRepository.setOpenPageId(_bookId, _pageId)
+            }
+        }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                // finish selection operation
+                editorState.selectionState.applySelectionDisplace(page)
+                page.onDispose()
             }
         }
 

@@ -32,7 +32,11 @@ class AppRepository(context: Context) {
         val index = pages.indexOf(pageId)
         if (index == pages.size - 1) {
             // creating a new page
-            val page = Page(notebookId = notebookId, nativeTemplate = book.defaultNativeTemplate)
+            val page = Page(
+                notebookId = notebookId,
+                background = book.defaultNativeTemplate,
+                backgroundType = "native"
+            )
             pageRepository.create(page)
             bookRepository.addPage(notebookId, page.id)
             return page.id

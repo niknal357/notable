@@ -20,7 +20,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.db.Page
-import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.ui.theme.InkaTheme
 
@@ -68,8 +67,8 @@ fun FloatingEditorView(
                                 // new page uuid
                                 val page = Page(
                                     notebookId = null,
-                                    parentFolderId = null,
-                                    nativeTemplate = GlobalAppSettings.current.defaultNativeTemplate
+                                    background = GlobalAppSettings.current.defaultNativeTemplate,
+                                    parentFolderId = null
                                 )
                                 EditorView(
                                     navController = navController,

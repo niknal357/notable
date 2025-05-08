@@ -74,7 +74,7 @@ class BookRepository(context: Context) {
 
     fun create(notebook: Notebook) {
         db.create(notebook)
-        val page = Page(notebookId = notebook.id, nativeTemplate = notebook.defaultNativeTemplate)
+        val page = Page(notebookId = notebook.id, background = notebook.defaultNativeTemplate)
         pageDb.create(page)
 
         db.setPageIds(notebook.id, listOf(page.id))

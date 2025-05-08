@@ -2,6 +2,7 @@ package com.ethran.notable.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
@@ -10,16 +11,22 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.Rect
+import android.graphics.RectF
 import android.net.Uri
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
+import com.ethran.notable.R
 import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.DrawCanvas
+import com.ethran.notable.classes.PageView
 import com.ethran.notable.classes.pressure
+import com.ethran.notable.db.BackgroundType
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.Stroke
 import com.ethran.notable.modals.GlobalAppSettings
@@ -30,9 +37,11 @@ import com.onyx.android.sdk.pen.NeoCharcoalPen
 import com.onyx.android.sdk.pen.NeoFountainPen
 import com.onyx.android.sdk.pen.NeoMarkerPen
 import io.shipbook.shipbooksdk.Log
+import java.io.File
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -362,13 +371,183 @@ fun drawHexagon(canvas: Canvas, centerX: Float, centerY: Float, r: Float, paint:
     canvas.drawPath(path, paint)
 }
 
-fun drawBg(canvas: Canvas, nativeTemplate: String, scroll: Int, scale: Float = 1f) {
-    when (nativeTemplate) {
-        "blank" -> canvas.drawColor(Color.WHITE)
-        "dotted" -> drawDottedBg(canvas, scroll, scale)
-        "lined" -> drawLinedBg(canvas, scroll, scale)
-        "squared" -> drawSquaredBg(canvas, scroll, scale)
-        "hexed" -> drawHexedBg(canvas, scroll, scale)
+fun drawBackgroundImages(
+    context: Context,
+    canvas: Canvas,
+    backgroundImage: String,
+    scroll: Int,
+    scale: Float,
+    page: PageView? = null,
+    repeat: Boolean = false,
+) {
+    try {
+        val imageBitmap = when (backgroundImage) {
+            "iris" -> {
+                val resId = R.drawable.iris
+                ImageBitmap.imageResource(context.resources, resId)
+            }
+
+            else -> {
+                if (page != null) {
+                    page.getOrLoadBackground(backgroundImage)
+                } else {
+                    val backgroundFile = File(backgroundImage)
+                    val bitmap = BitmapFactory.decodeFile(backgroundFile.absolutePath)
+                    bitmap?.asImageBitmap()
+                }
+            }
+        }
+
+        if (imageBitmap != null) {
+            val softwareBitmap = imageBitmap.asAndroidBitmap().copy(Bitmap.Config.ARGB_8888, true)
+            DrawCanvas.addImageByUri.value = null
+
+            val imageWidth = softwareBitmap.width
+            val imageHeight = softwareBitmap.height
+
+            val canvasWidth = (canvas.width / scale).toInt()
+            val canvasHeight = (canvas.height / scale).toInt()
+            val widthOnCanvas = (min(SCREEN_WIDTH, SCREEN_HEIGHT) / scale).toInt()
+
+            val scaleFactor = widthOnCanvas.toFloat() / imageWidth
+            val scaledHeight = (imageHeight * scaleFactor).toInt()
+
+            val paint = Paint()
+            paint.color = Color.WHITE
+
+            // Draw the first image, considering the scroll offset
+            val srcTop = (scroll / scaleFactor).toInt() % imageHeight
+            val rectOnImage = Rect(0, srcTop.coerceAtLeast(0), imageWidth, imageHeight)
+            val rectOnCanvas = Rect(
+                0,
+                0,
+                widthOnCanvas,
+                ((imageHeight - srcTop) * scaleFactor).toInt()
+            )
+            var filledHeight = 0
+            if (repeat || scroll < canvasHeight) {
+                canvas.drawBitmap(softwareBitmap, rectOnImage, rectOnCanvas, paint)
+                filledHeight = rectOnCanvas.bottom
+            }
+            if (widthOnCanvas < canvasWidth) {
+                Log.e(
+                    TAG,
+                    "left: $filledHeight, top: 0, right: $canvasWidth, bottom: $canvasHeight"
+                )
+                canvas.drawRect(
+                    widthOnCanvas.toFloat(),
+                    0f,
+                    canvasWidth.toFloat(),
+                    canvasHeight.toFloat(),
+                    paint
+                )
+            }
+
+            if (repeat) {
+                var currentTop = filledHeight
+                val srcRect = Rect(0, 0, imageWidth, imageHeight)
+                while (currentTop < canvasHeight) {
+
+                    val dstRect = Rect(
+                        0,
+                        currentTop,
+                        widthOnCanvas,
+                        currentTop + scaledHeight
+                    )
+
+                    canvas.drawBitmap(softwareBitmap, srcRect, dstRect, paint)
+                    currentTop += scaledHeight
+                }
+            } else {
+                // Fill the remaining area with white if necessary
+                if (filledHeight < canvasHeight) {
+                    canvas.drawRect(
+                        0f,
+                        filledHeight.toFloat(),
+                        canvasWidth.toFloat(),
+                        canvasHeight.toFloat(),
+                        paint
+                    )
+                }
+            }
+
+            Log.i(TAG, "Background drawn successfully")
+        } else {
+            Log.e(TAG, "Failed to load image from $backgroundImage")
+        }
+    } catch (e: Exception) {
+        Log.e(TAG, "Error loading background image: ${e.message}", e)
+    }
+}
+
+fun drawTitleBox(canvas: Canvas, scale: Float) {
+
+    // Draw label-like area in center
+    val paint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+
+    val borderPaint = Paint().apply {
+        color = Color.DKGRAY
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+        isAntiAlias = true
+    }
+
+    // This might not be actual width in some situations
+    // investigate it, in case of problems
+    val canvasHeight = (max(SCREEN_WIDTH, SCREEN_HEIGHT) / scale).toInt()
+    val canvasWidth = (min(SCREEN_WIDTH, SCREEN_HEIGHT) / scale).toInt()
+
+    // Dimensions for the label box
+    val labelWidth = canvasWidth * 0.8f
+    val labelHeight = canvasHeight * 0.25f
+    val left = (canvasWidth - labelWidth) / 2
+    val top = (canvasHeight - labelHeight) / 2
+    val right = left + labelWidth
+    val bottom = top + labelHeight
+
+    val rectF = RectF(left, top, right, bottom)
+    val cornerRadius = 64f
+
+    canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, paint)
+    canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint)
+}
+
+fun drawBg(
+    context: Context,
+    canvas: Canvas,
+    backgroundType: BackgroundType,
+    background: String,
+    scroll: Int = 0,
+    scale: Float = 1f,
+    page: PageView? = null
+) {
+    when (backgroundType) {
+        is BackgroundType.Image -> {
+            drawBackgroundImages(context, canvas, background, scroll, scale, page)
+        }
+
+        is BackgroundType.ImageRepeating -> {
+            drawBackgroundImages(context, canvas, background, scroll, scale, page, true)
+        }
+
+        is BackgroundType.CoverImage -> {
+            drawBackgroundImages(context, canvas, background, 0, scale, page)
+            drawTitleBox(canvas, scale)
+        }
+
+        is BackgroundType.Native -> {
+            when (background) {
+                "blank" -> canvas.drawColor(Color.WHITE)
+                "dotted" -> drawDottedBg(canvas, scroll, scale)
+                "lined" -> drawLinedBg(canvas, scroll, scale)
+                "squared" -> drawSquaredBg(canvas, scroll, scale)
+                "hexed" -> drawHexedBg(canvas, scroll, scale)
+            }
+        }
     }
 
     // in landscape orientation add margin to indicate what will be visible in vertical orientation.

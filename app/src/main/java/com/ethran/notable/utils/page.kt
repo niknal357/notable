@@ -15,6 +15,7 @@ import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.db.PageRepository
 import com.ethran.notable.db.Stroke
+import com.ethran.notable.db.getBackgroundType
 import com.ethran.notable.modals.A4_HEIGHT
 import com.ethran.notable.modals.A4_WIDTH
 import io.shipbook.shipbooksdk.Log
@@ -38,7 +39,7 @@ fun drawCanvas(context: Context, pageId: String): Bitmap {
     val canvas = Canvas(bitmap)
 
     // Draw background
-    drawBg(canvas, page.nativeTemplate, 0)
+    drawBg(context, canvas, page.getBackgroundType(), page.background)
 
     // Draw strokes
     for (stroke in strokes) {
@@ -77,7 +78,7 @@ fun PdfDocument.writePage(context: Context, number: Int, repo: PageRepository, i
     val offsetY = (A4_HEIGHT - (contentHeight * scaleFactor)) / 2
 
     documentPage.canvas.scale(scaleFactor, scaleFactor)
-    drawBg(documentPage.canvas, page.nativeTemplate, 0, scaleFactor)
+    drawBg(context, documentPage.canvas, page.getBackgroundType(), page.background, 0, scaleFactor)
 
     for (image in images) {
         drawImage(context, documentPage.canvas, image, IntOffset(0, 0))

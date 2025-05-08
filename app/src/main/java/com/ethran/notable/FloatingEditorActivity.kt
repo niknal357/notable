@@ -104,7 +104,7 @@ class FloatingEditorActivity : ComponentActivity() {
                     id = pageId,
                     notebookId = null,
                     parentFolderId = null,
-                    nativeTemplate = GlobalAppSettings.current.defaultNativeTemplate
+                    background =  GlobalAppSettings.current.defaultNativeTemplate
                 )
                 appRepository.pageRepository.create(page)
             }
