@@ -11,6 +11,8 @@ import android.graphics.Rect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.core.graphics.toRect
 import androidx.core.graphics.withClip
@@ -18,9 +20,11 @@ import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.db.AppDatabase
+import com.ethran.notable.db.BackgroundType
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.Page
 import com.ethran.notable.db.Stroke
+import com.ethran.notable.db.getBackgroundType
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.utils.drawBg
 import com.ethran.notable.utils.drawImage
@@ -56,14 +60,6 @@ class PageView(
     private var strokeRemainingLoadingJob: Job? = null
 
     private var snack: SnackConf? = null
-    fun cleanJob() {
-        //ensure that snack is canceled, even on dispose of the page.
-        CoroutineScope(Dispatchers.IO).launch {
-            snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
-        }
-        strokeInitialLoadingJob?.cancel()
-        strokeRemainingLoadingJob?.cancel()
-    }
 
     var windowedBitmap = Bitmap.createBitmap(viewWidth, viewHeight, Bitmap.Config.ARGB_8888)
     var windowedCanvas = Canvas(windowedBitmap)
@@ -72,6 +68,12 @@ class PageView(
     var images = listOf<Image>()
     private var imagesById: HashMap<String, Image> = hashMapOf()
     var scroll by mutableIntStateOf(0) // is observed by ui
+    val scrolable: Boolean
+        get() = when (pageFromDb?.backgroundType) {
+            "native", null -> true
+            "coverImage" -> false
+            else -> true
+        }
     private val saveTopic = MutableSharedFlow<Unit>()
 
     var height by mutableIntStateOf(viewHeight) // is observed by ui
@@ -80,6 +82,20 @@ class PageView(
 
     private var dbStrokes = AppDatabase.getDatabase(context).strokeDao()
     private var dbImages = AppDatabase.getDatabase(context).ImageDao()
+
+    // Save bitmap, to avoid loading from disk every time.
+    data class CachedBackground(val bitmap: ImageBitmap?, val path: String)
+
+    private var currentBackground = CachedBackground(null, "")
+        private set
+
+    fun getOrLoadBackground(filePath: String): ImageBitmap? {
+        if (currentBackground.path != filePath) {
+            currentBackground =
+                CachedBackground(BitmapFactory.decodeFile(filePath)?.asImageBitmap(), filePath)
+        }
+        return currentBackground.bitmap
+    }
 
 
     init {
@@ -91,8 +107,11 @@ class PageView(
         }
 
         windowedCanvas.drawColor(Color.WHITE)
-        drawBg(windowedCanvas, pageFromDb?.nativeTemplate!!, scroll)
 
+        drawBg(
+            context, windowedCanvas, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+            pageFromDb?.background ?: "blank", scroll, 1f, this
+        )
         val isCached = loadBitmap()
         initFromPersistLayer(isCached)
     }
@@ -148,7 +167,13 @@ class PageView(
             if (!isCached) {
                 // we draw and cache
 //                Log.d(TAG, "We do not have cashed.")
-                drawBg(windowedCanvas, page.nativeTemplate, scroll)
+                drawBg(
+                    context,
+                    windowedCanvas,
+                    pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+                    pageFromDb?.background ?: "blank",
+                    scroll, 1f, this@PageView
+                )
                 drawArea(viewRectangle)
                 persistBitmap()
                 persistBitmapThumbnail()
@@ -332,6 +357,24 @@ class PageView(
         os.close()
     }
 
+    private fun cleanJob() {
+        //ensure that snack is canceled, even on dispose of the page.
+        CoroutineScope(Dispatchers.IO).launch {
+            snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
+        }
+        strokeInitialLoadingJob?.cancel()
+        strokeRemainingLoadingJob?.cancel()
+    }
+
+    /*
+        Cancel loading strokes, and save bitmap to disk
+    */
+    fun onDispose() {
+        cleanJob()
+        persistBitmap()
+        persistBitmapThumbnail()
+    }
+
     // ignored strokes are used in handleSelect
     fun drawArea(
         area: Rect,
@@ -353,7 +396,10 @@ class PageView(
 
 
             val timeToDraw = measureTimeMillis {
-                drawBg(this, pageFromDb?.nativeTemplate ?: "blank", scroll)
+                drawBg(
+                    context, this, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+                    pageFromDb?.background ?: "blank", scroll, 1f, this@PageView
+                )
                 val appSettings = GlobalAppSettings.current
 
                 if (appSettings?.debugMode == true) {
@@ -419,8 +465,10 @@ class PageView(
 
         // scroll bitmap
         val tmp = windowedBitmap.copy(windowedBitmap.config!!, false)
-        drawBg(windowedCanvas, pageFromDb?.nativeTemplate ?: "blank", scroll)
-
+        drawBg(
+            context, windowedCanvas, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+            pageFromDb?.background ?: "blank", scroll, 1f, this
+        )
         windowedCanvas.drawBitmap(tmp, 0f, -delta.toFloat(), Paint())
         tmp.recycle()
 

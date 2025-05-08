@@ -245,8 +245,8 @@ fun Library(navController: NavController, folderId: String? = null) {
                             .noRippleClickable {
                                 val page = Page(
                                     notebookId = null,
-                                    parentFolderId = folderId,
-                                    nativeTemplate = GlobalAppSettings.current.defaultNativeTemplate
+                                    background = GlobalAppSettings.current.defaultNativeTemplate,
+                                    parentFolderId = folderId
                                 )
                                 appRepository.pageRepository.create(page)
                                 navController.navigate("pages/${page.id}")
