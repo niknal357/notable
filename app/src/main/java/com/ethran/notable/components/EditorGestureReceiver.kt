@@ -136,7 +136,6 @@ fun EditorGestureReceiver(
                                 crossPosition = gestureState.getLastPositionIO()
                                 rectangleBounds = gestureState.calculateRectangleBounds()
                             } else if (gestureState.getElapsedTime() >= HOLD_THRESHOLD_MS && gestureState.getInputCount() == 1) {
-                                Log.e(TAG, gestureState.calculateTotalDelta().toString() +"Hold for:" + gestureState.getElapsedTime() )
                                 if (gestureState.calculateTotalDelta() < TAP_MOVEMENT_TOLERANCE) {
                                     isSelection = true
                                     state.isDrawing = false // unfreeze the screen
@@ -162,6 +161,8 @@ fun EditorGestureReceiver(
                             crossPosition = null
                             rectangleBounds = null
                             isSelection = false
+                            if (!state.isDrawing)
+                                state.isDrawing = true
                             return@awaitEachGesture
                         }
                         // Calculate the total delta (movement distance) for all pointers
