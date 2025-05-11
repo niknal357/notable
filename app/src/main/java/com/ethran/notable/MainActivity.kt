@@ -130,20 +130,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        // It is really necessary?
+
         if (hasFocus) {
-            enableFullScreen() // Re-apply full-screen mode when focus is regained
-            this.lifecycleScope.launch {
-                DrawCanvas.refreshUi.emit(Unit)
-                DrawCanvas.isDrawing.emit(true)
+            enableFullScreen()
+            lifecycleScope.launch {
+                if (DrawCanvas.wasDrawingBeforeFocusLost.value) {
+                    DrawCanvas.refreshUi.emit(Unit)
+                    DrawCanvas.isDrawing.emit(true)
+                }
             }
         } else {
             lifecycleScope.launch {
+                val currentDrawing = DrawCanvas.isDrawingState.value
+                DrawCanvas.wasDrawingBeforeFocusLost.value = currentDrawing
                 DrawCanvas.isDrawing.emit(false)
             }
         }
-
     }
+
 
     // when the screen orientation is changed, set new screen width  restart is not necessary,
     // as we need first to update page dimensions which is done in EditorView
