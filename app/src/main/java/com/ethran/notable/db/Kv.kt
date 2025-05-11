@@ -9,6 +9,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import com.ethran.notable.APP_SETTINGS_KEY
 import com.ethran.notable.TAG
 import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.modals.GlobalAppSettings
@@ -87,7 +88,7 @@ class KvProxy(context: Context) {
     }
 
     fun setAppSettings(value: AppSettings) {
-        setKv("APP_SETTINGS", value, AppSettings.serializer())
+        setKv(APP_SETTINGS_KEY, value, AppSettings.serializer())
         GlobalAppSettings.update(value)
     }
 

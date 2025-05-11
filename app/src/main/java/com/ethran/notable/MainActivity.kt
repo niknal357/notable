@@ -51,6 +51,8 @@ var SCREEN_WIDTH = EpdController.getEpdHeight().toInt()
 var SCREEN_HEIGHT = EpdController.getEpdWidth().toInt()
 
 var TAG = "MainActivity"
+const val APP_SETTINGS_KEY = "APP_SETTINGS"
+
 
 @ExperimentalAnimationApi
 @ExperimentalComposeUiApi
@@ -82,7 +84,7 @@ class MainActivity : ComponentActivity() {
         EditorSettingCacheManager.init(applicationContext)
 
         GlobalAppSettings.update(
-            KvProxy(this).get("APP_SETTINGS", AppSettings.serializer())
+            KvProxy(this).get(APP_SETTINGS_KEY, AppSettings.serializer())
                 ?: AppSettings(version = 1)
         )
 
