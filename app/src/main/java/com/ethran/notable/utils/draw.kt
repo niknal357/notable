@@ -12,13 +12,13 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
-import android.net.Uri
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
+import androidx.core.net.toUri
 import com.ethran.notable.R
 import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
@@ -207,7 +207,9 @@ fun drawStroke(canvas: Canvas, stroke: Stroke, offset: IntOffset) {
  * @param offset The `IntOffset` used to adjust the drawing position relative to the Canvas.
  */
 fun drawImage(context: Context, canvas: Canvas, image: Image, offset: IntOffset) {
-    val imageBitmap = uriToBitmap(context, Uri.parse(image.uri))?.asImageBitmap()
+    if (image.uri.isNullOrEmpty())
+        return
+    val imageBitmap = uriToBitmap(context, image.uri.toUri())?.asImageBitmap()
     if (imageBitmap != null) {
         // Convert the image to a software-backed bitmap
         val softwareBitmap =
@@ -376,8 +378,8 @@ fun drawBackgroundImages(
     canvas: Canvas,
     backgroundImage: String,
     scroll: Int,
-    scale: Float,
     page: PageView? = null,
+    scale: Float = 1.0F,
     repeat: Boolean = false,
 ) {
     try {
@@ -405,9 +407,9 @@ fun drawBackgroundImages(
             val imageWidth = softwareBitmap.width
             val imageHeight = softwareBitmap.height
 
-            val canvasWidth = (canvas.width / scale).toInt()
-            val canvasHeight = (canvas.height / scale).toInt()
-            val widthOnCanvas = (min(SCREEN_WIDTH, SCREEN_HEIGHT) / scale).toInt()
+            val canvasWidth = canvas.width
+            val canvasHeight = canvas.height
+            val widthOnCanvas = min(SCREEN_WIDTH, SCREEN_HEIGHT)
 
             val scaleFactor = widthOnCanvas.toFloat() / imageWidth
             val scaledHeight = (imageHeight * scaleFactor).toInt()
@@ -429,7 +431,7 @@ fun drawBackgroundImages(
                 canvas.drawBitmap(softwareBitmap, rectOnImage, rectOnCanvas, paint)
                 filledHeight = rectOnCanvas.bottom
             }
-            if (widthOnCanvas < canvasWidth) {
+            if (widthOnCanvas < canvasWidth / scale) {
                 Log.e(
                     TAG,
                     "left: $filledHeight, top: 0, right: $canvasWidth, bottom: $canvasHeight"
@@ -446,7 +448,8 @@ fun drawBackgroundImages(
             if (repeat) {
                 var currentTop = filledHeight
                 val srcRect = Rect(0, 0, imageWidth, imageHeight)
-                while (currentTop < canvasHeight) {
+                Log.e(TAG, "currentTop: $currentTop, canvasHeight: $canvasHeight")
+                while (currentTop < canvasHeight / scale) {
 
                     val dstRect = Rect(
                         0,
@@ -460,7 +463,7 @@ fun drawBackgroundImages(
                 }
             } else {
                 // Fill the remaining area with white if necessary
-                if (filledHeight < canvasHeight) {
+                if (filledHeight < canvasHeight / scale) {
                     canvas.drawRect(
                         0f,
                         filledHeight.toFloat(),
@@ -480,7 +483,7 @@ fun drawBackgroundImages(
     }
 }
 
-fun drawTitleBox(canvas: Canvas, scale: Float) {
+fun drawTitleBox(canvas: Canvas) {
 
     // Draw label-like area in center
     val paint = Paint().apply {
@@ -498,8 +501,8 @@ fun drawTitleBox(canvas: Canvas, scale: Float) {
 
     // This might not be actual width in some situations
     // investigate it, in case of problems
-    val canvasHeight = (max(SCREEN_WIDTH, SCREEN_HEIGHT) / scale).toInt()
-    val canvasWidth = (min(SCREEN_WIDTH, SCREEN_HEIGHT) / scale).toInt()
+    val canvasHeight = max(SCREEN_WIDTH, SCREEN_HEIGHT)
+    val canvasWidth = min(SCREEN_WIDTH, SCREEN_HEIGHT)
 
     // Dimensions for the label box
     val labelWidth = canvasWidth * 0.8f
@@ -522,21 +525,21 @@ fun drawBg(
     backgroundType: BackgroundType,
     background: String,
     scroll: Int = 0,
-    scale: Float = 1f,
+    scale: Float = 1f, // When exporting, we change scale of canvas. therefore canvas.width/height is scaled
     page: PageView? = null
 ) {
     when (backgroundType) {
         is BackgroundType.Image -> {
-            drawBackgroundImages(context, canvas, background, scroll, scale, page)
+            drawBackgroundImages(context, canvas, background, scroll, page, scale)
         }
 
         is BackgroundType.ImageRepeating -> {
-            drawBackgroundImages(context, canvas, background, scroll, scale, page, true)
+            drawBackgroundImages(context, canvas, background, scroll, page, scale, true)
         }
 
         is BackgroundType.CoverImage -> {
-            drawBackgroundImages(context, canvas, background, 0, scale, page)
-            drawTitleBox(canvas, scale)
+            drawBackgroundImages(context, canvas, background, 0, page, scale)
+            drawTitleBox(canvas)
         }
 
         is BackgroundType.Native -> {
