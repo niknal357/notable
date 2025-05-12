@@ -51,6 +51,8 @@ var SCREEN_WIDTH = EpdController.getEpdHeight().toInt()
 var SCREEN_HEIGHT = EpdController.getEpdWidth().toInt()
 
 var TAG = "MainActivity"
+const val APP_SETTINGS_KEY = "APP_SETTINGS"
+
 
 @ExperimentalAnimationApi
 @ExperimentalComposeUiApi
@@ -82,7 +84,7 @@ class MainActivity : ComponentActivity() {
         EditorSettingCacheManager.init(applicationContext)
 
         GlobalAppSettings.update(
-            KvProxy(this).get("APP_SETTINGS", AppSettings.serializer())
+            KvProxy(this).get(APP_SETTINGS_KEY, AppSettings.serializer())
                 ?: AppSettings(version = 1)
         )
 
@@ -130,20 +132,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        // It is really necessary?
+
         if (hasFocus) {
-            enableFullScreen() // Re-apply full-screen mode when focus is regained
-            this.lifecycleScope.launch {
-                DrawCanvas.refreshUi.emit(Unit)
-                DrawCanvas.isDrawing.emit(true)
+            enableFullScreen()
+            lifecycleScope.launch {
+                if (DrawCanvas.wasDrawingBeforeFocusLost.value) {
+                    DrawCanvas.refreshUi.emit(Unit)
+                    DrawCanvas.isDrawing.emit(true)
+                }
             }
         } else {
             lifecycleScope.launch {
+                val currentDrawing = DrawCanvas.isDrawingState.value
+                DrawCanvas.wasDrawingBeforeFocusLost.value = currentDrawing
                 DrawCanvas.isDrawing.emit(false)
             }
         }
-
     }
+
 
     // when the screen orientation is changed, set new screen width  restart is not necessary,
     // as we need first to update page dimensions which is done in EditorView

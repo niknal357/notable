@@ -152,7 +152,7 @@ fun Library(navController: NavController, folderId: String? = null) {
 //                            notebookId = null,
 //                            parentFolderId = folderId,
 //                            nativeTemplate = appRepository.kvProxy.get(
-//                                "APP_SETTINGS", AppSettings.serializer()
+//                                APP_SETTINGS_KEY, AppSettings.serializer()
 //                            )?.defaultNativeTemplate ?: "blank"
 //                        )
 //                        appRepository.pageRepository.create(page)

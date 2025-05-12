@@ -25,11 +25,11 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import androidx.core.app.ShareCompat
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.toRect
 import androidx.core.graphics.toRegion
+import com.ethran.notable.APP_SETTINGS_KEY
 import com.ethran.notable.R
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
@@ -72,7 +72,7 @@ fun deletePage(context: Context, pageId: String) {
     val appRepository = AppRepository(context)
     val page = appRepository.pageRepository.getById(pageId) ?: return
     val proxy = appRepository.kvProxy
-    val settings = proxy.get("APPS_SETTINGS", AppSettings.serializer())
+    val settings = proxy.get(APP_SETTINGS_KEY, AppSettings.serializer())
 
 
     runBlocking {
@@ -84,7 +84,7 @@ fun deletePage(context: Context, pageId: String) {
         // remove from quick nav
         if (settings != null && settings.quickNavPages.contains(pageId)) {
             proxy.setKv(
-                "APPS_SETTINGS",
+                APP_SETTINGS_KEY,
                 settings.copy(quickNavPages = settings.quickNavPages - pageId),
                 AppSettings.serializer()
             )
@@ -503,7 +503,6 @@ fun shareBitmap(context: Context, bitmap: Bitmap) {
 
     context.startActivity(Intent.createChooser(shareIntent, "Choose an app"))
 }
-
 
 
 // move to SelectionState?

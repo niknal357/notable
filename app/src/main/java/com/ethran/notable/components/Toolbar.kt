@@ -99,9 +99,6 @@ fun Toolbar(
     val context = LocalContext.current
 
 
-    // Create a remembered variable to track whether an image is loaded
-    var isImageLoaded by remember { mutableStateOf(false) }
-
     // Create an activity result launcher for picking visual media (images in this case)
     val pickMedia =
         rememberLauncherForActivityResult(contract = PickVisualMedia()) { uri ->
@@ -114,7 +111,6 @@ fun Toolbar(
                 val copiedFile = createFileFromContentUri(context, uri)
 
                 // Set isImageLoaded to true
-                isImageLoaded = true
                 Log.i(
                     "InsertImage",
                     "Image was received and copied, it is now at:${copiedFile.toUri()}"

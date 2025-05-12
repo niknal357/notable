@@ -85,6 +85,10 @@ class DrawCanvas(
         var isDrawing = MutableSharedFlow<Boolean>()
         var restartAfterConfChange = MutableSharedFlow<Unit>()
 
+        // used for managing drawing state on regain focus
+        val isDrawingState = MutableStateFlow(false)
+        val wasDrawingBeforeFocusLost = MutableStateFlow(false)
+
         // before undo we need to commit changes
         val commitHistorySignal = MutableSharedFlow<Unit>()
         val commitHistorySignalImmediately = MutableSharedFlow<Unit>()
@@ -305,7 +309,7 @@ class DrawCanvas(
         }
         coroutineScope.launch {
             isDrawing.collect {
-                Log.v(TAG + "Observer", "drawing state changed!")
+                Log.v(TAG + "Observer", "drawing state changed to $it!")
                 state.isDrawing = it
             }
         }
@@ -364,6 +368,7 @@ class DrawCanvas(
         coroutineScope.launch {
             snapshotFlow { state.isDrawing }.drop(1).collect {
                 Log.v(TAG + "Observer", "isDrawing change: ${state.isDrawing}")
+                isDrawingState.value = it
                 updateIsDrawing()
             }
         }
@@ -522,6 +527,8 @@ class DrawCanvas(
             selectImage(coroutineScope, page, state, imageToSave)
             // image will be added to database when released, the same as with paste element.
             state.selectionState.placementMode = PlacementMode.Paste
+            // make sure, that after regaining focus, we wont go back to drawing mode
+            wasDrawingBeforeFocusLost.value = false
         } else {
             // Handle cases where the bitmap could not be created
             Log.e("ImageProcessing", "Failed to create software bitmap from URI.")
