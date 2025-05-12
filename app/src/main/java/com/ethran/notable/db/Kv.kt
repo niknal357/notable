@@ -29,7 +29,7 @@ data class Kv(
 @Dao
 interface KvDao {
     @Query("SELECT * FROM kv WHERE `key`=:key")
-    fun get(key: String): Kv
+    fun get(key: String): Kv?
 
     @Query("SELECT * FROM kv WHERE `key`=:key")
     fun getLive(key: String): LiveData<Kv?>
@@ -45,7 +45,7 @@ interface KvDao {
 class KvRepository(context: Context) {
     var db = AppDatabase.getDatabase(context).kvDao()
 
-    fun get(key: String): Kv {
+    fun get(key: String): Kv? {
         return db.get(key)
     }
 
