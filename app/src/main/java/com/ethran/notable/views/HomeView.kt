@@ -1,6 +1,9 @@
 package com.ethran.notable.views
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -57,14 +60,18 @@ import com.ethran.notable.components.PageMenu
 import com.ethran.notable.components.PagePreview
 import com.ethran.notable.components.ShowConfirmationDialog
 import com.ethran.notable.components.Topbar
+import com.ethran.notable.db.BackgroundType
 import com.ethran.notable.db.BookRepository
 import com.ethran.notable.db.Folder
 import com.ethran.notable.db.Notebook
 import com.ethran.notable.db.Page
+import com.ethran.notable.db.PageRepository
 import com.ethran.notable.modals.AppSettingsModal
 import com.ethran.notable.modals.FolderConfigDialog
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.modals.NotebookConfigDialog
+import com.ethran.notable.modals.getPdfPageCount
+import com.ethran.notable.utils.copyBackgroundToDatabase
 import com.ethran.notable.utils.isLatestVersion
 import com.ethran.notable.utils.noRippleClickable
 import compose.icons.FeatherIcons
@@ -122,7 +129,7 @@ fun Library(navController: NavController, folderId: String? = null) {
                     badge = {
                         if (!isLatestVersion) Badge(
                             backgroundColor = Color.Black,
-                            modifier = Modifier.offset(-12.dp, 10.dp)
+                            modifier = Modifier.offset((-12).dp, 10.dp)
                         )
                     }
                 ) {
@@ -337,15 +344,38 @@ fun Library(navController: NavController, folderId: String? = null) {
                                 contract = ActivityResultContracts.OpenDocument()
                             ) { uri: Uri? ->
                                 uri?.let {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        val removeSnack =
-                                            snackManager.displaySnack(
-                                                SnackConf(text = "importing from xopp file")
+                                    val mimeType = context.contentResolver.getType(uri)
+                                    Log.d(TAG, "Selected file mimeType: $mimeType, uri: $uri")
+                                    if (mimeType == "application/pdf" || uri.toString()
+                                            .endsWith(".pdf", ignoreCase = true)
+                                    ) {
+                                        // Handle PDF import here
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            val removeSnack = snackManager.displaySnack(
+                                                SnackConf(text = "importing PDF background")
                                             )
-                                        importInProgress = true
-                                        XoppFile.importBook(context, uri, folderId)
-                                        importInProgress = false
-                                        removeSnack()
+                                            val flag = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                            context.contentResolver.takePersistableUriPermission(
+                                                uri,
+                                                flag
+                                            )
+                                            importInProgress = true
+                                            // Call your PDF-specific logic
+                                            handlePdfImport(context, folderId, uri)
+                                            importInProgress = false
+                                            removeSnack()
+                                        }
+                                    } else {
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            val removeSnack =
+                                                snackManager.displaySnack(
+                                                    SnackConf(text = "importing from xopp file")
+                                                )
+                                            importInProgress = true
+                                            XoppFile.importBook(context, uri, folderId)
+                                            importInProgress = false
+                                            removeSnack()
+                                        }
                                     }
                                 }
                             }
@@ -361,7 +391,8 @@ fun Library(navController: NavController, folderId: String? = null) {
                                             arrayOf(
                                                 "application/x-xopp",
                                                 "application/gzip",
-                                                "application/octet-stream"
+                                                "application/octet-stream",
+                                                "application/pdf"
                                             )
                                         )
                                     }
@@ -461,6 +492,41 @@ fun Library(navController: NavController, folderId: String? = null) {
             }
         )
     }
+}
+
+fun handlePdfImport(context: Context, folderId: String?, uri: Uri) {
+    Log.v(TAG, "Importing PDF from $uri")
+    if (Looper.getMainLooper().isCurrentThread)
+        Log.e(TAG, "Importing is done on main thread.")
+
+    //copy file:
+    val flag = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    context.contentResolver.takePersistableUriPermission(uri, flag)
+    val subfolder = BackgroundType.Pdf(0).folderName
+    val copiedFile = copyBackgroundToDatabase(context, uri, subfolder)
+
+    val pageRepo = PageRepository(context)
+    val bookRepo = BookRepository(context)
+
+    val book = Notebook(
+        title = copiedFile.nameWithoutExtension,
+        parentFolderId = folderId,
+        defaultNativeTemplate = "blank"
+    )
+    bookRepo.createEmpty(book)
+
+    val numberOfPages = getPdfPageCount(copiedFile.toString())
+
+    for (i in 0 until numberOfPages) {
+        val page = Page(
+            notebookId = book.id,
+            background = copiedFile.toString(),
+            backgroundType = BackgroundType.Pdf(i).key,
+        )
+        pageRepo.create(page)
+        bookRepo.addPage(book.id, page.id)
+    }
+
 }
 
 

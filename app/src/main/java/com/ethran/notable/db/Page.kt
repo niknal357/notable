@@ -54,8 +54,8 @@ data class PageWithImages(
 
 
 sealed class BackgroundType(val key: String, val folderName: String) {
-    data object Image : BackgroundType("image", "backgrounds")
-    data object ImageRepeating : BackgroundType("imagerepeating", "backgrounds")
+    data object Image : BackgroundType("image", "images")
+    data object ImageRepeating : BackgroundType("imagerepeating", "images")
     data object CoverImage : BackgroundType("coverImage", "covers")
     data object Native : BackgroundType("native", "")
 

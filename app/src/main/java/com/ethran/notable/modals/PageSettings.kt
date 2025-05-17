@@ -44,7 +44,7 @@ import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.PageView
 import com.ethran.notable.components.BackgroundSelector
 import com.ethran.notable.db.BackgroundType
-import com.ethran.notable.utils.createFileFromContentUri
+import com.ethran.notable.utils.copyBackgroundToDatabase
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.launch
 import java.io.File
@@ -87,7 +87,7 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                 Log.e(TAG, "PageSettingsModal: $pageBackgroundType")
                 val subfolder = pageBackgroundType.folderName
                 //  copy image to documents/notabledb/images/filename
-                val copiedFile = createFileFromContentUri(context, uri, subfolder)
+                val copiedFile = copyBackgroundToDatabase(context, uri, subfolder)
 
                 Log.i(
                     "InsertImage",
@@ -111,7 +111,7 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
             val flag = Intent.FLAG_GRANT_READ_URI_PERMISSION
             context.contentResolver.takePersistableUriPermission(uri, flag)
             val subfolder = pageBackgroundType.folderName
-            val copiedFile = createFileFromContentUri(context, uri, subfolder)
+            val copiedFile = copyBackgroundToDatabase(context, uri, subfolder)
 
             val updatedPage = pageView.pageFromDb!!.copy(
                 background = copiedFile.toString(),

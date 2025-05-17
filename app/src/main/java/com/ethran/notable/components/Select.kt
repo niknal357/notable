@@ -53,7 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import com.ethran.notable.R
 import com.ethran.notable.db.BackgroundType
-import com.ethran.notable.utils.ensureImagesFolder
+import com.ethran.notable.utils.ensureBackgroundsFolder
 import com.ethran.notable.utils.noRippleClickable
 import java.io.File
 
@@ -115,7 +115,7 @@ fun BackgroundSelector(
                 Text("Choose PDF background", fontWeight = FontWeight.Bold)
 
                 val folderName = currentBackgroundType.folderName
-                val folder = File(ensureImagesFolder(), folderName)
+                val folder = File(ensureBackgroundsFolder(), folderName)
 
                 val uriOptions = folder.listFiles()
                     ?.filter { it.isFile }
@@ -268,7 +268,7 @@ fun BackgroundSelector(
                 )
 
                 val folderName = currentBackgroundType.folderName
-                val folder = File(ensureImagesFolder(), folderName)
+                val folder = File(ensureBackgroundsFolder(), folderName)
 
                 val uriOptions = folder.listFiles()
                     ?.filter { it.isFile }

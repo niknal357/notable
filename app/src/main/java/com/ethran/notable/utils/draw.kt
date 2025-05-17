@@ -478,19 +478,18 @@ fun drawBitmapToCanvas(
     scale: Float,
     repeat: Boolean
 ) {
+    canvas.drawColor(Color.WHITE)
     val imageWidth = imageBitmap.width
     val imageHeight = imageBitmap.height
 
 
-    val canvasWidth = canvas.width
+//    val canvasWidth = canvas.width
     val canvasHeight = canvas.height
     val widthOnCanvas = min(SCREEN_WIDTH, SCREEN_HEIGHT)
 
     val scaleFactor = widthOnCanvas.toFloat() / imageWidth
     val scaledHeight = (imageHeight * scaleFactor).toInt()
 
-    val paint = Paint()
-    paint.color = Color.WHITE
 
     // Draw the first image, considering the scroll offset
     val srcTop = (scroll / scaleFactor).toInt() % imageHeight
@@ -504,23 +503,23 @@ fun drawBitmapToCanvas(
 
     var filledHeight = 0
     if (repeat || scroll < canvasHeight) {
-        canvas.drawBitmap(imageBitmap, rectOnImage, rectOnCanvas, paint)
+        canvas.drawBitmap(imageBitmap, rectOnImage, rectOnCanvas, null)
         filledHeight = rectOnCanvas.bottom
     }
 
-    if (widthOnCanvas < canvasWidth / scale) {
-        Log.e(
-            TAG,
-            "left: $filledHeight, top: 0, right: $canvasWidth, bottom: $canvasHeight"
-        )
-        canvas.drawRect(
-            widthOnCanvas.toFloat(),
-            0f,
-            canvasWidth.toFloat(),
-            canvasHeight.toFloat(),
-            paint
-        )
-    }
+//    if (widthOnCanvas < canvasWidth / scale) {
+//        Log.e(
+//            TAG,
+//            "left: $filledHeight, top: 0, right: $canvasWidth, bottom: $canvasHeight"
+//        )
+//        canvas.drawRect(
+//            widthOnCanvas.toFloat(),
+//            0f,
+//            canvasWidth.toFloat(),
+//            canvasHeight.toFloat(),
+//            paint
+//        )
+//    }
 
     if (repeat) {
         var currentTop = filledHeight
@@ -534,21 +533,20 @@ fun drawBitmapToCanvas(
                 widthOnCanvas / scale,
                 (currentTop + scaledHeight) / scale
             )
-
-            canvas.drawBitmap(imageBitmap, srcRect, dstRect, paint)
+            canvas.drawBitmap(imageBitmap, srcRect, dstRect, null)
             currentTop += scaledHeight
         }
     } else {
-        // Fill the remaining area with white if necessary
-        if (filledHeight < canvasHeight / scale) {
-            canvas.drawRect(
-                0f,
-                filledHeight / scale,
-                canvasWidth / scale,
-                canvasHeight / scale,
-                paint
-            )
-        }
+//        // Fill the remaining area with white if necessary
+//        if (filledHeight < canvasHeight / scale) {
+//            canvas.drawRect(
+//                0f,
+//                filledHeight / scale,
+//                canvasWidth / scale,
+//                canvasHeight / scale,
+//                paint
+//            )
+//        }
     }
 }
 
