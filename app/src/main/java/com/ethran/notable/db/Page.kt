@@ -13,6 +13,8 @@ import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
+import com.ethran.notable.TAG
+import io.shipbook.shipbooksdk.Log
 import java.util.Date
 import java.util.UUID
 
@@ -32,7 +34,7 @@ import java.util.UUID
 data class Page(
     @PrimaryKey val id: String = UUID.randomUUID().toString(), val scroll: Int = 0,
     @ColumnInfo(index = true) val notebookId: String? = null,
-    @ColumnInfo(defaultValue = "blank") val background : String = "blank",
+    @ColumnInfo(defaultValue = "blank") val background: String = "blank",
     @ColumnInfo(defaultValue = "native") val backgroundType: String = "native",
     @ColumnInfo(index = true) val parentFolderId: String? = null,
     val createdAt: Date = Date(), val updatedAt: Date = Date()
@@ -52,17 +54,29 @@ data class PageWithImages(
 
 
 sealed class BackgroundType(val key: String, val folderName: String) {
-    object Image : BackgroundType("image", "backgrounds")
-    object ImageRepeating : BackgroundType("imagerepeating", "backgrounds")
-    object CoverImage : BackgroundType("coverImage", "covers")
-    object Native : BackgroundType("native", "") // no folder needed for native
+    data object Image : BackgroundType("image", "backgrounds")
+    data object ImageRepeating : BackgroundType("imagerepeating", "backgrounds")
+    data object CoverImage : BackgroundType("coverImage", "covers")
+    data object Native : BackgroundType("native", "")
+
+    data class Pdf(val page: Int) : BackgroundType("pdf$page", "pdfs")
+
+
     companion object {
-        fun fromKey(key: String): BackgroundType = when (key) {
-            Image.key -> Image
-            ImageRepeating.key -> ImageRepeating
-            CoverImage.key -> CoverImage
-            Native.key -> Native
-            else -> Native // fallback
+        fun fromKey(key: String): BackgroundType = when {
+            key == Image.key -> Image
+            key == ImageRepeating.key -> ImageRepeating
+            key == CoverImage.key -> CoverImage
+            key == Native.key -> Native
+            key.startsWith("pdf") && key.removePrefix("pdf").toIntOrNull() != null -> {
+                val page = key.removePrefix("pdf").toInt()
+                Pdf(page)
+            }
+
+            else -> {
+                Log.e(TAG, "BackgroundType.fromKey: Unknown key: $key")
+                Native
+            } // fallback
         }
     }
 }
@@ -147,10 +161,20 @@ class PageRepository(context: Context) {
 }
 
 fun Page.getBackgroundType(): BackgroundType {
-    return when (this.backgroundType) {
-        BackgroundType.Image.key -> BackgroundType.Image
-        BackgroundType.ImageRepeating.key -> BackgroundType.ImageRepeating
-        BackgroundType.CoverImage.key -> BackgroundType.CoverImage
-        else -> BackgroundType.Native
+    val type = this.backgroundType
+    return when {
+        type == BackgroundType.Image.key -> BackgroundType.Image
+        type == BackgroundType.ImageRepeating.key -> BackgroundType.ImageRepeating
+        type == BackgroundType.CoverImage.key -> BackgroundType.CoverImage
+        type == BackgroundType.Native.key -> BackgroundType.Native
+        type.startsWith("pdf") -> {
+            val page = type.removePrefix("pdf").toIntOrNull() ?: 1
+            BackgroundType.Pdf(page)
+        }
+
+        else -> {
+            Log.e(TAG, "Page.getBackgroundType: Unknown background type: $type")
+            BackgroundType.Native
+        }
     }
 }

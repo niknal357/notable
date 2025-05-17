@@ -11,8 +11,6 @@ import android.graphics.Rect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.core.graphics.toRect
 import androidx.core.graphics.withClip
@@ -30,6 +28,7 @@ import com.ethran.notable.utils.drawBg
 import com.ethran.notable.utils.drawImage
 import com.ethran.notable.utils.drawStroke
 import com.ethran.notable.utils.imageBounds
+import com.ethran.notable.utils.loadBackgroundBitmap
 import com.ethran.notable.utils.strokeBounds
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +46,8 @@ import kotlin.io.path.Path
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.system.measureTimeMillis
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
 
 class PageView(
     val context: Context,
@@ -61,7 +62,7 @@ class PageView(
 
     private var snack: SnackConf? = null
 
-    var windowedBitmap = Bitmap.createBitmap(viewWidth, viewHeight, Bitmap.Config.ARGB_8888)
+    var windowedBitmap = createBitmap(viewWidth, viewHeight)
     var windowedCanvas = Canvas(windowedBitmap)
     var strokes = listOf<Stroke>()
     private var strokesById: HashMap<String, Stroke> = hashMapOf()
@@ -84,17 +85,24 @@ class PageView(
     private var dbImages = AppDatabase.getDatabase(context).ImageDao()
 
     // Save bitmap, to avoid loading from disk every time.
-    data class CachedBackground(val bitmap: ImageBitmap?, val path: String)
+    data class CachedBackground(val bitmap: Bitmap?, val path: String, val pageNumber: Int)
 
-    private var currentBackground = CachedBackground(null, "")
-        private set
+    private var currentBackground = CachedBackground(null, "", 0)
 
-    fun getOrLoadBackground(filePath: String): ImageBitmap? {
-        if (currentBackground.path != filePath) {
+    /*
+        If pageNumber is -1, its assumed that the background is image type.
+     */
+    fun getOrLoadBackground(filePath: String, pageNumber: Int): Bitmap? {
+        if (currentBackground.path != filePath || currentBackground.pageNumber != pageNumber) {
             currentBackground =
-                CachedBackground(BitmapFactory.decodeFile(filePath)?.asImageBitmap(), filePath)
+                CachedBackground(loadBackgroundBitmap(filePath, pageNumber), filePath, pageNumber)
         }
         return currentBackground.bitmap
+    }
+
+    fun getBackgroundPageNumber(): Int {
+        // There might be a bug here -- check it again.
+        return currentBackground.pageNumber
     }
 
 
@@ -352,7 +360,7 @@ class PageView(
         Files.createDirectories(Path(file.absolutePath).parent)
         val os = BufferedOutputStream(FileOutputStream(file))
         val ratio = windowedBitmap.height.toFloat() / windowedBitmap.width.toFloat()
-        Bitmap.createScaledBitmap(windowedBitmap, 500, (500 * ratio).toInt(), false)
+        windowedBitmap.scale(500, (500 * ratio).toInt(), false)
             .compress(Bitmap.CompressFormat.JPEG, 80, os)
         os.close()
     }
@@ -503,7 +511,7 @@ class PageView(
             viewHeight = newHeight
 
             // Recreate bitmap and canvas with new dimensions
-            windowedBitmap = Bitmap.createBitmap(viewWidth, viewHeight, Bitmap.Config.ARGB_8888)
+            windowedBitmap = createBitmap(viewWidth, viewHeight)
             windowedCanvas = Canvas(windowedBitmap)
             drawArea(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
             persistBitmapDebounced()

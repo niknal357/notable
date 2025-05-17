@@ -2,8 +2,12 @@ package com.ethran.notable.modals
 
 
 import android.content.Intent
+import android.graphics.pdf.PdfRenderer
+import android.net.Uri
+import android.os.ParcelFileDescriptor
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +26,7 @@ import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,12 +47,16 @@ import com.ethran.notable.db.BackgroundType
 import com.ethran.notable.utils.createFileFromContentUri
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.launch
+import java.io.File
 
 @Composable
 fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var pageBackground by remember { mutableStateOf(pageView.pageFromDb?.background ?: "blank") }
+    var maxPages: Int? by remember { mutableStateOf(getPdfPageCount(pageBackground)) }
+    val currentPage: Int? by remember { mutableIntStateOf(pageView.getBackgroundPageNumber()) }
+
 
     val initialBackgroundType = pageView.pageFromDb?.backgroundType ?: "native"
     var pageBackgroundType: BackgroundType by remember {
@@ -91,9 +100,35 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                 )
                 pageView.updatePageSettings(updatedPage)
                 scope.launch { DrawCanvas.refreshUi.emit(Unit) }
-                pageBackground = it.toString()
+                pageBackground = copiedFile.toString()
             }
         }
+// PDF picker for backgrounds
+    val pickPdf = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            val flag = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, flag)
+            val subfolder = pageBackgroundType.folderName
+            val copiedFile = createFileFromContentUri(context, uri, subfolder)
+
+            val updatedPage = pageView.pageFromDb!!.copy(
+                background = copiedFile.toString(),
+                backgroundType = "pdf0" // Start at page 0
+            )
+            pageView.updatePageSettings(updatedPage)
+            scope.launch { DrawCanvas.refreshUi.emit(Unit) }
+            pageBackground = copiedFile.toString()
+            pageBackgroundType = BackgroundType.Pdf(1)
+            Log.i(
+                TAG,
+                "PDF was received and copied, it is now at:${copiedFile.toUri()}"
+            )
+            Log.i(TAG, "PageSettingsModal: $pageBackgroundType")
+        }
+    }
+
 
     Dialog(onDismissRequest = { onClose() }) {
         Column(
@@ -158,6 +193,20 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                     ) {
                         Text("Cover")
                     }
+                    // PDF Option
+                    Button(
+                        onClick = {
+                            backgroundMode = "PDF"
+                            pageBackgroundType = BackgroundType.Pdf(1)
+                        },
+                        modifier = Modifier.padding(5.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = if (backgroundMode == "PDF") Color.Gray else Color.LightGray
+                        )
+                    ) {
+                        Text("PDF")
+                    }
+
                 }
 
 
@@ -257,8 +306,56 @@ fun PageSettingsModal(pageView: PageView, onClose: () -> Unit) {
                             }
                         }
                     }
+
+                    "PDF" -> {
+                        BackgroundSelector(
+                            currentBackground = pageBackground,
+                            currentBackgroundType = pageBackgroundType,
+                            onBackgroundChange = { background, type ->
+                                val updatedPage = pageView.pageFromDb!!.copy(
+                                    background = background,
+                                    backgroundType = type.key
+                                )
+                                pageView.updatePageSettings(updatedPage)
+                                scope.launch { DrawCanvas.refreshUi.emit(Unit) }
+                                pageBackground = background
+                                pageBackgroundType = type
+                                maxPages = getPdfPageCount(background)
+                            },
+                            onRequestFilePicker = {
+                                Log.e(TAG, "onRequestFilePicker: $pageBackgroundType")
+                                pickPdf.launch(arrayOf("application/pdf"))
+                            },
+                            maxPages = maxPages,
+                            currentPage = currentPage
+                        )
+                    }
+
                 }
             }
         }
+    }
+}
+
+
+fun getPdfPageCount(uri: String): Int {
+    if (uri.isEmpty())
+        return 0
+
+    return try {
+        val fileDescriptor =
+            ParcelFileDescriptor.open(File(uri), ParcelFileDescriptor.MODE_READ_ONLY)
+
+        if (fileDescriptor != null) {
+            PdfRenderer(fileDescriptor).use { renderer ->
+                renderer.pageCount
+            }
+        } else {
+            Log.e(TAG, "File descriptor is null for URI: $uri")
+            0
+        }
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to open PDF: ${e.message}")
+        0
     }
 }
