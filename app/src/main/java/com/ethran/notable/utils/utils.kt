@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -15,7 +16,9 @@ import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Region
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.util.TypedValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -23,6 +26,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.Dp
 import androidx.core.app.ShareCompat
 import androidx.core.content.FileProvider
@@ -31,6 +37,8 @@ import androidx.core.graphics.toRect
 import androidx.core.graphics.toRegion
 import com.ethran.notable.APP_SETTINGS_KEY
 import com.ethran.notable.R
+import com.ethran.notable.SCREEN_HEIGHT
+import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.classes.PageView
@@ -47,6 +55,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import kotlin.math.min
 
 fun Modifier.noRippleClickable(
     onClick: () -> Unit
@@ -553,4 +562,49 @@ fun saveBitmapToCache(context: Context, bitmap: Bitmap): Uri? {
         "com.ethran.notable.provider", //(use your app signature + ".provider" )
         bitmapFile
     )
+}
+
+
+fun loadBackgroundBitmap(filePath: String, pageNumber: Int): Bitmap? {
+    val file = File(filePath)
+    if (!file.exists()) {
+        Log.e(TAG, "getOrLoadBackground: File does not exist at path: $filePath")
+        return null
+    }
+
+    val newBitmap: ImageBitmap? = try {
+        if (filePath.endsWith(".pdf", ignoreCase = true)) {
+            // PDF rendering
+            val fileDescriptor =
+                ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            PdfRenderer(fileDescriptor).use { renderer ->
+                if (pageNumber < 0 || pageNumber >= renderer.pageCount) {
+                    Log.e(
+                        TAG,
+                        "getOrLoadBackground: Invalid page number $pageNumber (total: ${renderer.pageCount})"
+                    )
+                    return null
+                }
+
+                renderer.openPage(pageNumber).use { pdfPage ->
+                    val targetWidth = min(SCREEN_WIDTH, SCREEN_HEIGHT)
+                    val scaleFactor = targetWidth.toFloat() / pdfPage.width
+
+                    val width = (pdfPage.width * scaleFactor).toInt()
+                    val height = (pdfPage.height * scaleFactor).toInt()
+
+                    val bitmap = createBitmap(width, height)
+                    pdfPage.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    bitmap.asImageBitmap()
+                }
+            }
+        } else {
+            // Image file
+            BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
+        }
+    } catch (e: Exception) {
+        Log.e(TAG, "getOrLoadBackground: Error loading background - ${e.message}", e)
+        null
+    }
+    return newBitmap?.asAndroidBitmap()
 }

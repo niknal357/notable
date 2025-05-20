@@ -8,10 +8,27 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 
+fun copyBackgroundToDatabase(context: Context, fileUri: Uri, subfolder: String): File {
+    var outputDir = ensureBackgroundsFolder()
+    outputDir = File(outputDir, subfolder)
+    if (!outputDir.exists())
+        outputDir.mkdirs()
+    return createFileFromContentUri(context, fileUri, outputDir)
+}
+
+fun copyImageToDatabase(context: Context, fileUri: Uri, subfolder: String? = null): File {
+    var outputDir = ensureImagesFolder()
+    if (subfolder != null) {
+        outputDir = File(outputDir, subfolder)
+        if (!outputDir.exists())
+            outputDir.mkdirs()
+    }
+    return createFileFromContentUri(context, fileUri, outputDir)
+}
 
 // adapted from:
 // https://stackoverflow.com/questions/71241337/copy-image-from-uri-in-another-folder-with-another-name-in-kotlin-android
-fun createFileFromContentUri(context: Context, fileUri: Uri, subfolder: String? = null): File {
+private fun createFileFromContentUri(context: Context, fileUri: Uri, outputDir: File): File {
     var fileName = ""
 
     // Get the display name of the file
@@ -26,15 +43,6 @@ fun createFileFromContentUri(context: Context, fileUri: Uri, subfolder: String? 
 
     // Open the input stream
     val iStream: InputStream = context.contentResolver.openInputStream(fileUri)!!
-
-    // Set up the output file destination
-
-    var outputDir = ensureImagesFolder()
-    if (subfolder != null) {
-        outputDir = File(outputDir, subfolder)
-        if (!outputDir.exists())
-            outputDir.mkdirs()
-    }
 
     fileName = sanitizeFileName(fileName)
     val outputFile = File(outputDir, fileName)
@@ -67,6 +75,17 @@ fun ensureImagesFolder(): File {
     val documentsDir =
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
     val dbDir = File(File(documentsDir, "notabledb"), "images")
+    if (!dbDir.exists()) {
+        dbDir.mkdirs()
+    }
+    return dbDir
+}
+
+
+fun ensureBackgroundsFolder(): File {
+    val documentsDir =
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+    val dbDir = File(File(documentsDir, "notabledb"), "backgrounds")
     if (!dbDir.exists()) {
         dbDir.mkdirs()
     }

@@ -47,7 +47,7 @@ import com.ethran.notable.utils.Mode
 import com.ethran.notable.utils.Pen
 import com.ethran.notable.utils.PenSetting
 import com.ethran.notable.utils.UndoRedoType
-import com.ethran.notable.utils.createFileFromContentUri
+import com.ethran.notable.utils.copyImageToDatabase
 import com.ethran.notable.utils.noRippleClickable
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Clipboard
@@ -108,7 +108,7 @@ fun Toolbar(
                 context.contentResolver.takePersistableUriPermission(uri, flag)
 
                 //  copy image to documents/notabledb/images/filename
-                val copiedFile = createFileFromContentUri(context, uri)
+                val copiedFile = copyImageToDatabase(context, uri)
 
                 // Set isImageLoaded to true
                 Log.i(

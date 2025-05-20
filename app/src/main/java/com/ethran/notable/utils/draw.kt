@@ -2,7 +2,6 @@ package com.ethran.notable.utils
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
@@ -32,12 +31,12 @@ import com.ethran.notable.db.Stroke
 import com.ethran.notable.modals.GlobalAppSettings
 import com.onyx.android.sdk.data.note.ShapeCreateArgs
 import com.onyx.android.sdk.data.note.TouchPoint
+import com.onyx.android.sdk.extension.isNotNull
 import com.onyx.android.sdk.pen.NeoBrushPen
 import com.onyx.android.sdk.pen.NeoCharcoalPen
 import com.onyx.android.sdk.pen.NeoFountainPen
 import com.onyx.android.sdk.pen.NeoMarkerPen
 import io.shipbook.shipbooksdk.Log
-import java.io.File
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
@@ -386,95 +385,20 @@ fun drawBackgroundImages(
         val imageBitmap = when (backgroundImage) {
             "iris" -> {
                 val resId = R.drawable.iris
-                ImageBitmap.imageResource(context.resources, resId)
+                ImageBitmap.imageResource(context.resources, resId).asAndroidBitmap()
             }
 
             else -> {
                 if (page != null) {
-                    page.getOrLoadBackground(backgroundImage)
+                    page.getOrLoadBackground(backgroundImage, -1)
                 } else {
-                    val backgroundFile = File(backgroundImage)
-                    val bitmap = BitmapFactory.decodeFile(backgroundFile.absolutePath)
-                    bitmap?.asImageBitmap()
+                    loadBackgroundBitmap(backgroundImage, -1)
                 }
             }
         }
 
         if (imageBitmap != null) {
-            val softwareBitmap = imageBitmap.asAndroidBitmap().copy(Bitmap.Config.ARGB_8888, true)
-            DrawCanvas.addImageByUri.value = null
-
-            val imageWidth = softwareBitmap.width
-            val imageHeight = softwareBitmap.height
-
-            val canvasWidth = canvas.width
-            val canvasHeight = canvas.height
-            val widthOnCanvas = min(SCREEN_WIDTH, SCREEN_HEIGHT)
-
-            val scaleFactor = widthOnCanvas.toFloat() / imageWidth
-            val scaledHeight = (imageHeight * scaleFactor).toInt()
-
-            val paint = Paint()
-            paint.color = Color.WHITE
-
-            // Draw the first image, considering the scroll offset
-            val srcTop = (scroll / scaleFactor).toInt() % imageHeight
-            val rectOnImage = Rect(0, srcTop.coerceAtLeast(0), imageWidth, imageHeight)
-            val rectOnCanvas = Rect(
-                0,
-                0,
-                widthOnCanvas,
-                ((imageHeight - srcTop) * scaleFactor).toInt()
-            )
-            var filledHeight = 0
-            if (repeat || scroll < canvasHeight) {
-                canvas.drawBitmap(softwareBitmap, rectOnImage, rectOnCanvas, paint)
-                filledHeight = rectOnCanvas.bottom
-            }
-            if (widthOnCanvas < canvasWidth / scale) {
-                Log.e(
-                    TAG,
-                    "left: $filledHeight, top: 0, right: $canvasWidth, bottom: $canvasHeight"
-                )
-                canvas.drawRect(
-                    widthOnCanvas.toFloat(),
-                    0f,
-                    canvasWidth.toFloat(),
-                    canvasHeight.toFloat(),
-                    paint
-                )
-            }
-
-            if (repeat) {
-                var currentTop = filledHeight
-                val srcRect = Rect(0, 0, imageWidth, imageHeight)
-                Log.e(TAG, "currentTop: $currentTop, canvasHeight: $canvasHeight")
-                while (currentTop < canvasHeight / scale) {
-
-                    val dstRect = Rect(
-                        0,
-                        currentTop,
-                        widthOnCanvas,
-                        currentTop + scaledHeight
-                    )
-
-                    canvas.drawBitmap(softwareBitmap, srcRect, dstRect, paint)
-                    currentTop += scaledHeight
-                }
-            } else {
-                // Fill the remaining area with white if necessary
-                if (filledHeight < canvasHeight / scale) {
-                    canvas.drawRect(
-                        0f,
-                        filledHeight.toFloat(),
-                        canvasWidth.toFloat(),
-                        canvasHeight.toFloat(),
-                        paint
-                    )
-                }
-            }
-
-            Log.i(TAG, "Background drawn successfully")
+            drawBitmapToCanvas(canvas, imageBitmap, scroll, scale, repeat)
         } else {
             Log.e(TAG, "Failed to load image from $backgroundImage")
         }
@@ -519,6 +443,113 @@ fun drawTitleBox(canvas: Canvas) {
     canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint)
 }
 
+
+fun drawPdfPage(
+    canvas: Canvas,
+    pdfUriString: String,
+    pageNumber: Int,
+    scroll: Int,
+    page: PageView? = null,
+    scale: Float = 1.0f
+) {
+    if (pageNumber == -1) {
+        Log.e(TAG, "Page number should not be -1, uri: $pdfUriString")
+        return
+    }
+    try {
+        val imageBitmap = if (page != null) {
+            page.getOrLoadBackground(pdfUriString, pageNumber)
+        } else {
+            loadBackgroundBitmap(pdfUriString, pageNumber)
+        }
+        if (imageBitmap.isNotNull()) {
+            drawBitmapToCanvas(canvas, imageBitmap, scroll, scale, false)
+        }
+
+    } catch (e: Exception) {
+        Log.e(TAG, "drawPdfPage: Failed to render PDF", e)
+    }
+}
+
+fun drawBitmapToCanvas(
+    canvas: Canvas,
+    imageBitmap: Bitmap,
+    scroll: Int,
+    scale: Float,
+    repeat: Boolean
+) {
+    canvas.drawColor(Color.WHITE)
+    val imageWidth = imageBitmap.width
+    val imageHeight = imageBitmap.height
+
+
+//    val canvasWidth = canvas.width
+    val canvasHeight = canvas.height
+    val widthOnCanvas = min(SCREEN_WIDTH, SCREEN_HEIGHT)
+
+    val scaleFactor = widthOnCanvas.toFloat() / imageWidth
+    val scaledHeight = (imageHeight * scaleFactor).toInt()
+
+
+    // Draw the first image, considering the scroll offset
+    val srcTop = (scroll / scaleFactor).toInt() % imageHeight
+    val rectOnImage = Rect(0, srcTop.coerceAtLeast(0), imageWidth, imageHeight)
+    val rectOnCanvas = Rect(
+        0,
+        0,
+        widthOnCanvas,
+        ((imageHeight - srcTop) * scaleFactor).toInt()
+    )
+
+    var filledHeight = 0
+    if (repeat || scroll < canvasHeight) {
+        canvas.drawBitmap(imageBitmap, rectOnImage, rectOnCanvas, null)
+        filledHeight = rectOnCanvas.bottom
+    }
+
+//    if (widthOnCanvas < canvasWidth / scale) {
+//        Log.e(
+//            TAG,
+//            "left: $filledHeight, top: 0, right: $canvasWidth, bottom: $canvasHeight"
+//        )
+//        canvas.drawRect(
+//            widthOnCanvas.toFloat(),
+//            0f,
+//            canvasWidth.toFloat(),
+//            canvasHeight.toFloat(),
+//            paint
+//        )
+//    }
+
+    if (repeat) {
+        var currentTop = filledHeight
+        val srcRect = Rect(0, 0, imageWidth, imageHeight)
+        Log.e(TAG, "currentTop: $currentTop, canvasHeight: $canvasHeight")
+        while (currentTop < canvasHeight / scale) {
+
+            val dstRect = RectF(
+                0f,
+                currentTop / scale,
+                widthOnCanvas / scale,
+                (currentTop + scaledHeight) / scale
+            )
+            canvas.drawBitmap(imageBitmap, srcRect, dstRect, null)
+            currentTop += scaledHeight
+        }
+    } else {
+//        // Fill the remaining area with white if necessary
+//        if (filledHeight < canvasHeight / scale) {
+//            canvas.drawRect(
+//                0f,
+//                filledHeight / scale,
+//                canvasWidth / scale,
+//                canvasHeight / scale,
+//                paint
+//            )
+//        }
+    }
+}
+
 fun drawBg(
     context: Context,
     canvas: Canvas,
@@ -540,6 +571,10 @@ fun drawBg(
         is BackgroundType.CoverImage -> {
             drawBackgroundImages(context, canvas, background, 0, page, scale)
             drawTitleBox(canvas)
+        }
+
+        is BackgroundType.Pdf -> {
+            drawPdfPage(canvas, background, backgroundType.page, scroll, page, scale)
         }
 
         is BackgroundType.Native -> {
