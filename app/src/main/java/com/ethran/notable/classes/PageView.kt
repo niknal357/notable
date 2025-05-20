@@ -474,26 +474,43 @@ class PageView(
 
         scroll += delta
 
-        // scroll bitmap
-        val tmp = windowedBitmap.copy(windowedBitmap.config!!, false)
+
+        // Shift the existing bitmap content
+        val shiftedBitmap =
+            createBitmap(windowedBitmap.width, windowedBitmap.height, windowedBitmap.config!!)
+        val shiftedCanvas = Canvas(shiftedBitmap)
+        shiftedCanvas.drawBitmap(windowedBitmap, 0f, -delta.toFloat(), null)
+
+        // Swap in the shifted bitmap
+        windowedBitmap.recycle() // Recycle old bitmap
+        windowedBitmap = shiftedBitmap
+        windowedCanvas.setBitmap(windowedBitmap)
+
+
+        // Calculate area to redraw
+        val redrawTop = if (delta > 0) windowedBitmap.height - delta else 0
+        val redrawBottom = redrawTop + abs(delta)
+
+        val redrawRect = Rect(
+            0,
+            redrawTop,
+            windowedBitmap.width,
+            redrawBottom.coerceAtMost(windowedBitmap.height)
+        )
+
+        // Redraw the new/invalidated area (background + strokes)
         drawBg(
-            context, windowedCanvas, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
-            pageFromDb?.background ?: "blank", scroll, 1f, this
+            context,
+            windowedCanvas,
+            pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+            pageFromDb?.background ?: "blank",
+            scroll,
+            1f,
+            this,
+            redrawRect
         )
-        windowedCanvas.drawBitmap(tmp, 0f, -delta.toFloat(), Paint())
-        tmp.recycle()
 
-        // where is the new rendering area starting ?
-        val canvasOffset = if (delta > 0) windowedCanvas.height - delta else 0
-
-        drawArea(
-            area = Rect(
-                0,
-                canvasOffset,
-                windowedCanvas.width,
-                canvasOffset + abs(delta)
-            ),
-        )
+        drawArea(redrawRect)
 
         persistBitmapDebounced()
         saveToPersistLayer()

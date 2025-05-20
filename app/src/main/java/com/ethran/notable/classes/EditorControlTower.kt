@@ -1,8 +1,10 @@
 package com.ethran.notable.classes
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
+import com.ethran.notable.TAG
 import com.ethran.notable.db.selectImagesAndStrokes
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.History
@@ -16,6 +18,8 @@ import com.ethran.notable.utils.pageAreaToCanvasArea
 import com.ethran.notable.utils.strokeBounds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.Date
 import java.util.UUID
 
@@ -25,22 +29,31 @@ class EditorControlTower(
     private val history: History,
     val state: EditorState
 ) {
+    private var scrollInProgress = Mutex()
 
-    fun onSingleFingerVerticalSwipe(startPosition: SimplePointF, delta: Int) {
-        if (!page.scrolable)
-            return
+
+    fun onSingleFingerVerticalSwipe(startPosition: SimplePointF, delta: Int): Int {
+        if (!page.scrolable) return 0
+        if (scrollInProgress.isLocked) {
+            Log.w(TAG, "Scroll in progress -- skipping")
+            return delta
+        } // Return unhandled part
+
         scope.launch {
-            if (state.mode == Mode.Select) {
-                if (state.selectionState.firstPageCut != null) {
-                    onOpenPageCut(delta)
+            scrollInProgress.withLock {
+                if (state.mode == Mode.Select) {
+                    if (state.selectionState.firstPageCut != null) {
+                        onOpenPageCut(delta)
+                    } else {
+                        onPageScroll(-delta)
+                    }
                 } else {
                     onPageScroll(-delta)
                 }
-            } else {
-                onPageScroll(-delta)
             }
             DrawCanvas.refreshUi.emit(Unit)
         }
+        return 0 // All handled
     }
 
     private fun onOpenPageCut(offset: Int) {
