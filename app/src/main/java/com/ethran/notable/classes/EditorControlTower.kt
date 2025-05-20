@@ -3,7 +3,6 @@ package com.ethran.notable.classes
 import android.content.Context
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
-import com.ethran.notable.TAG
 import com.ethran.notable.db.selectImagesAndStrokes
 import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.History
@@ -15,7 +14,6 @@ import com.ethran.notable.utils.divideStrokesFromCut
 import com.ethran.notable.utils.offsetStroke
 import com.ethran.notable.utils.pageAreaToCanvasArea
 import com.ethran.notable.utils.strokeBounds
-import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -31,18 +29,18 @@ class EditorControlTower(
     fun onSingleFingerVerticalSwipe(startPosition: SimplePointF, delta: Int) {
         if (!page.scrolable)
             return
-        if (state.mode == Mode.Select) {
-            if (state.selectionState.firstPageCut != null) {
-                onOpenPageCut(delta)
+        scope.launch {
+            if (state.mode == Mode.Select) {
+                if (state.selectionState.firstPageCut != null) {
+                    onOpenPageCut(delta)
+                } else {
+                    onPageScroll(-delta)
+                }
             } else {
                 onPageScroll(-delta)
             }
-        } else {
-            onPageScroll(-delta)
+            DrawCanvas.refreshUi.emit(Unit)
         }
-
-        scope.launch { DrawCanvas.refreshUi.emit(Unit) }
-
     }
 
     private fun onOpenPageCut(offset: Int) {
@@ -78,7 +76,7 @@ class EditorControlTower(
         )
     }
 
-    private fun onPageScroll(delta: Int) {
+    private suspend fun onPageScroll(delta: Int) {
         page.updateScroll(delta)
     }
 

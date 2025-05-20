@@ -12,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.IntOffset
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
 import androidx.core.graphics.toRect
 import androidx.core.graphics.withClip
 import com.ethran.notable.SCREEN_HEIGHT
@@ -46,8 +48,6 @@ import kotlin.io.path.Path
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.system.measureTimeMillis
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.scale
 
 class PageView(
     val context: Context,
@@ -462,12 +462,15 @@ class PageView(
         }
     }
 
-    fun updateScroll(_delta: Int) {
+    suspend fun updateScroll(_delta: Int) {
         var delta = _delta
         if (scroll + delta < 0) delta = 0 - scroll
 
         // There is nothing to do, return.
         if (delta == 0) return
+
+        // before scrolling, make sure that strokes are drawn.
+        DrawCanvas.waitForDrawingWithSnack()
 
         scroll += delta
 
