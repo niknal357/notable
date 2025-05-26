@@ -228,7 +228,7 @@ fun copyInputToSimplePointF(
     val points = touchPoints.map {
         SimplePointF(
             x = it.x / scale,
-            y = (it.y + scroll) / scale,
+            y = (it.y / scale + scroll),
         )
     }
     return points
