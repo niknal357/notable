@@ -474,7 +474,7 @@ class PageView(
             val timeToDraw = measureTimeMillis {
                 drawBg(
                     context, this, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
-                    pageFromDb?.background ?: "blank", scroll, 1f, this@PageView
+                    pageFromDb?.background ?: "blank", scroll, zoomLevel, this@PageView
                 )
                 if (GlobalAppSettings.current.debugMode) {
                     drawDebugRectWithLabels(activeCanvas, RectF(pageAreaWithoutScroll), Color.BLACK)
