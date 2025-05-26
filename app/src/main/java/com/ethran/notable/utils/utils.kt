@@ -209,7 +209,7 @@ fun copyInput(touchPoints: List<TouchPoint>, scroll: Int, scale: Float): List<St
     val points = touchPoints.map {
         StrokePoint(
             x = it.x / scale,
-            y = (it.y + scroll) / scale,
+            y = (it.y / scale + scroll),
             pressure = it.pressure,
             size = it.size,
             tiltX = it.tiltX,
