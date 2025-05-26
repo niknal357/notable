@@ -33,13 +33,16 @@ import com.ethran.notable.utils.Pen
 import com.ethran.notable.utils.PlacementMode
 import com.ethran.notable.utils.SimplePointF
 import com.ethran.notable.utils.convertDpToPixel
+import com.ethran.notable.utils.copyInput
+import com.ethran.notable.utils.copyInputToSimplePointF
 import com.ethran.notable.utils.drawImage
 import com.ethran.notable.utils.handleDraw
 import com.ethran.notable.utils.handleErase
-import com.ethran.notable.utils.handleLine
 import com.ethran.notable.utils.penToStroke
 import com.ethran.notable.utils.pointsToPath
 import com.ethran.notable.utils.selectPaint
+import com.ethran.notable.utils.toPageCoordinates
+import com.ethran.notable.utils.transformToLine
 import com.ethran.notable.utils.uriToBitmap
 import com.onyx.android.sdk.api.device.epd.EpdController
 import com.onyx.android.sdk.data.note.TouchPoint
@@ -147,7 +150,7 @@ class DrawCanvas(
             // Need testing if it will be better to do in main thread on, in separate.
             // thread(start = true, isDaemon = false, priority = Thread.MAX_PRIORITY) {
 
-            if (getActualState().mode == Mode.Draw) {
+            if (getActualState().mode == Mode.Draw || getActualState().mode == Mode.Line) {
 //                val newThread = System.currentTimeMillis()
 //                Log.d(TAG,"Got to new thread ${Thread.currentThread().name}, in ${newThread - startTime}}")
                 coroutineScope.launch(Dispatchers.Main.immediate) {
@@ -162,13 +165,24 @@ class DrawCanvas(
                         Log.d(TAG, "lock obtained in ${lock - startTime} ms")
 
 //                        Thread.sleep(1000)
+                        // transform points to page space
+                        val scaledPoints =
+                            if (getActualState().mode == Mode.Line)
+                                copyInput(
+                                    transformToLine(plist.points),
+                                    page.scroll,
+                                    page.zoomLevel
+                                )
+                            else
+                                copyInput(plist.points, page.scroll, page.zoomLevel)
+                        // draw the stroke
                         handleDraw(
                             this@DrawCanvas.page,
                             strokeHistoryBatch,
                             getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
                             getActualState().penSettings[getActualState().pen.penName]!!.color,
                             getActualState().pen,
-                            plist.points
+                            scaledPoints
                         )
 //                        val drawEndTime = System.currentTimeMillis()
 //                        Log.d(TAG, "Drawing operation took ${drawEndTime - startTime} ms")
@@ -183,11 +197,12 @@ class DrawCanvas(
 
                 }
             } else thread {
+                val points = copyInputToSimplePointF(plist.points, page.scroll, page.zoomLevel)
                 if (getActualState().mode == Mode.Erase) {
                     handleErase(
                         this@DrawCanvas.page,
                         history,
-                        plist.points.map { SimplePointF(it.x, it.y + page.scroll) },
+                        points,
                         eraser = getActualState().eraser
                     )
                     drawCanvasToView()
@@ -199,26 +214,11 @@ class DrawCanvas(
                         coroutineScope,
                         this@DrawCanvas.page,
                         getActualState(),
-                        plist.points.map { SimplePointF(it.x, it.y + page.scroll) })
-                    drawCanvasToView()
-                    refreshUi()
-                }
-
-                if (getActualState().mode == Mode.Line) {
-                    // draw line
-                    handleLine(
-                        page = this@DrawCanvas.page,
-                        historyBucket = strokeHistoryBatch,
-                        strokeSize = getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
-                        color = getActualState().penSettings[getActualState().pen.penName]!!.color,
-                        pen = getActualState().pen,
-                        touchPoints = plist.points
+                        points
                     )
-                    //make it visible
                     drawCanvasToView()
                     refreshUi()
                 }
-
             }
         }
 
@@ -306,16 +306,9 @@ class DrawCanvas(
         // observe forceUpdate
         coroutineScope.launch {
             forceUpdate.collect { zoneAffected ->
-                Log.v(TAG + "Observer", "Force update zone $zoneAffected")
+                Log.e(TAG + "Observer", "Where it is used? Force update zone $zoneAffected")
 
-                if (zoneAffected != null) page.drawArea(
-                    area = Rect(
-                        zoneAffected.left,
-                        zoneAffected.top - page.scroll,
-                        zoneAffected.right,
-                        zoneAffected.bottom - page.scroll
-                    ),
-                )
+                if (zoneAffected != null) page.drawAreaPageCoordinates(zoneAffected)
                 refreshUiSuspend()
             }
         }
@@ -347,7 +340,9 @@ class DrawCanvas(
         }
         coroutineScope.launch {
             rectangleToSelect.drop(1).collect {
-                selectRectangle(it)
+                if (it != null) {
+                    selectRectangle(it)
+                }
             }
         }
 
@@ -426,30 +421,29 @@ class DrawCanvas(
 
     }
 
-    private suspend fun selectRectangle(rectToSelect: Rect?) {
-        if (rectToSelect != null) {
-            Log.d(TAG + "Observer", "position of image $rectToSelect")
-            rectToSelect.top += page.scroll
-            rectToSelect.bottom += page.scroll
-            // Query the database to find an image that coincides with the point
-            val imagesToSelect = withContext(Dispatchers.IO) {
-                ImageRepository(context).getImagesInRectangle(rectToSelect, page.id)
-            }
-            val strokesToSelect = withContext(Dispatchers.IO) {
-                StrokeRepository(context).getStrokesInRectangle(rectToSelect, page.id)
-            }
-            rectangleToSelect.value = null
-            if (imagesToSelect.isNotEmpty() || strokesToSelect.isNotEmpty()) {
-                selectImagesAndStrokes(coroutineScope, page, state, imagesToSelect, strokesToSelect)
-            } else {
-                SnackState.globalSnackFlow.emit(
-                    SnackConf(
-                        text = "There isn't anything.",
-                        duration = 3000,
-                    )
-                )
-            }
+    private suspend fun selectRectangle(rectToSelect: Rect) {
+        Log.d(TAG + "Observer", "Area to Select (screen): $rectToSelect")
+        val inPageCoordinates = toPageCoordinates(rectToSelect, page.zoomLevel, page.scroll)
+
+        // Query the database to find an image that coincides with the point
+        val imagesToSelect = withContext(Dispatchers.IO) {
+            ImageRepository(context).getImagesInRectangle(inPageCoordinates, page.id)
         }
+        val strokesToSelect = withContext(Dispatchers.IO) {
+            StrokeRepository(context).getStrokesInRectangle(inPageCoordinates, page.id)
+        }
+        rectangleToSelect.value = null
+        if (imagesToSelect.isNotEmpty() || strokesToSelect.isNotEmpty()) {
+            selectImagesAndStrokes(coroutineScope, page, state, imagesToSelect, strokesToSelect)
+        } else {
+            SnackState.globalSnackFlow.emit(
+                SnackConf(
+                    text = "There isn't anything.",
+                    duration = 3000,
+                )
+            )
+        }
+
     }
 
     private fun commitToHistory() {

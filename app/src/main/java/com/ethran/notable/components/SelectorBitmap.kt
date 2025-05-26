@@ -1,7 +1,7 @@
 package com.ethran.notable.components
 
 import android.content.Context
-import android.widget.Toast
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,7 +39,6 @@ import compose.icons.feathericons.Clipboard
 import compose.icons.feathericons.Copy
 import compose.icons.feathericons.Scissors
 import compose.icons.feathericons.Share2
-import io.shipbook.shipbooksdk.Log
 
 val strokeStyle = androidx.compose.ui.graphics.drawscope.Stroke(
     width = 2f,
@@ -56,10 +55,16 @@ fun SelectedBitmap(
 ) {
     val selectionState = editorState.selectionState
     if (selectionState.selectedBitmap == null) return
-    if (selectionState.selectionDisplaceOffset == null) {
-        Log.e(TAG, "SelectedBitmap: selectionDisplaceOffset is null")
-        return
-    }
+
+    var selectionDisplaceOffset =
+        editorState.pageView.applyZoom(selectionState.selectionDisplaceOffset ?: return)
+    val selectionRect =
+        editorState.pageView.toScreenCoordinates(selectionState.selectionRect ?: return)
+    val selectionStartOffset = IntOffset(selectionRect.left, selectionRect.top)
+
+    Log.e(TAG, "scroll: ${controlTower.page.scroll},start: $selectionStartOffset, displace: $selectionDisplaceOffset, rect $selectionRect")
+
+
     Box(
         Modifier
             .fillMaxSize()
@@ -72,13 +77,7 @@ fun SelectedBitmap(
             bitmap = selectionState.selectedBitmap!!.asImageBitmap(),
             contentDescription = "Selection bitmap",
             modifier = Modifier
-                .offset {
-                    if (selectionState.selectionStartOffset == null) return@offset IntOffset(
-                        0,
-                        0
-                    ) // guard
-                    selectionState.selectionStartOffset!! + selectionState.selectionDisplaceOffset!!
-                }
+                .offset { selectionStartOffset + selectionDisplaceOffset }
                 .drawBehind {
                     drawRect(
                         color = Color.Gray,
@@ -90,18 +89,14 @@ fun SelectedBitmap(
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
-                        //TODO: Sometimes its null, when handling images, for now I added some logs.
-                        if (selectionState.selectionDisplaceOffset == null) {
-                            Log.e(TAG, "selectionDisplaceOffset is null, probably was dissected")
-                            Toast.makeText(
-                                context,
-                                "Please report issue if something went wrong with handling selection.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            return@detectDragGestures
-                        }
                         selectionState.selectionDisplaceOffset =
-                            selectionState.selectionDisplaceOffset!! + dragAmount.round()
+                            editorState.pageView.removeZoom(
+                                selectionDisplaceOffset + dragAmount.round()
+                            )
+                        selectionDisplaceOffset =
+                            editorState.pageView.applyZoom(
+                                selectionState.selectionDisplaceOffset ?: return@detectDragGestures
+                            )
                     }
                 }
                 .combinedClickable(
@@ -114,15 +109,15 @@ fun SelectedBitmap(
         // TODO: improve this code
 
         val buttonCount = if (selectionState.isResizable()) 7 else 5
-        val toolbarPadding = 4;
+        val toolbarPadding = 4
 
         // If we can calculate offset of buttons show selection handling tools
-        selectionState.selectionStartOffset?.let { startOffset ->
-            selectionState.selectionDisplaceOffset?.let { displaceOffset ->
+        selectionStartOffset.let { startOffset ->
+            selectionDisplaceOffset.let { displaceOffset ->
                 // TODO: I think the toolbar is still not in the center.
-                val xPos = selectionState.selectionRect?.let { rect ->
-                    (rect.right - rect.left)/2 - buttonCount * (BUTTON_SIZE + 5* toolbarPadding)
-                } ?: 0
+                val xPos = selectionRect.let { rect ->
+                    (rect.right - rect.left) / 2 - buttonCount * (BUTTON_SIZE + 5 * toolbarPadding)
+                }
                 val offset = startOffset + displaceOffset + IntOffset(x = xPos, y = -100)
                 // Overlay buttons near the selection box
                 Row(

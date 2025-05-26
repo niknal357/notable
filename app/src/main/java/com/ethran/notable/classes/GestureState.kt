@@ -7,6 +7,7 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.unit.IntOffset
 import com.ethran.notable.utils.SimplePointF
 import kotlin.math.abs
+import kotlin.math.sqrt
 
 
 enum class GestureMode {
@@ -130,6 +131,7 @@ data class GestureState(
         return minVerticalMovement ?: 0f
     }
 
+    // returns the delta from last request
     fun getVerticalDragDelta(): Int {
         if (lastPositions.isEmpty()) return 0
         val currentPosition = lastPositions.values.lastOrNull() ?: return 0
@@ -143,4 +145,24 @@ data class GestureState(
         lastCheckForMovementPosition = currentPosition
         return delta
     }
+
+    fun getPinchZoomDelta(): Float {
+        if (lastPositions.size < 2 || initialPositions.size < 2) return 1.0f
+
+        val currentPointers = lastPositions.values.toList()
+        val initialPointers = initialPositions.values.toList()
+
+        val currentDx = currentPointers[0].x - currentPointers[1].x
+        val currentDy = currentPointers[0].y - currentPointers[1].y
+        val currentDistance = sqrt(currentDx * currentDx + currentDy * currentDy)
+
+        val initialDx = initialPointers[0].x - initialPointers[1].x
+        val initialDy = initialPointers[0].y - initialPointers[1].y
+        val initialDistance = sqrt(initialDx * initialDx + initialDy * initialDy)
+
+        if (initialDistance == 0f) return 1.0f
+        return currentDistance / initialDistance
+    }
+
+
 }

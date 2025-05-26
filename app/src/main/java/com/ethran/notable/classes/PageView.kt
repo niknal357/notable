@@ -8,6 +8,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
@@ -45,7 +46,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
 import kotlin.io.path.Path
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.system.measureTimeMillis
 
@@ -69,12 +69,13 @@ class PageView(
     var images = listOf<Image>()
     private var imagesById: HashMap<String, Image> = hashMapOf()
     var scroll by mutableIntStateOf(0) // is observed by ui
-    val scrolable: Boolean
+    val scrollable: Boolean
         get() = when (pageFromDb?.backgroundType) {
             "native", null -> true
             "coverImage" -> false
             else -> true
         }
+    var zoomLevel: Float = 1.0f
     private val saveTopic = MutableSharedFlow<Unit>()
 
     var height by mutableIntStateOf(viewHeight) // is observed by ui
@@ -182,7 +183,7 @@ class PageView(
                     pageFromDb?.background ?: "blank",
                     scroll, 1f, this@PageView
                 )
-                drawArea(viewRectangle)
+                drawAreaScreenCoordinates(viewRectangle)
                 persistBitmap()
                 persistBitmapThumbnail()
                 DrawCanvas.refreshUi.emit(Unit)
@@ -212,7 +213,7 @@ class PageView(
                     //required to ensure that everything is visible by draw area.
                     launch(Dispatchers.Default) {
                         Log.d(TAG, "Strokes remaining loaded")
-                        drawArea(viewRectangle)
+                        drawAreaScreenCoordinates(viewRectangle)
                         DrawCanvas.refreshUi.emit(Unit)
                     }
                 }
@@ -383,41 +384,101 @@ class PageView(
         persistBitmapThumbnail()
     }
 
-    // ignored strokes are used in handleSelect
-    fun drawArea(
-        area: Rect,
+
+    private fun drawDebugRectWithLabels(
+        canvas: Canvas,
+        rect: RectF,
+        rectColor: Int = Color.RED,
+        labelColor: Int = Color.BLUE
+    ) {
+        val rectPaint = Paint().apply {
+            color = rectColor
+            style = Paint.Style.STROKE
+            strokeWidth = 6f
+        }
+        Log.w(TAG, "Drawing debug rect $rect")
+        // Draw rectangle outline
+        canvas.drawRect(rect, rectPaint)
+
+        // Setup label paint
+        val labelPaint = Paint().apply {
+            color = labelColor
+            textAlign = Paint.Align.LEFT
+            textSize = 40f
+            isAntiAlias = true
+        }
+
+        // Helper to format text
+        fun format(x: Float, y: Float) = "(${x.toInt()}, ${y.toInt()})"
+
+        val topLeftLabel = format(rect.left, rect.top)
+        val topRightLabel = format(rect.right, rect.top)
+        val bottomLeftLabel = format(rect.left, rect.bottom)
+        val bottomRightLabel = format(rect.right, rect.bottom)
+
+        val topRightTextWidth = labelPaint.measureText(topRightLabel)
+        val bottomRightTextWidth = labelPaint.measureText(bottomRightLabel)
+
+        // Draw coordinate labels at corners
+        canvas.drawText(topLeftLabel, rect.left + 8f, rect.top + labelPaint.textSize, labelPaint)
+        canvas.drawText(
+            topRightLabel,
+            rect.right - topRightTextWidth - 8f,
+            rect.top + labelPaint.textSize,
+            labelPaint
+        )
+        canvas.drawText(bottomLeftLabel, rect.left + 8f, rect.bottom - 8f, labelPaint)
+        canvas.drawText(
+            bottomRightLabel,
+            rect.right - bottomRightTextWidth - 8f,
+            rect.bottom - 8f,
+            labelPaint
+        )
+    }
+
+
+    fun drawAreaPageCoordinates(
+        pageArea: Rect, // in page coordinates
+        ignoredStrokeIds: List<String> = listOf(),
+        ignoredImageIds: List<String> = listOf(),
+        canvas: Canvas? = null
+    ) {
+        Log.e(TAG, "drawAreaPageCoordinates: area = $pageArea")
+        val areaInScreen = toScreenCoordinates(pageArea)
+        Log.e(TAG, "drawAreaPageCoordinates: areaInScreen = $areaInScreen")
+        drawAreaScreenCoordinates(areaInScreen, ignoredStrokeIds, ignoredImageIds, canvas)
+    }
+
+    /*
+        provided a rectangle, in screen coordinates, its check
+        for all images intersecting it, excluding ones set to be ignored,
+        and redraws them.
+     */
+    fun drawAreaScreenCoordinates(
+        screenArea: Rect,
         ignoredStrokeIds: List<String> = listOf(),
         ignoredImageIds: List<String> = listOf(),
         canvas: Canvas? = null
     ) {
         val activeCanvas = canvas ?: windowedCanvas
-        val pageArea = Rect(
-            area.left,
-            area.top + scroll,
-            area.right,
-            area.bottom + scroll
-        )
+        val pageArea = toPageCoordinates(screenArea)
+        val pageAreaWithoutScroll = removeScroll(pageArea)
+        Log.e(TAG, "drawAreaScreenCoordinates: areaScreen = $screenArea")
+        Log.e(TAG, "drawAreaScreenCoordinates: areaInPage = $pageArea")
+        Log.e(TAG, "drawAreaScreenCoordinates: pageAreaWithoutScroll = $pageAreaWithoutScroll")
 
-
-        activeCanvas.withClip(area) {
+        // Canvas is scaled, it will scale page area.
+        activeCanvas.withClip(pageAreaWithoutScroll) {
             drawColor(Color.BLACK)
-
 
             val timeToDraw = measureTimeMillis {
                 drawBg(
                     context, this, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
                     pageFromDb?.background ?: "blank", scroll, 1f, this@PageView
                 )
-                val appSettings = GlobalAppSettings.current
-
-                if (appSettings?.debugMode == true) {
-//              Draw the gray edge of the rectangle
-                    val redPaint = Paint().apply {
-                        color = Color.GRAY
-                        style = Paint.Style.STROKE
-                        strokeWidth = 4f
-                    }
-                    drawRect(area, redPaint)
+                if (GlobalAppSettings.current.debugMode) {
+                    drawDebugRectWithLabels(activeCanvas, RectF(pageAreaWithoutScroll), Color.BLACK)
+//                    drawDebugRectWithLabels(activeCanvas, RectF(screenArea))
                 }
                 // Trying to find what throws error when drawing quickly
                 try {
@@ -462,66 +523,136 @@ class PageView(
         }
     }
 
-    suspend fun updateScroll(_delta: Int) {
+    fun simpleUpdateScroll(_delta: Int) {
+        // Just update scroll, for debugging.
+        Log.d(TAG, "Simple update scroll")
         var delta = _delta
         if (scroll + delta < 0) delta = 0 - scroll
 
+        scroll += delta
+
+        val redrawRect = Rect(
+            0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
+        )
+        val scrolledBitmap = createBitmap(SCREEN_WIDTH, SCREEN_HEIGHT, windowedBitmap.config!!)
+
+        // Swap in the new zoomed bitmap
+        windowedBitmap.recycle()
+        windowedBitmap = scrolledBitmap
+        windowedCanvas.setBitmap(windowedBitmap)
+        windowedCanvas.scale(zoomLevel, zoomLevel)
+        drawAreaScreenCoordinates(redrawRect)
+        persistBitmapDebounced()
+        saveToPersistLayer()
+
+    }
+
+    suspend fun updateScroll(dragDelta: Int) {
+        // drag delta is in screen coordinates,
+        // so we have to scale it back to page coordinates.
+
+        var deltaInPageCord = (dragDelta/ zoomLevel).toInt()
+        if (scroll + deltaInPageCord < 0) deltaInPageCord = 0 - scroll
+
         // There is nothing to do, return.
-        if (delta == 0) return
+        if (deltaInPageCord == 0) return
 
         // before scrolling, make sure that strokes are drawn.
         DrawCanvas.waitForDrawingWithSnack()
 
-        scroll += delta
+        scroll += deltaInPageCord
 
 
         // Shift the existing bitmap content
         val shiftedBitmap =
             createBitmap(windowedBitmap.width, windowedBitmap.height, windowedBitmap.config!!)
         val shiftedCanvas = Canvas(shiftedBitmap)
-        shiftedCanvas.drawBitmap(windowedBitmap, 0f, -delta.toFloat(), null)
+        shiftedCanvas.drawColor(Color.BLACK) //for debugging.
+        shiftedCanvas.drawBitmap(windowedBitmap, 0f, -deltaInPageCord.toFloat(), null)
 
         // Swap in the shifted bitmap
         windowedBitmap.recycle() // Recycle old bitmap
         windowedBitmap = shiftedBitmap
         windowedCanvas.setBitmap(windowedBitmap)
+        windowedCanvas.scale(zoomLevel, zoomLevel)
+
+        val redrawRect =
+            if (deltaInPageCord > 0)
+                Rect(0, SCREEN_HEIGHT - deltaInPageCord, SCREEN_WIDTH, SCREEN_HEIGHT)
+            else
+                Rect(0, 0, SCREEN_WIDTH, -deltaInPageCord)
+        Log.w(TAG, "deltaInScreenCord: $dragDelta, redrawRect: $redrawRect")
+        drawAreaScreenCoordinates(redrawRect)
+        persistBitmapDebounced()
+        saveToPersistLayer()
+    }
 
 
-        // Calculate area to redraw
-        val redrawTop = if (delta > 0) windowedBitmap.height - delta else 0
-        val redrawBottom = redrawTop + abs(delta)
+    suspend fun updateZoom(scaleDelta: Float) {
+        // TODO:
+        // - Update only effected area if possible
+        // - Find a better way to represent how much to zoom.
+        Log.w(TAG, "Zoom: $scaleDelta")
 
-        val redrawRect = Rect(
-            0,
-            redrawTop,
-            windowedBitmap.width,
-            redrawBottom.coerceAtMost(windowedBitmap.height)
-        )
+        // If there's no actual zoom change, skip
+        if (scaleDelta == zoomLevel) {
+            Log.d(TAG, "Zoom unchanged. Current level: $zoomLevel")
+            return
+        }
 
-        // Redraw the new/invalidated area (background + strokes)
+        DrawCanvas.waitForDrawingWithSnack()
+
+        // Update the zoom factor
+        zoomLevel = scaleDelta.coerceIn(0.1f, 10.0f)
+
+
+        // Create a scaled bitmap to represent zoomed view
+        val scaledWidth = windowedCanvas.width
+        val scaledHeight = windowedCanvas.height
+        Log.d(TAG, "Canvas dimensions: width=$scaledWidth, height=$scaledHeight")
+        Log.d(TAG, "Screen dimensions: width=$SCREEN_WIDTH, height=$SCREEN_HEIGHT")
+
+
+        val zoomedBitmap = createBitmap(scaledWidth, scaledHeight, windowedBitmap.config!!)
+
+        // Swap in the new zoomed bitmap
+        windowedBitmap.recycle()
+        windowedBitmap = zoomedBitmap
+        windowedCanvas.setBitmap(windowedBitmap)
+        windowedCanvas.scale(zoomLevel, zoomLevel)
+
+
+        // Redraw everything at new zoom level
+        val redrawRect = Rect(0, 0, windowedBitmap.width, windowedBitmap.height)
+
+        Log.d(TAG, "Redrawing full logical rect: $redrawRect")
+        windowedCanvas.drawColor(Color.BLACK)
+
         drawBg(
             context,
             windowedCanvas,
             pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
             pageFromDb?.background ?: "blank",
             scroll,
-            1f,
+            zoomLevel,
             this,
             redrawRect
         )
 
-        drawArea(redrawRect)
+        drawAreaScreenCoordinates(redrawRect)
 
         persistBitmapDebounced()
         saveToPersistLayer()
+        Log.i(TAG, "Zoom and redraw completed")
     }
+
 
     // updates page setting in db, (for instance type of background)
     // and redraws page to vew.
     fun updatePageSettings(page: Page) {
         AppRepository(context).pageRepository.update(page)
         pageFromDb = AppRepository(context).pageRepository.getById(id)
-        drawArea(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+        drawAreaScreenCoordinates(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
         persistBitmapDebounced()
     }
 
@@ -533,7 +664,7 @@ class PageView(
             // Recreate bitmap and canvas with new dimensions
             windowedBitmap = createBitmap(viewWidth, viewHeight)
             windowedCanvas = Canvas(windowedBitmap)
-            drawArea(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+            drawAreaScreenCoordinates(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
             persistBitmapDebounced()
         }
     }
@@ -550,5 +681,46 @@ class PageView(
             pageFromDb = AppRepository(context).pageRepository.getById(id)
         }
     }
-}
 
+
+    fun applyZoom(point: IntOffset): IntOffset {
+        return IntOffset(
+            (point.x * zoomLevel).toInt(),
+            (point.y * zoomLevel).toInt()
+        )
+    }
+
+    fun removeZoom(point: IntOffset): IntOffset {
+        return IntOffset(
+            (point.x / zoomLevel).toInt(),
+            (point.y / zoomLevel).toInt()
+        )
+    }
+
+    private fun removeScroll(rect: Rect): Rect {
+        return Rect(
+            (rect.left.toFloat()).toInt(),
+            ((rect.top - scroll).toFloat()).toInt(),
+            (rect.right.toFloat()).toInt(),
+            ((rect.bottom - scroll).toFloat()).toInt()
+        )
+    }
+
+    fun toScreenCoordinates(rect: Rect): Rect {
+        return Rect(
+            (rect.left.toFloat() * zoomLevel).toInt(),
+            ((rect.top - scroll).toFloat() * zoomLevel).toInt(),
+            (rect.right.toFloat() * zoomLevel).toInt(),
+            ((rect.bottom - scroll).toFloat() * zoomLevel).toInt()
+        )
+    }
+
+    private fun toPageCoordinates(rect: Rect): Rect {
+        return Rect(
+            (rect.left.toFloat() / zoomLevel).toInt(),
+            (rect.top.toFloat() / zoomLevel).toInt() + scroll,
+            (rect.right.toFloat() / zoomLevel).toInt(),
+            (rect.bottom.toFloat() / zoomLevel).toInt() + scroll
+        )
+    }
+}

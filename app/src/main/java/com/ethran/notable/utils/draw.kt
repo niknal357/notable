@@ -265,6 +265,7 @@ fun drawLinedBg(canvas: Canvas, scroll: Int, scale: Float) {
 fun drawDottedBg(canvas: Canvas, offset: Int, scale: Float) {
     val height = (canvas.height / scale).toInt()
     val width = (canvas.width / scale).toInt()
+    Log.d(TAG, "height(drawDottedBg): $height, width: $width")
 
     // white bg
     canvas.drawColor(Color.WHITE)
@@ -558,11 +559,11 @@ fun drawBg(
     scroll: Int = 0,
     scale: Float = 1f, // When exporting, we change scale of canvas. therefore canvas.width/height is scaled
     page: PageView? = null,
-    clipRect: Rect? = null
+    clipRect: Rect? = null // before the scaling
 ) {
     clipRect?.let {
         canvas.save()
-        canvas.clipRect(it)
+        canvas.clipRect(scaleRect(it,scale))
     }
     when (backgroundType) {
         is BackgroundType.Image -> {
@@ -594,17 +595,22 @@ fun drawBg(
     }
 
     // in landscape orientation add margin to indicate what will be visible in vertical orientation.
-    if (SCREEN_WIDTH > SCREEN_HEIGHT) {
+    if (SCREEN_WIDTH > SCREEN_HEIGHT || scale<1.0f) {
         val paint = Paint().apply {
             this.color = Color.MAGENTA
             this.strokeWidth = 2f
         }
+        val margin =
+            if (scale<1.0f)
+                canvas.width
+            else
+                SCREEN_HEIGHT
         // Draw vertical line with x= SCREEN_HEIGHT
         canvas.drawLine(
-            SCREEN_HEIGHT.toFloat(),
+            margin.toFloat(),
             padding.toFloat(),
-            SCREEN_HEIGHT.toFloat(),
-            (SCREEN_HEIGHT - padding).toFloat(),
+            margin.toFloat(),
+            (SCREEN_HEIGHT/scale - padding),
             paint
         )
     }

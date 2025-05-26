@@ -26,6 +26,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.ethran.notable.SCREEN_HEIGHT
+import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.EditorControlTower
@@ -56,6 +58,7 @@ private const val DOUBLE_TAP_MIN_MS = 20L
 private const val TWO_FINGER_TOUCH_TAP_MAX_TIME = 200L
 private const val TWO_FINGER_TOUCH_TAP_MIN_TIME = 20L
 private const val TWO_FINGER_TAP_MOVEMENT_TOLERANCE = 20f
+private const val PINCH_ZOOM_THRESHOLD = 0.5f
 
 
 @Composable
@@ -156,7 +159,6 @@ fun EditorGestureReceiver(
                             if (gestureState.gestureMode == GestureMode.Scroll) {
                                 val delta = gestureState.getVerticalDragDelta()
                                 overdueScroll = controlTower.onSingleFingerVerticalSwipe(
-                                    startPosition = gestureState.getFirstPositionF()!!,
                                     delta = delta + overdueScroll
                                 )
                             }
@@ -248,6 +250,25 @@ fun EditorGestureReceiver(
                                     nextPage = goToNextPage,
                                 )
                             }
+                            // zoom gesture
+                            var zoomDelta = gestureState.getPinchZoomDelta()
+                            if (!appSettings.continuousZoom) {
+                                if (abs(zoomDelta - 1f) > PINCH_ZOOM_THRESHOLD) {
+                                    zoomDelta = if (zoomDelta <= 1.0f)
+                                        if (SCREEN_HEIGHT > SCREEN_WIDTH)
+                                            SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT.toFloat()
+                                        else
+                                            1.0f
+                                    else {
+                                        if (SCREEN_HEIGHT > SCREEN_WIDTH)
+                                            1.0f
+                                        else
+                                            SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT.toFloat()
+                                    }
+                                    controlTower.onPinchToZoom(zoomDelta)
+                                    Log.d(TAG, "Discrete zoom: $zoomDelta")
+                                }
+                            }
                         }
 
                         val horizontalDrag = gestureState.getHorizontalDrag()
@@ -285,7 +306,6 @@ fun EditorGestureReceiver(
 
                         if (!GlobalAppSettings.current.smoothScroll && abs(verticalDrag) > SWIPE_THRESHOLD && gestureState.getInputCount() == 1) {
                             controlTower.onSingleFingerVerticalSwipe(
-                                gestureState.getFirstPositionF()!!,
                                 verticalDrag
                             )
                         }
@@ -399,6 +419,7 @@ private fun resolveGesture(
         AppSettings.GestureAction.Select -> {
             Log.i(TAG, "select")
             scope.launch {
+                Log.w(TAG, "rect in screen coord: $rectangle")
                 DrawCanvas.rectangleToSelect.emit(rectangle)
             }
         }

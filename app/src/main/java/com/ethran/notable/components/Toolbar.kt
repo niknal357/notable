@@ -199,39 +199,40 @@ fun Toolbar(
                     penSetting = state.penSettings[Pen.BALLPEN.penName] ?: return,
                     onChangeSetting = { onChangeStrokeSetting(Pen.BALLPEN.penName, it) })
 
-                PenToolbarButton(
-                    onStrokeMenuOpenChange = { state.isDrawing = !it },
-                    pen = Pen.REDBALLPEN,
-                    icon = R.drawable.ballpenred,
-                    isSelected = isSelected(state, Pen.REDBALLPEN),
-                    onSelect = { handleChangePen(Pen.REDBALLPEN) },
-                    sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
-                    penSetting = state.penSettings[Pen.REDBALLPEN.penName] ?: return,
-                    onChangeSetting = { onChangeStrokeSetting(Pen.REDBALLPEN.penName, it) },
-                )
+                if(!GlobalAppSettings.current.monochromeMode) {
+                    PenToolbarButton(
+                        onStrokeMenuOpenChange = { state.isDrawing = !it },
+                        pen = Pen.REDBALLPEN,
+                        icon = R.drawable.ballpenred,
+                        isSelected = isSelected(state, Pen.REDBALLPEN),
+                        onSelect = { handleChangePen(Pen.REDBALLPEN) },
+                        sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
+                        penSetting = state.penSettings[Pen.REDBALLPEN.penName] ?: return,
+                        onChangeSetting = { onChangeStrokeSetting(Pen.REDBALLPEN.penName, it) },
+                    )
 
-                PenToolbarButton(
-                    onStrokeMenuOpenChange = { state.isDrawing = !it },
-                    pen = Pen.BLUEBALLPEN,
-                    icon = R.drawable.ballpenblue,
-                    isSelected = isSelected(state, Pen.BLUEBALLPEN),
-                    onSelect = { handleChangePen(Pen.BLUEBALLPEN) },
-                    sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
-                    penSetting = state.penSettings[Pen.BLUEBALLPEN.penName] ?: return,
-                    onChangeSetting = { onChangeStrokeSetting(Pen.BLUEBALLPEN.penName, it) },
-                )
+                    PenToolbarButton(
+                        onStrokeMenuOpenChange = { state.isDrawing = !it },
+                        pen = Pen.BLUEBALLPEN,
+                        icon = R.drawable.ballpenblue,
+                        isSelected = isSelected(state, Pen.BLUEBALLPEN),
+                        onSelect = { handleChangePen(Pen.BLUEBALLPEN) },
+                        sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
+                        penSetting = state.penSettings[Pen.BLUEBALLPEN.penName] ?: return,
+                        onChangeSetting = { onChangeStrokeSetting(Pen.BLUEBALLPEN.penName, it) },
+                    )
 //              Removed to make space for insert tool
-                PenToolbarButton(
-                    onStrokeMenuOpenChange = { state.isDrawing = !it },
-                    pen = Pen.GREENBALLPEN,
-                    icon = R.drawable.ballpengreen,
-                    isSelected = isSelected(state, Pen.GREENBALLPEN),
-                    onSelect = { handleChangePen(Pen.GREENBALLPEN) },
-                    sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
-                    penSetting = state.penSettings[Pen.GREENBALLPEN.penName] ?: return,
-                    onChangeSetting = { onChangeStrokeSetting(Pen.GREENBALLPEN.penName, it) },
-                )
-
+                    PenToolbarButton(
+                        onStrokeMenuOpenChange = { state.isDrawing = !it },
+                        pen = Pen.GREENBALLPEN,
+                        icon = R.drawable.ballpengreen,
+                        isSelected = isSelected(state, Pen.GREENBALLPEN),
+                        onSelect = { handleChangePen(Pen.GREENBALLPEN) },
+                        sizes = listOf("S" to 3f, "M" to 5f, "L" to 10f, "XL" to 20f),
+                        penSetting = state.penSettings[Pen.GREENBALLPEN.penName] ?: return,
+                        onChangeSetting = { onChangeStrokeSetting(Pen.GREENBALLPEN.penName, it) },
+                    )
+                }
                 if (GlobalAppSettings.current.neoTools) {
                     PenToolbarButton(
                         onStrokeMenuOpenChange = { state.isDrawing = !it },

@@ -21,7 +21,6 @@ import com.ethran.notable.utils.drawImage
 import com.ethran.notable.utils.imageBoundsInt
 import com.ethran.notable.utils.offsetImage
 import com.ethran.notable.utils.offsetStroke
-import com.ethran.notable.utils.pageAreaToCanvasArea
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import java.util.Date
@@ -29,12 +28,16 @@ import java.util.UUID
 
 
 class SelectionState {
+    // all coordinates should be in page coordinates
     var firstPageCut by mutableStateOf<List<SimplePointF>?>(null)
     var secondPageCut by mutableStateOf<List<SimplePointF>?>(null)
     var selectedStrokes by mutableStateOf<List<Stroke>?>(null)
     var selectedImages by mutableStateOf<List<Image>?>(null)
+
+    // TODO: Bitmap should be change, if scale changes.
     var selectedBitmap by mutableStateOf<Bitmap?>(null)
-    var selectionStartOffset by mutableStateOf<IntOffset?>(null)
+
+    //    var selectionStartOffset by mutableStateOf<IntOffset?>(null)
     var selectionDisplaceOffset by mutableStateOf<IntOffset?>(null)
     var selectionRect by mutableStateOf<Rect?>(null)
     var placementMode by mutableStateOf<PlacementMode?>(null)
@@ -45,7 +48,6 @@ class SelectionState {
         secondPageCut = null
         firstPageCut = null
         selectedBitmap = null
-        selectionStartOffset = null
         selectionRect = null
         selectionDisplaceOffset = null
         placementMode = null
@@ -79,7 +81,7 @@ class SelectionState {
         } ?: IntOffset.Zero
 
         val pageBounds = imageBoundsInt(selectedImagesCopy)
-        selectionRect = pageAreaToCanvasArea(pageBounds, page.scroll)
+        selectionRect = page.toScreenCoordinates(pageBounds)
 
         selectionDisplaceOffset =
             selectionDisplaceOffset?.let { it - sizeChange }
@@ -153,6 +155,7 @@ class SelectionState {
         )
     }
 
+    // Moves strokes, and redraws canvas.
     fun applySelectionDisplace(page: PageView): List<Operation>? {
 
         if (selectionDisplaceOffset == null) return null
@@ -162,13 +165,14 @@ class SelectionState {
         val selectedStrokesCopy = selectedStrokes
         val selectedImagesCopy = selectedImages
         val offset = selectionDisplaceOffset!!
-        val finalZone = Rect(selectionRect!!)
+        val finalZone = selectionRect!!
         finalZone.offset(offset.x, offset.y)
+        Log.e(TAG, "offset: $offset, finalZone: $finalZone")
 
         // collect undo operations for strokes and images together, as a single change
         val operationList = mutableListOf<Operation>()
 
-        if (selectedStrokesCopy != null) {
+        if (!selectedStrokesCopy.isNullOrEmpty()) {
             val displacedStrokes = selectedStrokesCopy.map {
                 offsetStroke(it, offset = offset.toOffset())
             }
@@ -177,7 +181,6 @@ class SelectionState {
                 page.removeStrokes(selectedStrokesCopy.map { it.id })
 
             page.addStrokes(displacedStrokes)
-            page.drawArea(finalZone)
 
 
             if (offset.x > 0 || offset.y > 0) {
@@ -188,7 +191,7 @@ class SelectionState {
                     operationList += Operation.AddStroke(selectedStrokesCopy)
             }
         }
-        if (selectedImagesCopy != null) {
+        if (!selectedImagesCopy.isNullOrEmpty()) {
             Log.i(TAG, "Commit images to history.")
 
             val displacedImages = selectedImagesCopy.map {
@@ -198,7 +201,6 @@ class SelectionState {
                 page.removeImages(selectedImagesCopy.map { it.id })
 
             page.addImage(displacedImages)
-            page.drawArea(finalZone)
 
             if (offset.x != 0 || offset.y != 0) {
                 // TODO: find why sometimes we add two times same operation.
@@ -210,6 +212,8 @@ class SelectionState {
                     operationList += Operation.AddImage(selectedImagesCopy)
             }
         }
+        Log.w(TAG, "final zone to redraw (strokes): $finalZone")
+        page.drawAreaPageCoordinates(finalZone)
         return operationList
     }
 
