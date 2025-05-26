@@ -523,10 +523,10 @@ class PageView(
         }
     }
 
-    fun simpleUpdateScroll(_delta: Int) {
+    fun simpleUpdateScroll(dragDelta: Int) {
         // Just update scroll, for debugging.
         Log.d(TAG, "Simple update scroll")
-        var delta = _delta
+        var delta = (dragDelta/ zoomLevel).toInt()
         if (scroll + delta < 0) delta = 0 - scroll
 
         scroll += delta
@@ -568,7 +568,7 @@ class PageView(
             createBitmap(windowedBitmap.width, windowedBitmap.height, windowedBitmap.config!!)
         val shiftedCanvas = Canvas(shiftedBitmap)
         shiftedCanvas.drawColor(Color.BLACK) //for debugging.
-        shiftedCanvas.drawBitmap(windowedBitmap, 0f, -deltaInPageCord.toFloat(), null)
+        shiftedCanvas.drawBitmap(windowedBitmap, 0f, -dragDelta.toFloat(), null)
 
         // Swap in the shifted bitmap
         windowedBitmap.recycle() // Recycle old bitmap
