@@ -41,9 +41,11 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import okhttp3.internal.wait
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.lang.Thread.sleep
 import java.nio.file.Files
 import kotlin.io.path.Path
 import kotlin.math.max
@@ -209,13 +211,14 @@ class PageView(
                 // Switching to the Main thread guarantees that `strokes = pageWithStrokes.strokes`
                 // has completed and is accessible for rendering.
                 // Or at least I hope it does.
+
+                //required to ensure that everything is visible by draw area.
+                sleep(10) // wait 10ms
                 launch(Dispatchers.Main) {
-                    //required to ensure that everything is visible by draw area.
-                    launch(Dispatchers.Default) {
-                        Log.d(TAG, "Strokes remaining loaded")
-                        drawAreaScreenCoordinates(viewRectangle)
-                        DrawCanvas.refreshUi.emit(Unit)
-                    }
+                    Log.d(TAG, "Strokes remaining loaded")
+                    drawAreaScreenCoordinates(viewRectangle)
+                    DrawCanvas.refreshUi.emit(Unit)
+
                 }
             }
             Log.d(TAG, "Strokes drawn, in ${System.currentTimeMillis() - fromDatabase}")
