@@ -443,9 +443,9 @@ class PageView(
         ignoredImageIds: List<String> = listOf(),
         canvas: Canvas? = null
     ) {
-        Log.e(TAG, "drawAreaPageCoordinates: area = $pageArea")
         val areaInScreen = toScreenCoordinates(pageArea)
-        Log.e(TAG, "drawAreaPageCoordinates: areaInScreen = $areaInScreen")
+//        Log.d(TAG, "drawAreaPageCoordinates: area = $pageArea")
+//        Log.d(TAG, "drawAreaPageCoordinates: areaInScreen = $areaInScreen")
         drawAreaScreenCoordinates(areaInScreen, ignoredStrokeIds, ignoredImageIds, canvas)
     }
 
@@ -463,9 +463,9 @@ class PageView(
         val activeCanvas = canvas ?: windowedCanvas
         val pageArea = toPageCoordinates(screenArea)
         val pageAreaWithoutScroll = removeScroll(pageArea)
-        Log.e(TAG, "drawAreaScreenCoordinates: areaScreen = $screenArea")
-        Log.e(TAG, "drawAreaScreenCoordinates: areaInPage = $pageArea")
-        Log.e(TAG, "drawAreaScreenCoordinates: pageAreaWithoutScroll = $pageAreaWithoutScroll")
+//        Log.d(TAG, "drawAreaScreenCoordinates: areaScreen = $screenArea")
+//        Log.d(TAG, "drawAreaScreenCoordinates: areaInPage = $pageArea")
+//        Log.d(TAG, "drawAreaScreenCoordinates: pageAreaWithoutScroll = $pageAreaWithoutScroll")
 
         // Canvas is scaled, it will scale page area.
         activeCanvas.withClip(pageAreaWithoutScroll) {
@@ -523,11 +523,13 @@ class PageView(
         }
     }
 
-    fun simpleUpdateScroll(dragDelta: Int) {
+    suspend fun simpleUpdateScroll(dragDelta: Int) {
         // Just update scroll, for debugging.
         Log.d(TAG, "Simple update scroll")
-        var delta = (dragDelta/ zoomLevel).toInt()
+        var delta = (dragDelta / zoomLevel).toInt()
         if (scroll + delta < 0) delta = 0 - scroll
+
+        DrawCanvas.waitForDrawingWithSnack()
 
         scroll += delta
 
@@ -548,10 +550,10 @@ class PageView(
     }
 
     suspend fun updateScroll(dragDelta: Int) {
+        Log.d(TAG, "Update scroll, dragDelta: $dragDelta, scroll: $scroll, zoomLevel: $zoomLevel")
         // drag delta is in screen coordinates,
         // so we have to scale it back to page coordinates.
-
-        var deltaInPageCord = (dragDelta/ zoomLevel).toInt()
+        var deltaInPageCord = (dragDelta / zoomLevel).toInt()
         if (scroll + deltaInPageCord < 0) deltaInPageCord = 0 - scroll
 
         // There is nothing to do, return.
@@ -561,6 +563,8 @@ class PageView(
         DrawCanvas.waitForDrawingWithSnack()
 
         scroll += deltaInPageCord
+        // To avoid rounding errors, we just calculate it again.
+        val movement = (deltaInPageCord * zoomLevel).toInt()
 
 
         // Shift the existing bitmap content
@@ -568,7 +572,7 @@ class PageView(
             createBitmap(windowedBitmap.width, windowedBitmap.height, windowedBitmap.config!!)
         val shiftedCanvas = Canvas(shiftedBitmap)
         shiftedCanvas.drawColor(Color.BLACK) //for debugging.
-        shiftedCanvas.drawBitmap(windowedBitmap, 0f, -deltaInPageCord.toFloat(), null)
+        shiftedCanvas.drawBitmap(windowedBitmap, 0f, -movement.toFloat(), null)
 
         // Swap in the shifted bitmap
         windowedBitmap.recycle() // Recycle old bitmap
@@ -576,12 +580,17 @@ class PageView(
         windowedCanvas.setBitmap(windowedBitmap)
         windowedCanvas.scale(zoomLevel, zoomLevel)
 
+        //add 1 of overlap, to eliminate rounding errors.
         val redrawRect =
             if (deltaInPageCord > 0)
-                Rect(0, SCREEN_HEIGHT - deltaInPageCord, SCREEN_WIDTH, SCREEN_HEIGHT)
+                Rect(0, SCREEN_HEIGHT - movement-1, SCREEN_WIDTH, SCREEN_HEIGHT)
             else
-                Rect(0, 0, SCREEN_WIDTH, -deltaInPageCord)
+                Rect(0, 0, SCREEN_WIDTH, -movement+1)
         Log.w(TAG, "deltaInScreenCord: $dragDelta, redrawRect: $redrawRect")
+        windowedCanvas.drawRect(
+            removeScroll(toPageCoordinates(redrawRect)),
+            Paint().apply { color = Color.RED })
+
         drawAreaScreenCoordinates(redrawRect)
         persistBitmapDebounced()
         saveToPersistLayer()
