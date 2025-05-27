@@ -261,8 +261,6 @@ class DrawCanvas(
     fun init() {
         Log.i(TAG, "Initializing Canvas")
 
-        val surfaceView = this
-
         val surfaceCallback: SurfaceHolder.Callback = object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
                 Log.i(TAG, "surface created $holder")
@@ -486,10 +484,12 @@ class DrawCanvas(
         }
         if (Looper.getMainLooper().isCurrentThread) {
             Log.i(
-                TAG,
-                "refreshUiSuspend() is called from the main thread, it might not be a good idea."
+                TAG, "refreshUiSuspend() is called from the main thread."
             )
-        }
+        } else
+            Log.i(
+                TAG, "refreshUiSuspend() is called from the non-main thread."
+            )
         waitForDrawing()
         drawCanvasToView()
         touchHelper.setRawDrawingEnabled(false)
@@ -575,7 +575,7 @@ class DrawCanvas(
         when (state.mode) {
             // we need to change size according to zoom level before drawing on screen
             Mode.Draw -> touchHelper.setStrokeStyle(penToStroke(state.pen))
-                ?.setStrokeWidth(state.penSettings[state.pen.penName]!!.strokeSize*page.zoomLevel)
+                ?.setStrokeWidth(state.penSettings[state.pen.penName]!!.strokeSize * page.zoomLevel)
                 ?.setStrokeColor(state.penSettings[state.pen.penName]!!.color)
 
             Mode.Erase -> {

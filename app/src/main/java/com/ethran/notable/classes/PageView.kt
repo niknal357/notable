@@ -138,6 +138,7 @@ class PageView(
     }
 
     private fun initFromPersistLayer(isCached: Boolean) {
+        Log.i(TAG, "Init from persist layer")
         cleanJob()
         // pageInfos
         // TODO page might not exists yet
@@ -176,17 +177,16 @@ class PageView(
             if (!isCached) {
                 // we draw and cache
 //                Log.d(TAG, "We do not have cashed.")
-                drawBg(
-                    context,
-                    windowedCanvas,
-                    pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
-                    pageFromDb?.background ?: "blank",
-                    scroll, 1f, this@PageView
-                )
-                drawAreaScreenCoordinates(viewRectangle)
-                persistBitmap()
-                persistBitmapThumbnail()
-                DrawCanvas.refreshUi.emit(Unit)
+                // Switch to main thread for drawing
+                launch(Dispatchers.Main.immediate) {
+                    drawAreaScreenCoordinates(viewRectangle)
+                    DrawCanvas.refreshUi.emit(Unit)
+                    launch(Dispatchers.IO) {
+                        persistBitmap()
+                        persistBitmapThumbnail()
+                    }
+                }
+
             }
 
             // Fetch all remaining strokes
@@ -579,9 +579,9 @@ class PageView(
         //add 1 of overlap, to eliminate rounding errors.
         val redrawRect =
             if (deltaInPageCord > 0)
-                Rect(0, SCREEN_HEIGHT - movement-5, SCREEN_WIDTH, SCREEN_HEIGHT)
+                Rect(0, SCREEN_HEIGHT - movement - 5, SCREEN_WIDTH, SCREEN_HEIGHT)
             else
-                Rect(0, 0, SCREEN_WIDTH, -movement+1)
+                Rect(0, 0, SCREEN_WIDTH, -movement + 1)
 //        windowedCanvas.drawRect(
 //            removeScroll(toPageCoordinates(redrawRect)),
 //            Paint().apply { color = Color.RED })
@@ -620,7 +620,8 @@ class PageView(
         val zoomedBitmap = createBitmap(scaledWidth, scaledHeight, windowedBitmap.config!!)
 
         // Swap in the new zoomed bitmap
-        windowedBitmap.recycle()
+//        windowedBitmap.recycle()
+// It causes race condition with init from persistent layer
         windowedBitmap = zoomedBitmap
         windowedCanvas.setBitmap(windowedBitmap)
         windowedCanvas.scale(zoomLevel, zoomLevel)

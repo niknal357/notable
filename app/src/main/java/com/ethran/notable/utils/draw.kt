@@ -68,8 +68,11 @@ fun drawBallPenStroke(
         prePoint.x = point.x
         prePoint.y = point.y
     }
-
-    canvas.drawPath(path, copyPaint)
+    try {
+        canvas.drawPath(path, copyPaint)
+    } catch (e: Exception) {
+        Log.e(TAG, "Exception during draw", e)
+    }
 }
 
 fun drawMarkerStroke(
