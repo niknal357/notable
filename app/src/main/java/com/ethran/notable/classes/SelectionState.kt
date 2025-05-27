@@ -168,7 +168,6 @@ class SelectionState {
         val offset = selectionDisplaceOffset!!
         val finalZone = selectionRect!!
         finalZone.offset(offset.x, offset.y)
-        Log.e(TAG, "offset: $offset, finalZone: $finalZone")
 
         // collect undo operations for strokes and images together, as a single change
         val operationList = mutableListOf<Operation>()
@@ -213,7 +212,6 @@ class SelectionState {
                     operationList += Operation.AddImage(selectedImagesCopy)
             }
         }
-        Log.w(TAG, "final zone to redraw (strokes): $finalZone")
         page.drawAreaPageCoordinates(finalZone)
         return operationList
     }

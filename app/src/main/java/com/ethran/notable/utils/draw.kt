@@ -563,7 +563,7 @@ fun drawBg(
 ) {
     clipRect?.let {
         canvas.save()
-        canvas.clipRect(scaleRect(it,scale))
+        canvas.clipRect(scaleRect(it, scale))
     }
     when (backgroundType) {
         is BackgroundType.Image -> {
@@ -595,13 +595,13 @@ fun drawBg(
     }
 
     // in landscape orientation add margin to indicate what will be visible in vertical orientation.
-    if (SCREEN_WIDTH > SCREEN_HEIGHT || scale<1.0f) {
+    if (SCREEN_WIDTH > SCREEN_HEIGHT || scale < 1.0f) {
         val paint = Paint().apply {
             this.color = Color.MAGENTA
             this.strokeWidth = 2f
         }
         val margin =
-            if (scale<1.0f)
+            if (scale < 1.0f)
                 canvas.width
             else
                 SCREEN_HEIGHT
@@ -610,7 +610,7 @@ fun drawBg(
             margin.toFloat(),
             padding.toFloat(),
             margin.toFloat(),
-            (SCREEN_HEIGHT/scale - padding),
+            (SCREEN_HEIGHT / scale - padding),
             paint
         )
     }

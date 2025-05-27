@@ -444,8 +444,6 @@ class PageView(
         canvas: Canvas? = null
     ) {
         val areaInScreen = toScreenCoordinates(pageArea)
-//        Log.d(TAG, "drawAreaPageCoordinates: area = $pageArea")
-//        Log.d(TAG, "drawAreaPageCoordinates: areaInScreen = $areaInScreen")
         drawAreaScreenCoordinates(areaInScreen, ignoredStrokeIds, ignoredImageIds, canvas)
     }
 
@@ -460,12 +458,10 @@ class PageView(
         ignoredImageIds: List<String> = listOf(),
         canvas: Canvas? = null
     ) {
+        // TODO: make sure that rounding errors are not happening
         val activeCanvas = canvas ?: windowedCanvas
         val pageArea = toPageCoordinates(screenArea)
         val pageAreaWithoutScroll = removeScroll(pageArea)
-//        Log.d(TAG, "drawAreaScreenCoordinates: areaScreen = $screenArea")
-//        Log.d(TAG, "drawAreaScreenCoordinates: areaInPage = $pageArea")
-//        Log.d(TAG, "drawAreaScreenCoordinates: pageAreaWithoutScroll = $pageAreaWithoutScroll")
 
         // Canvas is scaled, it will scale page area.
         activeCanvas.withClip(pageAreaWithoutScroll) {
@@ -583,13 +579,12 @@ class PageView(
         //add 1 of overlap, to eliminate rounding errors.
         val redrawRect =
             if (deltaInPageCord > 0)
-                Rect(0, SCREEN_HEIGHT - movement-1, SCREEN_WIDTH, SCREEN_HEIGHT)
+                Rect(0, SCREEN_HEIGHT - movement-5, SCREEN_WIDTH, SCREEN_HEIGHT)
             else
                 Rect(0, 0, SCREEN_WIDTH, -movement+1)
-        Log.w(TAG, "deltaInScreenCord: $dragDelta, redrawRect: $redrawRect")
-        windowedCanvas.drawRect(
-            removeScroll(toPageCoordinates(redrawRect)),
-            Paint().apply { color = Color.RED })
+//        windowedCanvas.drawRect(
+//            removeScroll(toPageCoordinates(redrawRect)),
+//            Paint().apply { color = Color.RED })
 
         drawAreaScreenCoordinates(redrawRect)
         persistBitmapDebounced()

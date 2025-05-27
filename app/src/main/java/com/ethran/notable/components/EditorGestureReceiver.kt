@@ -419,7 +419,7 @@ private fun resolveGesture(
         AppSettings.GestureAction.Select -> {
             Log.i(TAG, "select")
             scope.launch {
-                Log.w(TAG, "rect in screen coord: $rectangle")
+//                Log.w(TAG, "rect in screen coord: $rectangle")
                 DrawCanvas.rectangleToSelect.emit(rectangle)
             }
         }

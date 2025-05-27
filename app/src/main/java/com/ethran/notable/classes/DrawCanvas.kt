@@ -306,8 +306,7 @@ class DrawCanvas(
         // observe forceUpdate
         coroutineScope.launch {
             forceUpdate.collect { zoneAffected ->
-                Log.e(TAG + "Observer", "Where it is used? Force update zone $zoneAffected")
-
+                // Its newer used with non null value.
                 if (zoneAffected != null) page.drawAreaPageCoordinates(zoneAffected)
                 refreshUiSuspend()
             }

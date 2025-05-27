@@ -51,7 +51,6 @@ fun selectImagesAndStrokes(
 
     // create bitmap and draw images and strokes
     val selectedBitmap= page.toScreenCoordinates(pageBounds).let { boundsScreen->
-        Log.w(TAG, "bounds(PageView): $pageBounds, bounds (screen) $boundsScreen")
         createBitmap(boundsScreen.width(), boundsScreen.height())
     }
     val selectedCanvas = Canvas(selectedBitmap)
@@ -72,8 +71,6 @@ fun selectImagesAndStrokes(
             IntOffset(-pageBounds.left, -pageBounds.top)
         )
     }
-    Log.e(TAG, "selectionRect(page): $pageBounds")
-
     val startOffset = IntOffset(pageBounds.left, pageBounds.top - page.scroll)
 
     // set state
