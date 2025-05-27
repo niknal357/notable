@@ -73,11 +73,15 @@ fun selectImagesAndStrokes(
         )
     }
     Log.e(TAG, "selectionRect(page): $pageBounds")
+
+    val startOffset = IntOffset(pageBounds.left, pageBounds.top - page.scroll)
+
     // set state
     editorState.selectionState.selectedImages = imagesToSelect
     editorState.selectionState.selectedStrokes = strokesToSelect
     editorState.selectionState.selectedBitmap = selectedBitmap
     editorState.selectionState.selectionRect = pageBounds
+    editorState.selectionState.selectionStartOffset = startOffset
     editorState.selectionState.selectionDisplaceOffset = IntOffset(0, 0)
     editorState.selectionState.placementMode = PlacementMode.Move
     page.drawAreaPageCoordinates(

@@ -37,7 +37,7 @@ class SelectionState {
     // TODO: Bitmap should be change, if scale changes.
     var selectedBitmap by mutableStateOf<Bitmap?>(null)
 
-    //    var selectionStartOffset by mutableStateOf<IntOffset?>(null)
+    var selectionStartOffset by mutableStateOf<IntOffset?>(null)
     var selectionDisplaceOffset by mutableStateOf<IntOffset?>(null)
     var selectionRect by mutableStateOf<Rect?>(null)
     var placementMode by mutableStateOf<PlacementMode?>(null)
@@ -49,6 +49,7 @@ class SelectionState {
         firstPageCut = null
         selectedBitmap = null
         selectionRect = null
+        selectionStartOffset = null
         selectionDisplaceOffset = null
         placementMode = null
     }

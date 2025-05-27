@@ -60,7 +60,7 @@ fun SelectedBitmap(
         editorState.pageView.applyZoom(selectionState.selectionDisplaceOffset ?: return)
     val selectionRect =
         editorState.pageView.toScreenCoordinates(selectionState.selectionRect ?: return)
-    val selectionStartOffset = IntOffset(selectionRect.left, selectionRect.top)
+    val selectionStartOffset = editorState.pageView.applyZoom(selectionState.selectionStartOffset ?: IntOffset(0,0))
 
     Log.e(TAG, "scroll: ${controlTower.page.scroll},start: $selectionStartOffset, displace: $selectionDisplaceOffset, rect $selectionRect")
 
