@@ -573,8 +573,9 @@ class DrawCanvas(
     fun updatePenAndStroke() {
         Log.i(TAG, "Update pen and stroke")
         when (state.mode) {
+            // we need to change size according to zoom level before drawing on screen
             Mode.Draw -> touchHelper.setStrokeStyle(penToStroke(state.pen))
-                ?.setStrokeWidth(state.penSettings[state.pen.penName]!!.strokeSize)
+                ?.setStrokeWidth(state.penSettings[state.pen.penName]!!.strokeSize*page.zoomLevel)
                 ?.setStrokeColor(state.penSettings[state.pen.penName]!!.color)
 
             Mode.Erase -> {
