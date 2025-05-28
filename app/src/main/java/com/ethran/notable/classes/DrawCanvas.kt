@@ -171,10 +171,10 @@ class DrawCanvas(
                                 copyInput(
                                     transformToLine(plist.points),
                                     page.scroll,
-                                    page.zoomLevel
+                                    page.zoomLevel.value
                                 )
                             else
-                                copyInput(plist.points, page.scroll, page.zoomLevel)
+                                copyInput(plist.points, page.scroll, page.zoomLevel.value)
                         // draw the stroke
                         handleDraw(
                             this@DrawCanvas.page,
@@ -197,7 +197,7 @@ class DrawCanvas(
 
                 }
             } else thread {
-                val points = copyInputToSimplePointF(plist.points, page.scroll, page.zoomLevel)
+                val points = copyInputToSimplePointF(plist.points, page.scroll, page.zoomLevel.value)
                 if (getActualState().mode == Mode.Erase) {
                     handleErase(
                         this@DrawCanvas.page,
@@ -300,6 +300,12 @@ class DrawCanvas(
     }
 
     fun registerObservers() {
+
+        coroutineScope.launch {
+            page.zoomLevel.collect {
+                updatePenAndStroke()
+            }
+        }
 
         // observe forceUpdate
         coroutineScope.launch {
@@ -420,7 +426,7 @@ class DrawCanvas(
 
     private suspend fun selectRectangle(rectToSelect: Rect) {
         Log.d(TAG + "Observer", "Area to Select (screen): $rectToSelect")
-        val inPageCoordinates = toPageCoordinates(rectToSelect, page.zoomLevel, page.scroll)
+        val inPageCoordinates = toPageCoordinates(rectToSelect, page.zoomLevel.value, page.scroll)
 
         // Query the database to find an image that coincides with the point
         val imagesToSelect = withContext(Dispatchers.IO) {
@@ -575,7 +581,7 @@ class DrawCanvas(
         when (state.mode) {
             // we need to change size according to zoom level before drawing on screen
             Mode.Draw -> touchHelper.setStrokeStyle(penToStroke(state.pen))
-                ?.setStrokeWidth(state.penSettings[state.pen.penName]!!.strokeSize * page.zoomLevel)
+                ?.setStrokeWidth(state.penSettings[state.pen.penName]!!.strokeSize * page.zoomLevel.value)
                 ?.setStrokeColor(state.penSettings[state.pen.penName]!!.color)
 
             Mode.Erase -> {

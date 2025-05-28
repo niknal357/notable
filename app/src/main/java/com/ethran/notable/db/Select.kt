@@ -54,7 +54,7 @@ fun selectImagesAndStrokes(
         createBitmap(boundsScreen.width(), boundsScreen.height())
     }
     val selectedCanvas = Canvas(selectedBitmap)
-    selectedCanvas.scale(page.zoomLevel, page.zoomLevel)
+    selectedCanvas.scale(page.zoomLevel.value, page.zoomLevel.value)
 
     imagesToSelect.forEach {
         drawImage(

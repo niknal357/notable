@@ -39,9 +39,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
-import okhttp3.internal.wait
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -77,7 +77,10 @@ class PageView(
             "coverImage" -> false
             else -> true
         }
-    var zoomLevel: Float = 1.0f
+
+    // we need to observe zoom level, to adjust strokes size.
+    var zoomLevel = MutableStateFlow(1.0f)
+
     private val saveTopic = MutableSharedFlow<Unit>()
 
     var height by mutableIntStateOf(viewHeight) // is observed by ui
@@ -473,7 +476,7 @@ class PageView(
             val timeToDraw = measureTimeMillis {
                 drawBg(
                     context, this, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
-                    pageFromDb?.background ?: "blank", scroll, zoomLevel, this@PageView
+                    pageFromDb?.background ?: "blank", scroll, zoomLevel.value, this@PageView
                 )
                 if (GlobalAppSettings.current.debugMode) {
                     drawDebugRectWithLabels(activeCanvas, RectF(pageAreaWithoutScroll), Color.BLACK)
@@ -525,7 +528,7 @@ class PageView(
     suspend fun simpleUpdateScroll(dragDelta: Int) {
         // Just update scroll, for debugging.
         Log.d(TAG, "Simple update scroll")
-        var delta = (dragDelta / zoomLevel).toInt()
+        var delta = (dragDelta / zoomLevel.value).toInt()
         if (scroll + delta < 0) delta = 0 - scroll
 
         DrawCanvas.waitForDrawingWithSnack()
@@ -541,7 +544,7 @@ class PageView(
         windowedBitmap.recycle()
         windowedBitmap = scrolledBitmap
         windowedCanvas.setBitmap(windowedBitmap)
-        windowedCanvas.scale(zoomLevel, zoomLevel)
+        windowedCanvas.scale(zoomLevel.value, zoomLevel.value)
         drawAreaScreenCoordinates(redrawRect)
         persistBitmapDebounced()
         saveToPersistLayer()
@@ -549,10 +552,13 @@ class PageView(
     }
 
     suspend fun updateScroll(dragDelta: Int) {
-        Log.d(TAG, "Update scroll, dragDelta: $dragDelta, scroll: $scroll, zoomLevel: $zoomLevel")
+        Log.d(
+            TAG,
+            "Update scroll, dragDelta: $dragDelta, scroll: $scroll, zoomLevel.value: $zoomLevel.value"
+        )
         // drag delta is in screen coordinates,
         // so we have to scale it back to page coordinates.
-        var deltaInPageCord = (dragDelta / zoomLevel).toInt()
+        var deltaInPageCord = (dragDelta / zoomLevel.value).toInt()
         if (scroll + deltaInPageCord < 0) deltaInPageCord = 0 - scroll
 
         // There is nothing to do, return.
@@ -563,7 +569,7 @@ class PageView(
 
         scroll += deltaInPageCord
         // To avoid rounding errors, we just calculate it again.
-        val movement = (deltaInPageCord * zoomLevel).toInt()
+        val movement = (deltaInPageCord * zoomLevel.value).toInt()
 
 
         // Shift the existing bitmap content
@@ -577,7 +583,7 @@ class PageView(
         windowedBitmap.recycle() // Recycle old bitmap
         windowedBitmap = shiftedBitmap
         windowedCanvas.setBitmap(windowedBitmap)
-        windowedCanvas.scale(zoomLevel, zoomLevel)
+        windowedCanvas.scale(zoomLevel.value, zoomLevel.value)
 
         //add 1 of overlap, to eliminate rounding errors.
         val redrawRect =
@@ -602,15 +608,15 @@ class PageView(
         Log.w(TAG, "Zoom: $scaleDelta")
 
         // If there's no actual zoom change, skip
-        if (scaleDelta == zoomLevel) {
-            Log.d(TAG, "Zoom unchanged. Current level: $zoomLevel")
+        if (scaleDelta == zoomLevel.value) {
+            Log.d(TAG, "Zoom unchanged. Current level: $zoomLevel.value")
             return
         }
 
         DrawCanvas.waitForDrawingWithSnack()
 
         // Update the zoom factor
-        zoomLevel = scaleDelta.coerceIn(0.1f, 10.0f)
+        zoomLevel.value = scaleDelta.coerceIn(0.1f, 10.0f)
 
 
         // Create a scaled bitmap to represent zoomed view
@@ -627,7 +633,7 @@ class PageView(
 // It causes race condition with init from persistent layer
         windowedBitmap = zoomedBitmap
         windowedCanvas.setBitmap(windowedBitmap)
-        windowedCanvas.scale(zoomLevel, zoomLevel)
+        windowedCanvas.scale(zoomLevel.value, zoomLevel.value)
 
 
         // Redraw everything at new zoom level
@@ -642,7 +648,7 @@ class PageView(
             pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
             pageFromDb?.background ?: "blank",
             scroll,
-            zoomLevel,
+            zoomLevel.value,
             this,
             redrawRect
         )
@@ -672,6 +678,9 @@ class PageView(
             // Recreate bitmap and canvas with new dimensions
             windowedBitmap = createBitmap(viewWidth, viewHeight)
             windowedCanvas = Canvas(windowedBitmap)
+
+            //Reset zoom level.
+            zoomLevel.value = 1.0f
             drawAreaScreenCoordinates(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
             persistBitmapDebounced()
         }
@@ -693,15 +702,15 @@ class PageView(
 
     fun applyZoom(point: IntOffset): IntOffset {
         return IntOffset(
-            (point.x * zoomLevel).toInt(),
-            (point.y * zoomLevel).toInt()
+            (point.x * zoomLevel.value).toInt(),
+            (point.y * zoomLevel.value).toInt()
         )
     }
 
     fun removeZoom(point: IntOffset): IntOffset {
         return IntOffset(
-            (point.x / zoomLevel).toInt(),
-            (point.y / zoomLevel).toInt()
+            (point.x / zoomLevel.value).toInt(),
+            (point.y / zoomLevel.value).toInt()
         )
     }
 
@@ -716,19 +725,19 @@ class PageView(
 
     fun toScreenCoordinates(rect: Rect): Rect {
         return Rect(
-            (rect.left.toFloat() * zoomLevel).toInt(),
-            ((rect.top - scroll).toFloat() * zoomLevel).toInt(),
-            (rect.right.toFloat() * zoomLevel).toInt(),
-            ((rect.bottom - scroll).toFloat() * zoomLevel).toInt()
+            (rect.left.toFloat() * zoomLevel.value).toInt(),
+            ((rect.top - scroll).toFloat() * zoomLevel.value).toInt(),
+            (rect.right.toFloat() * zoomLevel.value).toInt(),
+            ((rect.bottom - scroll).toFloat() * zoomLevel.value).toInt()
         )
     }
 
     private fun toPageCoordinates(rect: Rect): Rect {
         return Rect(
-            (rect.left.toFloat() / zoomLevel).toInt(),
-            (rect.top.toFloat() / zoomLevel).toInt() + scroll,
-            (rect.right.toFloat() / zoomLevel).toInt(),
-            (rect.bottom.toFloat() / zoomLevel).toInt() + scroll
+            (rect.left.toFloat() / zoomLevel.value).toInt(),
+            (rect.top.toFloat() / zoomLevel.value).toInt() + scroll,
+            (rect.right.toFloat() / zoomLevel.value).toInt(),
+            (rect.bottom.toFloat() / zoomLevel.value).toInt() + scroll
         )
     }
 }

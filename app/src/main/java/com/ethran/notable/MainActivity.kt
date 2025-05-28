@@ -151,8 +151,8 @@ class MainActivity : ComponentActivity() {
     }
 
 
-    // when the screen orientation is changed, set new screen width  restart is not necessary,
-    // as we need first to update page dimensions which is done in EditorView
+    // when the screen orientation is changed, set new screen width restart is not necessary,
+    // as we need first to update page dimensions which is done in EditorView()
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
