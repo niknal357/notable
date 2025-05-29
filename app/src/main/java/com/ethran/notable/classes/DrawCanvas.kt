@@ -184,6 +184,8 @@ class DrawCanvas(
                             getActualState().pen,
                             scaledPoints
                         )
+                        if (getActualState().mode == Mode.Line)
+                            refreshUi()
 //                        val drawEndTime = System.currentTimeMillis()
 //                        Log.d(TAG, "Drawing operation took ${drawEndTime - startTime} ms")
 
