@@ -605,7 +605,7 @@ class PageView(
         // TODO:
         // - Update only effected area if possible
         // - Find a better way to represent how much to zoom.
-        Log.w(TAG, "Zoom: $scaleDelta")
+        Log.d(TAG, "Zoom: $scaleDelta")
 
         // If there's no actual zoom change, skip
         if (scaleDelta == zoomLevel.value) {
