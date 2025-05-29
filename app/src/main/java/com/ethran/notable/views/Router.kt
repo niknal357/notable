@@ -75,8 +75,8 @@ fun Router() {
         ) {
             EditorView(
                 navController = navController,
-                _bookId = it.arguments?.getString("bookId")!!,
-                _pageId = it.arguments?.getString("pageId")!!,
+                bookId = it.arguments?.getString("bookId")!!,
+                pageId = it.arguments?.getString("pageId")!!,
             )
         }
         composable(
@@ -87,8 +87,8 @@ fun Router() {
         ) {
             EditorView(
                 navController = navController,
-                _bookId = null,
-                _pageId = it.arguments?.getString("pageId")!!,
+                bookId = null,
+                pageId = it.arguments?.getString("pageId")!!,
             )
         }
         composable(

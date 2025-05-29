@@ -175,8 +175,8 @@ fun handleErase(
 
     history.addOperationsToHistory(listOf(Operation.AddStroke(deletedStrokes)))
 
-    page.drawArea(
-        area = pageAreaToCanvasArea(strokeBounds(deletedStrokes), page.scroll)
+    page.drawAreaScreenCoordinates(
+        screenArea = page.toScreenCoordinates(strokeBounds(deletedStrokes))
     )
 }
 
@@ -186,37 +186,82 @@ enum class SelectPointPosition {
     CENTER
 }
 
-// touchpoints is in view coordinates
+
+fun scaleRect(rect: Rect, scale: Float): Rect {
+    return Rect(
+        (rect.left / scale).toInt(),
+        (rect.top / scale).toInt(),
+        (rect.right / scale).toInt(),
+        (rect.bottom / scale).toInt()
+    )
+}
+
+fun toPageCoordinates(rect: Rect, scale: Float, scroll: Int): Rect {
+    return Rect(
+        (rect.left.toFloat() / scale).toInt(),
+        ((rect.top.toFloat() / scale) + scroll).toInt(),
+        (rect.right.toFloat() / scale).toInt(),
+        ((rect.bottom.toFloat() / scale) + scroll).toInt()
+    )
+}
+
+fun copyInput(touchPoints: List<TouchPoint>, scroll: Int, scale: Float): List<StrokePoint> {
+    val points = touchPoints.map {
+        StrokePoint(
+            x = it.x / scale,
+            y = (it.y / scale + scroll),
+            pressure = it.pressure,
+            size = it.size,
+            tiltX = it.tiltX,
+            tiltY = it.tiltY,
+            timestamp = it.timestamp,
+        )
+    }
+    return points
+}
+
+fun copyInputToSimplePointF(
+    touchPoints: List<TouchPoint>,
+    scroll: Int,
+    scale: Float
+): List<SimplePointF> {
+    val points = touchPoints.map {
+        SimplePointF(
+            x = it.x / scale,
+            y = (it.y / scale + scroll),
+        )
+    }
+    return points
+}
+
+fun calculateBoundingBox(touchPoints: List<StrokePoint>): RectF {
+    val initialPoint = touchPoints[0]
+    val boundingBox = RectF(
+        initialPoint.x,
+        initialPoint.y,
+        initialPoint.x,
+        initialPoint.y
+    )
+
+    for (point in touchPoints) {
+        boundingBox.union(point.x, point.y)
+    }
+    return boundingBox
+}
+
+// touchpoints are in page coordinates
 fun handleDraw(
     page: PageView,
     historyBucket: MutableList<String>,
     strokeSize: Float,
     color: Int,
     pen: Pen,
-    touchPoints: List<TouchPoint>
+    touchPoints: List<StrokePoint>
 ) {
     try {
-        val initialPoint = touchPoints[0]
-        val boundingBox = RectF(
-            initialPoint.x,
-            initialPoint.y + page.scroll,
-            initialPoint.x,
-            initialPoint.y + page.scroll
-        )
+        val boundingBox = calculateBoundingBox(touchPoints)
 
-        val points = touchPoints.map {
-            boundingBox.union(it.x, it.y + page.scroll)
-            StrokePoint(
-                x = it.x,
-                y = it.y + page.scroll,
-                pressure = it.pressure,
-                size = it.size,
-                tiltX = it.tiltX,
-                tiltY = it.tiltY,
-                timestamp = it.timestamp,
-            )
-        }
-
+        //move rectangle
         boundingBox.inset(-strokeSize, -strokeSize)
 
         val stroke = Stroke(
@@ -227,12 +272,12 @@ fun handleDraw(
             bottom = boundingBox.bottom,
             left = boundingBox.left,
             right = boundingBox.right,
-            points = points,
+            points = touchPoints,
             color = color
         )
         page.addStrokes(listOf(stroke))
         // this is causing lagging and crushing, neo pens are not good
-        page.drawArea(pageAreaToCanvasArea(strokeBounds(stroke).toRect(), page.scroll))
+        page.drawAreaPageCoordinates(strokeBounds(stroke).toRect())
         historyBucket.add(stroke.id)
     } catch (e: Exception) {
         Log.e(TAG, "Handle Draw: An error occurred while handling the drawing: ${e.message}")
@@ -242,16 +287,10 @@ fun handleDraw(
 /*
 * Gets list of points, and return line from first point to last.
 * The line consist of 100 points, I do not know how it works (for 20 it want draw correctly)
-* Then it cals handle draw to make mark on canvas.
  */
-fun handleLine(
-    page: PageView,
-    historyBucket: MutableList<String>,
-    strokeSize: Float,
-    color: Int,
-    pen: Pen,
+fun transformToLine(
     touchPoints: List<TouchPoint>
-) {
+): List<TouchPoint> {
     val startPoint = touchPoints.first()
     val endPoint = touchPoints.last()
 
@@ -279,8 +318,7 @@ fun handleLine(
 
         TouchPoint(x, y, pressure, size, tiltX, tiltY, timestamp)
     }
-
-    handleDraw(page, historyBucket, strokeSize, color, pen, points2)
+    return (points2)
 }
 
 
@@ -301,11 +339,13 @@ fun strokeToTouchPoints(stroke: Stroke): List<TouchPoint> {
     }
 }
 
-fun pageAreaToCanvasArea(pageArea: Rect, scroll: Int): Rect {
-    return Rect(
-        pageArea.left, pageArea.top - scroll, pageArea.right, pageArea.bottom - scroll
-    )
-}
+//fun pageAreaToCanvasArea(pageArea: Rect, scroll: Int, scale: Float = 1f): Rect {
+//    return scaleRect(
+//        Rect(
+//            pageArea.left, pageArea.top - scroll, pageArea.right, pageArea.bottom - scroll
+//        ), scale
+//    )
+//}
 
 fun strokeBounds(stroke: Stroke): RectF {
     return RectF(

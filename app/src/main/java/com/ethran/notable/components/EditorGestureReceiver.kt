@@ -26,9 +26,12 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.ethran.notable.SCREEN_HEIGHT
+import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.EditorControlTower
+import com.ethran.notable.classes.GestureMode
 import com.ethran.notable.classes.GestureState
 import com.ethran.notable.classes.showHint
 import com.ethran.notable.modals.AppSettings
@@ -49,11 +52,13 @@ private const val HOLD_THRESHOLD_MS = 300
 private const val ONE_FINGER_TOUCH_TAP_TIME = 100L
 private const val TAP_MOVEMENT_TOLERANCE = 15f
 private const val SWIPE_THRESHOLD = 200f
+private const val SWIPE_THRESHOLD_SMOOTH = 100f
 private const val DOUBLE_TAP_TIMEOUT_MS = 170L
 private const val DOUBLE_TAP_MIN_MS = 20L
 private const val TWO_FINGER_TOUCH_TAP_MAX_TIME = 200L
 private const val TWO_FINGER_TOUCH_TAP_MIN_TIME = 20L
 private const val TWO_FINGER_TAP_MOVEMENT_TOLERANCE = 20f
+private const val PINCH_ZOOM_THRESHOLD = 0.5f
 
 
 @Composable
@@ -69,7 +74,6 @@ fun EditorGestureReceiver(
     val appSettings = remember { GlobalAppSettings.current }
     var crossPosition by remember { mutableStateOf<IntOffset?>(null) }
     var rectangleBounds by remember { mutableStateOf<Rect?>(null) }
-    var isSelection by remember { mutableStateOf(false) }
     val view = LocalView.current
     Box(
         modifier = Modifier
@@ -88,6 +92,7 @@ fun EditorGestureReceiver(
                         if (!view.hasWindowFocus()) return@awaitEachGesture
 
                         val gestureState = GestureState()
+                        var overdueScroll = 0
 
                         // Ignore non-touch input
                         if (down.type != PointerType.Touch) {
@@ -99,7 +104,8 @@ fun EditorGestureReceiver(
 
                         do {
                             // wait for second gesture
-                            val event = withTimeoutOrNull(HOLD_THRESHOLD_MS.toLong()) { awaitPointerEvent() }
+                            val event =
+                                withTimeoutOrNull(HOLD_THRESHOLD_MS.toLong()) { awaitPointerEvent() }
                             if (!coroutineScope.isActive) return@awaitEachGesture
                             // if window lost focus, ignore input
                             if (!view.hasWindowFocus()) return@awaitEachGesture
@@ -111,10 +117,10 @@ fun EditorGestureReceiver(
                                 // is already consumed return
                                 if (fingerChange.find { it.isConsumed } != null) {
                                     Log.i(TAG, "Canceling gesture - already consumed")
-                                    if (isSelection) {
+                                    if (gestureState.gestureMode == GestureMode.Selection) {
                                         crossPosition = null
                                         rectangleBounds = null
-                                        isSelection = false
+                                        gestureState.gestureMode = GestureMode.Normal
                                         if (!state.isDrawing)
                                             state.isDrawing = true
                                     }
@@ -132,22 +138,34 @@ fun EditorGestureReceiver(
                             }
                             // events are only send on change, so we need to check for holding in place separately
                             gestureState.lastTimestamp = System.currentTimeMillis()
-                            if (isSelection) {
+                            if (gestureState.gestureMode == GestureMode.Selection) {
                                 crossPosition = gestureState.getLastPositionIO()
                                 rectangleBounds = gestureState.calculateRectangleBounds()
-                            } else if (gestureState.getElapsedTime() >= HOLD_THRESHOLD_MS && gestureState.getInputCount() == 1) {
-                                if (gestureState.calculateTotalDelta() < TAP_MOVEMENT_TOLERANCE) {
-                                    isSelection = true
-                                    state.isDrawing = false // unfreeze the screen
-                                    crossPosition = gestureState.getLastPositionIO()
-                                    rectangleBounds = gestureState.calculateRectangleBounds()
-                                    showHint("Selection mode!", coroutineScope, 1500)
+                            } else {
+                                // set selection mode
+                                if (gestureState.getElapsedTime() >= HOLD_THRESHOLD_MS && gestureState.getInputCount() == 1) {
+                                    if (gestureState.calculateTotalDelta() < TAP_MOVEMENT_TOLERANCE) {
+                                        gestureState.gestureMode = GestureMode.Selection
+                                        state.isDrawing = false // unfreeze the screen
+                                        crossPosition = gestureState.getLastPositionIO()
+                                        rectangleBounds = gestureState.calculateRectangleBounds()
+                                        showHint("Selection mode!", coroutineScope, 1500)
+                                    }
                                 }
-
+                                if (GlobalAppSettings.current.smoothScroll && abs(gestureState.getVerticalDrag()) > SWIPE_THRESHOLD_SMOOTH && gestureState.getInputCount() == 1) {
+                                    gestureState.gestureMode = GestureMode.Scroll
+                                }
                             }
+                            if (gestureState.gestureMode == GestureMode.Scroll) {
+                                val delta = gestureState.getVerticalDragDelta()
+                                overdueScroll = controlTower.onSingleFingerVerticalSwipe(
+                                    delta = delta + overdueScroll
+                                )
+                            }
+
                         } while (true)
 
-                        if (isSelection) {
+                        if (gestureState.gestureMode == GestureMode.Selection) {
                             resolveGesture(
                                 settings = appSettings,
                                 default = AppSettings.defaultHoldAction,
@@ -160,7 +178,7 @@ fun EditorGestureReceiver(
                             )
                             crossPosition = null
                             rectangleBounds = null
-                            isSelection = false
+                            gestureState.gestureMode = GestureMode.Normal
                             if (!state.isDrawing)
                                 state.isDrawing = true
                             return@awaitEachGesture
@@ -232,6 +250,25 @@ fun EditorGestureReceiver(
                                     nextPage = goToNextPage,
                                 )
                             }
+                            // zoom gesture
+                            var zoomDelta = gestureState.getPinchZoomDelta()
+                            if (!appSettings.continuousZoom) {
+                                if (abs(zoomDelta - 1f) > PINCH_ZOOM_THRESHOLD) {
+                                    zoomDelta = if (zoomDelta <= 1.0f)
+                                        if (SCREEN_HEIGHT > SCREEN_WIDTH)
+                                            SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT.toFloat()
+                                        else
+                                            1.0f
+                                    else {
+                                        if (SCREEN_HEIGHT > SCREEN_WIDTH)
+                                            1.0f
+                                        else
+                                            SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT.toFloat()
+                                    }
+                                    controlTower.onPinchToZoom(zoomDelta)
+                                    Log.d(TAG, "Discrete zoom: $zoomDelta")
+                                }
+                            }
                         }
 
                         val horizontalDrag = gestureState.getHorizontalDrag()
@@ -267,9 +304,8 @@ fun EditorGestureReceiver(
 
                         }
 
-                        if (abs(verticalDrag) > SWIPE_THRESHOLD && gestureState.getInputCount() == 1) {
+                        if (!GlobalAppSettings.current.smoothScroll && abs(verticalDrag) > SWIPE_THRESHOLD && gestureState.getInputCount() == 1) {
                             controlTower.onSingleFingerVerticalSwipe(
-                                gestureState.getFirstPositionF()!!,
                                 verticalDrag
                             )
                         }
@@ -383,6 +419,7 @@ private fun resolveGesture(
         AppSettings.GestureAction.Select -> {
             Log.i(TAG, "select")
             scope.launch {
+//                Log.w(TAG, "rect in screen coord: $rectangle")
                 DrawCanvas.rectangleToSelect.emit(rectangle)
             }
         }

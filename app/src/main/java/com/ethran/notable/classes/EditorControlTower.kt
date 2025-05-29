@@ -1,6 +1,7 @@
 package com.ethran.notable.classes
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toOffset
 import com.ethran.notable.TAG
@@ -13,11 +14,12 @@ import com.ethran.notable.utils.PlacementMode
 import com.ethran.notable.utils.SimplePointF
 import com.ethran.notable.utils.divideStrokesFromCut
 import com.ethran.notable.utils.offsetStroke
-import com.ethran.notable.utils.pageAreaToCanvasArea
 import com.ethran.notable.utils.strokeBounds
-import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.Date
 import java.util.UUID
 
@@ -27,22 +29,43 @@ class EditorControlTower(
     private val history: History,
     val state: EditorState
 ) {
+    private var scrollInProgress = Mutex()
 
-    fun onSingleFingerVerticalSwipe(startPosition: SimplePointF, delta: Int) {
-        if (!page.scrolable)
-            return
-        if (state.mode == Mode.Select) {
-            if (state.selectionState.firstPageCut != null) {
-                onOpenPageCut(delta)
-            } else {
-                onPageScroll(-delta)
+    // returns delta if could not scroll, to be added to next request,
+    // this ensures that smooth scroll works reliably even if rendering takes to long
+    fun onSingleFingerVerticalSwipe(delta: Int): Int {
+        if (!page.scrollable) return 0
+        if (scrollInProgress.isLocked) {
+            Log.w(TAG, "Scroll in progress -- skipping")
+            return delta
+        } // Return unhandled part
+
+        scope.launch(Dispatchers.Main.immediate) {
+            scrollInProgress.withLock {
+                val scaledDelta = (delta / page.zoomLevel.value).toInt()
+                Log.d(TAG, "scaledDelta: $scaledDelta, delta: $delta")
+                if (state.mode == Mode.Select) {
+                    if (state.selectionState.firstPageCut != null) {
+                        onOpenPageCut(scaledDelta)
+                    } else {
+                        onPageScroll(-delta)
+                    }
+                } else {
+                    onPageScroll(-delta)
+                }
             }
-        } else {
-            onPageScroll(-delta)
+            DrawCanvas.refreshUi.emit(Unit)
         }
+        return 0 // All handled
+    }
 
-        scope.launch { DrawCanvas.refreshUi.emit(Unit) }
-
+    fun onPinchToZoom(delta: Float) {
+        scope.launch {
+            scrollInProgress.withLock {
+                onPageZoom(delta)
+            }
+            DrawCanvas.refreshUi.emit(Unit)
+        }
     }
 
     private fun onOpenPageCut(offset: Int) {
@@ -52,10 +75,10 @@ class EditorControlTower(
         val (_, previousStrokes) = divideStrokesFromCut(page.strokes, cutLine)
 
         // calculate new strokes to add to the page
-        val nextStrokes = previousStrokes.map {
-            it.copy(points = it.points.map {
-                it.copy(x = it.x, y = it.y + offset)
-            }, top = it.top + offset, bottom = it.bottom + offset)
+        val nextStrokes = previousStrokes.map { stroke ->
+            stroke.copy(points = stroke.points.map { point ->
+                point.copy(x = point.x, y = point.y + offset)
+            }, top = stroke.top + offset, bottom = stroke.bottom + offset)
         }
 
         // remove and paste
@@ -71,18 +94,19 @@ class EditorControlTower(
         )
 
         state.selectionState.reset()
-        page.drawArea(
-            pageAreaToCanvasArea(
-                strokeBounds(previousStrokes + nextStrokes), page.scroll
-            )
-        )
+        page.drawAreaScreenCoordinates(strokeBounds(previousStrokes + nextStrokes))
     }
 
-    private fun onPageScroll(delta: Int) {
-        page.updateScroll(delta)
+    private suspend fun onPageScroll(dragDelta: Int) {
+        // scroll is in Page coordinates
+        page.updateScroll(dragDelta)
     }
 
-    //Now we can have selected images or selected strokes
+    private suspend fun onPageZoom(delta: Float) {
+        page.updateZoom(delta)
+    }
+
+    // when selection is moved, we need to redraw canvas
     fun applySelectionDisplace() {
         val operationList = state.selectionState.applySelectionDisplace(page)
         if (!operationList.isNullOrEmpty()) {

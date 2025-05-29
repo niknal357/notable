@@ -6,11 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Button
-import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -19,8 +15,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
@@ -46,18 +40,18 @@ import io.shipbook.shipbooksdk.Log
 @Composable
 @ExperimentalFoundationApi
 fun EditorView(
-    navController: NavController, _bookId: String?, _pageId: String
+    navController: NavController, bookId: String?, pageId: String
 ) {
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     // control if we do have a page
-    if (AppRepository(context).pageRepository.getById(_pageId) == null) {
-        if (_bookId != null) {
+    if (AppRepository(context).pageRepository.getById(pageId) == null) {
+        if (bookId != null) {
             // clean the book
             Log.i(TAG, "Cleaning book")
-            AppRepository(context).bookRepository.removePage(_bookId, _pageId)
+            AppRepository(context).bookRepository.removePage(bookId, pageId)
         }
         navController.navigate("library")
         return
@@ -72,7 +66,7 @@ fun EditorView(
             PageView(
                 context = context,
                 coroutineScope = scope,
-                id = _pageId,
+                id = pageId,
                 width = width,
                 viewWidth = width,
                 viewHeight = height
@@ -89,7 +83,7 @@ fun EditorView(
         }
 
         val editorState =
-            remember { EditorState(bookId = _bookId, pageId = _pageId, pageView = page) }
+            remember { EditorState(bookId = bookId, pageId = pageId, pageView = page) }
 
         val history = remember {
             History(scope, page)
@@ -102,8 +96,8 @@ fun EditorView(
 
         // update opened page
         LaunchedEffect(Unit) {
-            if (_bookId != null) {
-                appRepository.bookRepository.setOpenPageId(_bookId, _pageId)
+            if (bookId != null) {
+                appRepository.bookRepository.setOpenPageId(bookId, pageId)
             }
         }
 
@@ -138,11 +132,11 @@ fun EditorView(
         val lastRoute = navController.previousBackStackEntry
 
         fun goToNextPage() {
-            if (_bookId != null) {
+            if (bookId != null) {
                 val newPageId = appRepository.getNextPageIdFromBookAndPage(
-                    pageId = _pageId, notebookId = _bookId
+                    pageId = pageId, notebookId = bookId
                 )
-                navController.navigate("books/${_bookId}/pages/${newPageId}") {
+                navController.navigate("books/${bookId}/pages/${newPageId}") {
                     popUpTo(lastRoute!!.destination.id) {
                         inclusive = false
                     }
@@ -151,11 +145,11 @@ fun EditorView(
         }
 
         fun goToPreviousPage() {
-            if (_bookId != null) {
+            if (bookId != null) {
                 val newPageId = appRepository.getPreviousPageIdFromBookAndPage(
-                    pageId = _pageId, notebookId = _bookId
+                    pageId = pageId, notebookId = bookId
                 )
-                if (newPageId != null) navController.navigate("books/${_bookId}/pages/${newPageId}")
+                if (newPageId != null) navController.navigate("books/${bookId}/pages/${newPageId}")
             }
         }
 
@@ -195,7 +189,11 @@ fun EditorView(
                 }
 
                 AppSettings.Position.Bottom -> {
-                    Column(Modifier.fillMaxWidth().fillMaxHeight()) { //this fixes this
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight()
+                    ) { //this fixes this
                         Spacer(modifier = Modifier.weight(1f))
                         // Top/center content here
                         Toolbar(

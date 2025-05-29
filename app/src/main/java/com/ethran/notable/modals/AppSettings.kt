@@ -79,6 +79,9 @@ data class AppSettings(
     val debugMode: Boolean = false,
     val neoTools: Boolean = false,
     val toolbarPosition: Position = Position.Top,
+    val smoothScroll: Boolean = false,
+    val monochromeMode: Boolean = false,
+    val continuousZoom: Boolean = false,
 
     val doubleTapAction: GestureAction? = defaultDoubleTapAction,
     val twoFingerTapAction: GestureAction? = defaultTwoFingerTapAction,
@@ -175,34 +178,47 @@ fun GeneralSettings(kv: KvProxy, settings: AppSettings) {
             value = settings.defaultNativeTemplate
         )
     }
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(3.dp))
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = "Debug Mode (show changed area)")
-        Spacer(Modifier.width(10.dp))
-        Switch(
-            checked = settings.debugMode,
-            onCheckedChange = { isChecked ->
-                kv.setAppSettings(settings.copy(debugMode = isChecked))
-            }
-        )
-    }
+    SettingToggleRow(
+        label = "Debug Mode (show changed area)",
+        value = settings.debugMode,
+        onToggle = { isChecked ->
+            kv.setAppSettings(settings.copy(debugMode = isChecked))
+        }
+    )
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = "Use Onyx NeoTools (may cause crashes)")
-        Spacer(Modifier.width(10.dp))
-        Switch(
-            checked = settings.neoTools,
-            onCheckedChange = { isChecked ->
-                kv.setAppSettings(settings.copy(neoTools = isChecked))
-            }
-        )
-    }
-    Spacer(Modifier.height(10.dp))
+    SettingToggleRow(
+        label = "Use Onyx NeoTools (may cause crashes)",
+        value = settings.neoTools,
+        onToggle = { isChecked ->
+            kv.setAppSettings(settings.copy(neoTools = isChecked))
+        }
+    )
+
+    SettingToggleRow(
+        label = "Enable smooth scrolling",
+        value = settings.smoothScroll,
+        onToggle = { isChecked ->
+            kv.setAppSettings(settings.copy(smoothScroll = isChecked))
+        }
+    )
+
+    SettingToggleRow(
+        label = "Continuous Zoom (NOT IMPLEMENTED)",
+        value = settings.continuousZoom,
+        onToggle = { isChecked ->
+            kv.setAppSettings(settings.copy(continuousZoom = isChecked))
+        }
+    )
+    SettingToggleRow(
+        label = "Monochrome mode (Work in progress)",
+        value = settings.monochromeMode,
+        onToggle = { isChecked ->
+            kv.setAppSettings(settings.copy(monochromeMode = isChecked))
+        }
+    )
+    Spacer(Modifier.height(5.dp))
 
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -224,6 +240,25 @@ fun GeneralSettings(kv: KvProxy, settings: AppSettings) {
         }
     }
 }
+
+@Composable
+fun SettingToggleRow(
+    label: String,
+    value: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label)
+        Spacer(Modifier.width(10.dp))
+        Switch(
+            checked = value,
+            onCheckedChange = onToggle
+        )
+    }
+}
+
 
 @Composable
 fun GestureSelectorRow(

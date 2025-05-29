@@ -7,6 +7,14 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.unit.IntOffset
 import com.ethran.notable.utils.SimplePointF
 import kotlin.math.abs
+import kotlin.math.sqrt
+
+
+enum class GestureMode {
+    Selection,
+    Scroll,
+    Normal
+}
 
 
 data class GestureState(
@@ -14,7 +22,10 @@ data class GestureState(
     val lastPositions: MutableMap<PointerId, Offset> = mutableMapOf(),
     var initialTimestamp: Long = System.currentTimeMillis(),
     var lastTimestamp: Long = initialTimestamp,
+    var gestureMode: GestureMode = GestureMode.Normal,
 ) {
+    private var lastCheckForMovementPosition: Offset? = null
+
     fun getElapsedTime(): Long {
         return lastTimestamp - initialTimestamp
     }
@@ -119,4 +130,39 @@ data class GestureState(
         }
         return minVerticalMovement ?: 0f
     }
+
+    // returns the delta from last request
+    fun getVerticalDragDelta(): Int {
+        if (lastPositions.isEmpty()) return 0
+        val currentPosition = lastPositions.values.lastOrNull() ?: return 0
+        if (lastCheckForMovementPosition == null) {
+            lastCheckForMovementPosition = currentPosition
+            return 0
+        }
+        val initial = lastCheckForMovementPosition?.y ?: return 0
+        val last = currentPosition.y
+        val delta = (last - initial).toInt()
+        lastCheckForMovementPosition = currentPosition
+        return delta
+    }
+
+    fun getPinchZoomDelta(): Float {
+        if (lastPositions.size < 2 || initialPositions.size < 2) return 1.0f
+
+        val currentPointers = lastPositions.values.toList()
+        val initialPointers = initialPositions.values.toList()
+
+        val currentDx = currentPointers[0].x - currentPointers[1].x
+        val currentDy = currentPointers[0].y - currentPointers[1].y
+        val currentDistance = sqrt(currentDx * currentDx + currentDy * currentDy)
+
+        val initialDx = initialPointers[0].x - initialPointers[1].x
+        val initialDy = initialPointers[0].y - initialPointers[1].y
+        val initialDistance = sqrt(initialDx * initialDx + initialDy * initialDy)
+
+        if (initialDistance == 0f) return 1.0f
+        return currentDistance / initialDistance
+    }
+
+
 }
