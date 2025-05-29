@@ -528,7 +528,6 @@ fun drawBitmapToCanvas(
     if (repeat) {
         var currentTop = filledHeight
         val srcRect = Rect(0, 0, imageWidth, imageHeight)
-        Log.e(TAG, "currentTop: $currentTop, canvasHeight: $canvasHeight")
         while (currentTop < canvasHeight / scale) {
 
             val dstRect = RectF(
