@@ -91,17 +91,17 @@ class PageView(
     private var dbImages = AppDatabase.getDatabase(context).ImageDao()
 
     // Save bitmap, to avoid loading from disk every time.
-    data class CachedBackground(val bitmap: Bitmap?, val path: String, val pageNumber: Int)
+    data class CachedBackground(val bitmap: Bitmap?, val path: String, val pageNumber: Int, val scale: Float)
 
-    private var currentBackground = CachedBackground(null, "", 0)
+    private var currentBackground = CachedBackground(null, "", 0, 1.0f)
 
     /*
         If pageNumber is -1, its assumed that the background is image type.
      */
-    fun getOrLoadBackground(filePath: String, pageNumber: Int): Bitmap? {
-        if (currentBackground.path != filePath || currentBackground.pageNumber != pageNumber) {
+    fun getOrLoadBackground(filePath: String, pageNumber: Int, scale: Float): Bitmap? {
+        if (currentBackground.path != filePath || currentBackground.pageNumber != pageNumber || currentBackground.scale < scale) {
             currentBackground =
-                CachedBackground(loadBackgroundBitmap(filePath, pageNumber), filePath, pageNumber)
+                CachedBackground(loadBackgroundBitmap(filePath, pageNumber, scale), filePath, pageNumber, scale)
         }
         return currentBackground.bitmap
     }
