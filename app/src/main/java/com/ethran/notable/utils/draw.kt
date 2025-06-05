@@ -602,11 +602,7 @@ fun drawBg(
             this.color = Color.MAGENTA
             this.strokeWidth = 2f
         }
-        val margin =
-            if (scale < 1.0f)
-                canvas.width
-            else
-                SCREEN_HEIGHT
+        val margin = min( SCREEN_HEIGHT, SCREEN_WIDTH)
         // Draw vertical line with x= SCREEN_HEIGHT
         canvas.drawLine(
             margin.toFloat(),
