@@ -131,22 +131,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
+        Log.d(TAG, "OnWindowFocusChanged: $hasFocus")
         super.onWindowFocusChanged(hasFocus)
-
         if (hasFocus) {
             enableFullScreen()
-            lifecycleScope.launch {
-                if (DrawCanvas.wasDrawingBeforeFocusLost.value) {
-                    DrawCanvas.refreshUi.emit(Unit)
-                    DrawCanvas.isDrawing.emit(true)
-                }
-            }
-        } else {
-            lifecycleScope.launch {
-                val currentDrawing = DrawCanvas.isDrawingState.value
-                DrawCanvas.wasDrawingBeforeFocusLost.value = currentDrawing
-                DrawCanvas.isDrawing.emit(false)
-            }
+        }
+        lifecycleScope.launch {
+            DrawCanvas.onFocusChange.emit(hasFocus)
         }
     }
 
