@@ -71,10 +71,9 @@ class MainActivity : ComponentActivity() {
         Log.i(TAG, "Notable started")
 
 
-        if (SCREEN_WIDTH == 0) {
-            SCREEN_WIDTH = applicationContext.resources.displayMetrics.widthPixels
-            SCREEN_HEIGHT = applicationContext.resources.displayMetrics.heightPixels
-        }
+        SCREEN_WIDTH = applicationContext.resources.displayMetrics.widthPixels
+        SCREEN_HEIGHT = applicationContext.resources.displayMetrics.heightPixels
+
 
         val snackState = SnackState()
         snackState.registerGlobalSnackObserver()

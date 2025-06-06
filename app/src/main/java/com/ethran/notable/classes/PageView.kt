@@ -576,7 +576,7 @@ class PageView(
         val shiftedBitmap =
             createBitmap(windowedBitmap.width, windowedBitmap.height, windowedBitmap.config!!)
         val shiftedCanvas = Canvas(shiftedBitmap)
-        shiftedCanvas.drawColor(Color.BLACK) //for debugging.
+        shiftedCanvas.drawColor(Color.RED) //for debugging.
         shiftedCanvas.drawBitmap(windowedBitmap, 0f, -movement.toFloat(), null)
 
         // Swap in the shifted bitmap
