@@ -48,8 +48,8 @@ import java.io.FileOutputStream
 import java.lang.Thread.sleep
 import java.nio.file.Files
 import kotlin.io.path.Path
+import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.roundToInt
 import kotlin.system.measureTimeMillis
 
 class PageView(
@@ -612,6 +612,33 @@ class PageView(
     }
 
 
+    private fun calculateZoomLevel(
+        scaleDelta: Float,
+        currentZoom: Float,
+    ): Float {
+        val portraitRatio = SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT
+
+        return if (!GlobalAppSettings.current.continuousZoom) {
+            // Discrete zoom mode - snap to either 1.0 or screen ratio
+            if (scaleDelta <= 1.0f) {
+                if (SCREEN_HEIGHT > SCREEN_WIDTH) portraitRatio else 1.0f
+            } else {
+                if (SCREEN_HEIGHT > SCREEN_WIDTH) 1.0f else portraitRatio
+            }
+        } else {
+            // Continuous zoom mode with snap behavior
+            val newZoom = (scaleDelta / 3 + currentZoom).coerceIn(0.1f, 10.0f)
+
+            // Snap to either 1.0 or screen ratio depending on which is closer
+            val snapTarget = if (abs(newZoom - 1.0f) < abs(newZoom - portraitRatio)) {
+                1.0f
+            } else {
+                portraitRatio
+            }
+
+            if (abs(newZoom - snapTarget) < ZOOM_SNAP_THRESHOLD) snapTarget else newZoom
+        }
+    }
     suspend fun updateZoom(scaleDelta: Float) {
         // TODO:
         // - Update only effected area if possible
@@ -619,21 +646,7 @@ class PageView(
         Log.d(TAG, "Zoom: $scaleDelta")
 
         // Update the zoom factor
-        val newZoomLevel =
-            if (!GlobalAppSettings.current.continuousZoom)
-                if (scaleDelta <= 1.0f)
-                    if (SCREEN_HEIGHT > SCREEN_WIDTH)
-                        SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT.toFloat()
-                    else
-                        1.0f
-                else {
-                    if (SCREEN_HEIGHT > SCREEN_WIDTH)
-                        1.0f
-                    else
-                        SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT.toFloat()
-                }
-            else
-                (scaleDelta/3 + zoomLevel.value).coerceIn(0.1f, 10.0f)
+        val newZoomLevel = calculateZoomLevel(scaleDelta,zoomLevel.value )
 
         // If there's no actual zoom change, skip
         if (newZoomLevel == zoomLevel.value) {
