@@ -49,6 +49,7 @@ import java.lang.Thread.sleep
 import java.nio.file.Files
 import kotlin.io.path.Path
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.system.measureTimeMillis
 
 class PageView(
@@ -91,7 +92,12 @@ class PageView(
     private var dbImages = AppDatabase.getDatabase(context).ImageDao()
 
     // Save bitmap, to avoid loading from disk every time.
-    data class CachedBackground(val bitmap: Bitmap?, val path: String, val pageNumber: Int, val scale: Float)
+    data class CachedBackground(
+        val bitmap: Bitmap?,
+        val path: String,
+        val pageNumber: Int,
+        val scale: Float
+    )
 
     private var currentBackground = CachedBackground(null, "", 0, 1.0f)
 
@@ -101,7 +107,12 @@ class PageView(
     fun getOrLoadBackground(filePath: String, pageNumber: Int, scale: Float): Bitmap? {
         if (currentBackground.path != filePath || currentBackground.pageNumber != pageNumber || currentBackground.scale < scale) {
             currentBackground =
-                CachedBackground(loadBackgroundBitmap(filePath, pageNumber, scale), filePath, pageNumber, scale)
+                CachedBackground(
+                    loadBackgroundBitmap(filePath, pageNumber, scale),
+                    filePath,
+                    pageNumber,
+                    scale
+                )
         }
         return currentBackground.bitmap
     }
@@ -607,17 +618,33 @@ class PageView(
         // - Find a better way to represent how much to zoom.
         Log.d(TAG, "Zoom: $scaleDelta")
 
+        // Update the zoom factor
+        val newZoomLevel =
+            if (!GlobalAppSettings.current.continuousZoom)
+                if (scaleDelta <= 1.0f)
+                    if (SCREEN_HEIGHT > SCREEN_WIDTH)
+                        SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT.toFloat()
+                    else
+                        1.0f
+                else {
+                    if (SCREEN_HEIGHT > SCREEN_WIDTH)
+                        1.0f
+                    else
+                        SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT.toFloat()
+                }
+            else
+                ((scaleDelta + 1f).coerceIn(0.1f, 10.0f) * 10).roundToInt() / 10f
+
         // If there's no actual zoom change, skip
-        if (scaleDelta == zoomLevel.value) {
+        if (newZoomLevel == zoomLevel.value) {
             Log.d(TAG, "Zoom unchanged. Current level: $zoomLevel.value")
             return
         }
+        Log.d(TAG, "New zoom level: $newZoomLevel")
+        zoomLevel.value = newZoomLevel
+
 
         DrawCanvas.waitForDrawingWithSnack()
-
-        // Update the zoom factor
-        zoomLevel.value = scaleDelta.coerceIn(0.1f, 10.0f)
-
 
         // Create a scaled bitmap to represent zoomed view
         val scaledWidth = windowedCanvas.width
