@@ -34,6 +34,8 @@ import com.ethran.notable.classes.EditorControlTower
 import com.ethran.notable.classes.GestureMode
 import com.ethran.notable.classes.GestureState
 import com.ethran.notable.classes.HOLD_THRESHOLD_MS
+import com.ethran.notable.classes.PINCH_ZOOM_THRESHOLD
+import com.ethran.notable.classes.SWIPE_THRESHOLD
 import com.ethran.notable.classes.showHint
 import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.modals.GlobalAppSettings
@@ -46,6 +48,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.abs
 
 
 @Composable
@@ -138,6 +141,8 @@ fun EditorGestureReceiver(
                                     showHint("Selection mode!", coroutineScope, 1500)
                                 }
                                 gestureState.checkSmoothScrolling()
+                                gestureState.checkContinuousZoom()
+
                             }
                             if (gestureState.gestureMode == GestureMode.Scroll) {
                                 val delta = gestureState.getVerticalDragDelta()
@@ -145,6 +150,11 @@ fun EditorGestureReceiver(
                                     delta = delta + overdueScroll
                                 )
                             }
+                            if (gestureState.gestureMode == GestureMode.Zoom) {
+                                val delta = gestureState.getPinchDelta()
+                                controlTower.onPinchToZoom(delta)
+                            }
+
 
                         } while (true)
 
@@ -224,8 +234,8 @@ fun EditorGestureReceiver(
                                 )
                             }
                             // zoom gesture
-                            val zoomDelta = gestureState.getPinchDelta()
-                            if (!appSettings.continuousZoom && zoomDelta != 0.0f) {
+                            val zoomDelta = gestureState.getPinchDrag()
+                            if (!appSettings.continuousZoom && abs(zoomDelta) > PINCH_ZOOM_THRESHOLD) {
                                 controlTower.onPinchToZoom(zoomDelta)
                                 Log.d(TAG, "Discrete zoom: $zoomDelta")
                             }
@@ -238,7 +248,7 @@ fun EditorGestureReceiver(
 
 
                         if (gestureState.gestureMode == GestureMode.Normal) {
-                            if (horizontalDrag < 0)
+                            if (horizontalDrag < -SWIPE_THRESHOLD)
                                 resolveGesture(
                                     settings = appSettings,
                                     default = if (gestureState.getInputCount() == 1) AppSettings.defaultSwipeLeftAction else AppSettings.defaultTwoFingerSwipeLeftAction,
@@ -248,7 +258,7 @@ fun EditorGestureReceiver(
                                     previousPage = goToPreviousPage,
                                     nextPage = goToNextPage,
                                 )
-                            else if (horizontalDrag > 0)
+                            else if (horizontalDrag > SWIPE_THRESHOLD)
                                 resolveGesture(
                                     settings = appSettings,
                                     default = if (gestureState.getInputCount() == 1) AppSettings.defaultSwipeRightAction else AppSettings.defaultTwoFingerSwipeRightAction,
@@ -259,7 +269,9 @@ fun EditorGestureReceiver(
                                     nextPage = goToNextPage,
                                 )
                         }
-                        if (!GlobalAppSettings.current.smoothScroll && gestureState.isOneFinger()) {
+                        if (!GlobalAppSettings.current.smoothScroll && gestureState.isOneFinger()
+                            && abs(verticalDrag) > SWIPE_THRESHOLD
+                        ) {
                             controlTower.onSingleFingerVerticalSwipe(
                                 verticalDrag
                             )

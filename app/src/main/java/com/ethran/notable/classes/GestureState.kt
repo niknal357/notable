@@ -1,10 +1,12 @@
 package com.ethran.notable.classes
 
 import android.graphics.Rect
+import android.util.Log
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.unit.IntOffset
+import com.ethran.notable.TAG
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.utils.SimplePointF
 import kotlin.math.abs
@@ -18,14 +20,18 @@ private const val SWIPE_THRESHOLD_SMOOTH = 100f
 private const val TWO_FINGER_TOUCH_TAP_MAX_TIME = 200L
 private const val TWO_FINGER_TOUCH_TAP_MIN_TIME = 20L
 private const val TWO_FINGER_TAP_MOVEMENT_TOLERANCE = 20f
-private const val PINCH_ZOOM_THRESHOLD = 0.5f
-private const val SWIPE_THRESHOLD = 200f
+private const val PINCH_ZOOM_THRESHOLD_CONTINUOUS = 0.25f
+
+const val PINCH_ZOOM_THRESHOLD = 0.5f
+
+const val SWIPE_THRESHOLD = 200f
 const val DOUBLE_TAP_TIMEOUT_MS = 170L
 const val DOUBLE_TAP_MIN_MS = 20L
 
 enum class GestureMode {
     Selection,
     Scroll,
+    Zoom,
     Normal
 }
 
@@ -37,7 +43,7 @@ data class GestureState(
     var lastTimestamp: Long = initialTimestamp,
     var gestureMode: GestureMode = GestureMode.Normal,
 ) {
-    private var lastCheckForMovementPosition: Offset? = null
+    private var lastCheckForMovementPosition: List<Offset>? = null
 
     fun getElapsedTime(): Long {
         return lastTimestamp - initialTimestamp
@@ -119,8 +125,6 @@ data class GestureState(
                 minHorizontalMovement = delta.x
             }
         }
-        if (abs(minHorizontalMovement ?: 0f) < SWIPE_THRESHOLD)
-            return 0
         return minHorizontalMovement?.toInt() ?: 0
     }
 
@@ -142,48 +146,71 @@ data class GestureState(
                 minVerticalMovement = delta.y
             }
         }
-        if (abs(minVerticalMovement ?: 0f) < SWIPE_THRESHOLD)
-            return 0
         return minVerticalMovement?.toInt() ?: 0
     }
+
 
     // returns the delta from last request
     fun getVerticalDragDelta(): Int {
         if (lastPositions.isEmpty()) return 0
-        val currentPosition = lastPositions.values.lastOrNull() ?: return 0
-        if (lastCheckForMovementPosition == null) {
+        val currentPosition = lastPositions.values.toList()
+        if (lastCheckForMovementPosition.isNullOrEmpty()) {
             lastCheckForMovementPosition = currentPosition
             return 0
         }
-        val initial = lastCheckForMovementPosition?.y ?: return 0
-        val last = currentPosition.y
+        val initial = lastCheckForMovementPosition?.get(0)?.y ?: return 0
+        val last = currentPosition[0].y
         val delta = (last - initial).toInt()
         lastCheckForMovementPosition = currentPosition
         return delta
     }
 
+    private fun calculateDistance(point1: Offset, point2: Offset): Float {
+        val dx = point1.x - point2.x
+        val dy = point1.y - point2.y
+        return sqrt(dx * dx + dy * dy)
+    }
+
     // returns value to be added or subtracted to zoom
-    fun getPinchDelta(): Float {
-        if (lastPositions.size < 2 || initialPositions.size < 2) return 1.0f
+    fun getPinchDrag(): Float {
+        if (lastPositions.size < 2 || initialPositions.size < 2) return 0.0f
 
-        val currentPointers = lastPositions.values.toList()
-        val initialPointers = initialPositions.values.toList()
+        val currentDistance = calculateDistance(
+            lastPositions.values.elementAt(0),
+            lastPositions.values.elementAt(1)
+        )
 
-        val currentDx = currentPointers[0].x - currentPointers[1].x
-        val currentDy = currentPointers[0].y - currentPointers[1].y
-        val currentDistance = sqrt(currentDx * currentDx + currentDy * currentDy)
-
-        val initialDx = initialPointers[0].x - initialPointers[1].x
-        val initialDy = initialPointers[0].y - initialPointers[1].y
-        val initialDistance = sqrt(initialDx * initialDx + initialDy * initialDy)
+        val initialDistance = calculateDistance(
+            initialPositions.values.elementAt(0),
+            initialPositions.values.elementAt(1)
+        )
 
         if (initialDistance == 0f) return 0.0f
-        val pinchDelta = currentDistance / initialDistance - 1.0f
-        return if (abs(pinchDelta) > PINCH_ZOOM_THRESHOLD)
-            pinchDelta
-        else
-            0.0f
+        return currentDistance / initialDistance - 1.0f
+    }
 
+    // Returns incremental zoom delta since last check
+    fun getPinchDelta(): Float {
+        val currentPosition = lastPositions.values.toList()
+        if (currentPosition.size < 2) return 0f
+
+        val previousPosition = lastCheckForMovementPosition
+        if (previousPosition.isNullOrEmpty() || previousPosition.size < 2) {
+            lastCheckForMovementPosition = currentPosition
+            return 0f
+        }
+
+        val currentDistance = calculateDistance(currentPosition[0], currentPosition[1])
+        val lastDistance = calculateDistance(previousPosition[0], previousPosition[1])
+
+        // Avoid division by zero
+        if (lastDistance == 0f) return 0f
+
+        lastCheckForMovementPosition = currentPosition
+
+        val delta = currentDistance / lastDistance - 1f
+
+        return currentDistance / lastDistance - 1f
     }
 
 
@@ -205,6 +232,14 @@ data class GestureState(
             false
     }
 
+    fun checkContinuousZoom(): Boolean {
+        return if (GlobalAppSettings.current.continuousZoom && abs(getPinchDrag()) > PINCH_ZOOM_THRESHOLD_CONTINUOUS && getInputCount() == 2) {
+            gestureMode = GestureMode.Zoom
+            true
+        } else
+            false
+    }
+
     fun isOneFinger(): Boolean {
         return getInputCount() == 1
     }
@@ -220,6 +255,8 @@ data class GestureState(
     }
 
     fun isTwoFingersTap(): Boolean {
+        if (isOneFinger()) return false
+        if (gestureMode != GestureMode.Normal) return false
         val totalDelta = calculateTotalDelta()
         val gestureDuration = getElapsedTime()
         return totalDelta < TWO_FINGER_TAP_MOVEMENT_TOLERANCE &&

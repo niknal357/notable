@@ -633,11 +633,11 @@ class PageView(
                         SCREEN_WIDTH.toFloat() / SCREEN_HEIGHT.toFloat()
                 }
             else
-                ((scaleDelta + 1f).coerceIn(0.1f, 10.0f) * 10).roundToInt() / 10f
+                (scaleDelta/3 + zoomLevel.value).coerceIn(0.1f, 10.0f)
 
         // If there's no actual zoom change, skip
         if (newZoomLevel == zoomLevel.value) {
-            Log.d(TAG, "Zoom unchanged. Current level: $zoomLevel.value")
+            Log.d(TAG, "Zoom unchanged. Current level: ${zoomLevel.value}")
             return
         }
         Log.d(TAG, "New zoom level: $newZoomLevel")
