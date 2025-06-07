@@ -471,10 +471,12 @@ class PageView(
         Cancel loading strokes, and save bitmap to disk
     */
     fun onDispose() {
+        if (loadingJob?.isActive == false) {
+            moveToCache()
+        }
         cleanJob()
         persistBitmap()
         persistBitmapThumbnail()
-        moveToCache()
         // TODO: if we exited the book, we should clear the cache.
     }
 
