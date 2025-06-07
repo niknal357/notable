@@ -189,46 +189,52 @@ class PageView(
         if (isPageCached(pageId)) return
         val pageWithStrokes =
             AppRepository(context).pageRepository.getWithStrokeByIdSuspend(pageId)
+        PageCacheManager.cacheStrokes(pageId, pageWithStrokes.strokes)
         val pageWithImages = AppRepository(context).pageRepository.getWithImageById(pageId)
         // Store in some cache manager
-        PageCacheManager.cacheStrokesAndImages(
-            pageId,
-            pageWithStrokes.strokes,
-            pageWithImages.images
-        )
+        PageCacheManager.cacheImages(pageId, pageWithImages.images)
     }
 
     private fun moveToCache() {
         Log.i(TAG + "Cache", "Moving page to cache")
+
+        // Move background unconditionally
         PageCacheManager.cacheBackground(id, currentBackground)
         currentBackground = CachedBackground(null, "", 0, 1.0f)
+
+
+        // Move strokes if present
         if (strokes.isNotEmpty()) {
-            PageCacheManager.moveStrokesToCache(
-                id,
-                strokes as MutableList<Stroke>
-            )
+            (strokes as? MutableList<Stroke>)?.let {
+                PageCacheManager.moveStrokesToCache(id, it)
+            } ?: Log.w(TAG + "Cache", "Strokes list is not mutable, skipping move.")
             strokes = emptyList()
-        }
+        } else
+            PageCacheManager.setCachedStrokesToEmpty(id)
+
+        // Move images if present
         if (images.isNotEmpty()) {
-            PageCacheManager.moveImagesToCache(
-                id,
-                images as MutableList<Image>
-            )
+            (images as? MutableList<Image>)?.let {
+                PageCacheManager.moveImagesToCache(id, it)
+            } ?: Log.w(TAG + "Cache", "Images list is not mutable, skipping move.")
             images = emptyList()
-        }
+        } else
+            PageCacheManager.setCachedImagesToEmpty(id)
     }
 
+
     private fun loadFromCache(): Boolean {
-        return PageCacheManager.takeStrokes(id)?.let { cachedStrokes ->
-            PageCacheManager.takeImages(id)?.let { cachedImages ->
-                strokes = cachedStrokes
-                images = cachedImages
-                currentBackground =
-                    PageCacheManager.getPageBackground(id) ?: CachedBackground(null, "", 0, 1.0f)
-                true
-            }
-        } ?: false
+        val cachedStrokes = PageCacheManager.takeStrokes(id) ?: return false
+        val cachedImages = PageCacheManager.takeImages(id) ?: return false
+
+        strokes = cachedStrokes.toList()
+        images = cachedImages.toList()
+        currentBackground =
+            PageCacheManager.getPageBackground(id) ?: CachedBackground(null, "", 0, 1.0f)
+
+        return true
     }
+
 
     private fun redrawAll(scope: CoroutineScope) {
         scope.launch(Dispatchers.Main.immediate) {
@@ -239,8 +245,6 @@ class PageView(
     }
 
     private fun loadPage(isBitmapCached: Boolean) {
-        Log.d(TAG + "Cache", "Loading page $id")
-
         val isInCache = loadFromCache()
         if (!isBitmapCached)
             drawBg(

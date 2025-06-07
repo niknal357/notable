@@ -23,15 +23,33 @@ object PageCacheManager {
 
     private val cacheLock = Any()
 
-    fun cacheStrokesAndImages(pageId: String, strokes: List<Stroke>, images: List<Image>) {
+    fun cacheStrokes(pageId: String, strokes: List<Stroke>) {
         synchronized(cacheLock) {
             if (!cachedStrokes.containsKey(pageId)) {
                 cachedStrokes[pageId] = strokes.toMutableList()
+            }
+        }
+    }
+
+    fun cacheImages(pageId: String, images: List<Image>) {
+        synchronized(cacheLock) {
+            if (!cachedImages.containsKey(pageId)) {
                 cachedImages[pageId] = images.toMutableList()
             }
         }
     }
 
+    fun setCachedImagesToEmpty(pageId: String) {
+        synchronized(cacheLock) {
+            cachedImages[pageId] = emptyList<Image>().toMutableList()
+        }
+    }
+
+    fun setCachedStrokesToEmpty(pageId: String) {
+        synchronized(cacheLock) {
+            cachedStrokes[pageId] = emptyList<Stroke>().toMutableList()
+        }
+    }
     fun cacheBackground(pageId: String, background: CachedBackground) {
         synchronized(cacheLock) {
             if (!cachedBackgrounds.containsKey(pageId)) {
