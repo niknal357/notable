@@ -1,12 +1,10 @@
 package com.ethran.notable.classes
 
 import android.graphics.Rect
-import android.util.Log
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.unit.IntOffset
-import com.ethran.notable.TAG
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.utils.SimplePointF
 import kotlin.math.abs
@@ -207,8 +205,6 @@ data class GestureState(
         if (lastDistance == 0f) return 0f
 
         lastCheckForMovementPosition = currentPosition
-
-        val delta = currentDistance / lastDistance - 1f
 
         return currentDistance / lastDistance - 1f
     }
