@@ -118,16 +118,31 @@ class PageView(
 
 
     init {
+        Log.i(TAG, "PageView init")
+        loadInitialBitmap()
+        loadPage()
         coroutineScope.launch {
             saveTopic.debounce(1000).collect {
                 launch { persistBitmap() }
                 launch { persistBitmapThumbnail() }
             }
         }
+    }
 
-        windowedCanvas.drawColor(Color.WHITE)
-        val isBitmapCached = loadInitialBitmap()
-        loadPage(isBitmapCached)
+    /*
+        Cancel loading strokes, and save bitmap to disk
+    */
+    fun disposeOldPage() {
+        Log.d(TAG + "cache", "disposeOldPage, ${loadingJob?.isActive}")
+        if (loadingJob?.isActive != true) {
+            // only if job is not active or it's false
+            moveToCache()
+        }
+        cleanJob()
+        persistBitmap()
+        persistBitmapThumbnail()
+        // TODO: if we exited the book, we should clear the cache.
+
     }
 
     private fun indexStrokes() {
@@ -166,7 +181,6 @@ class PageView(
 
             // Ensure strokes are loaded and visible before drawing (switching to Main guarantees visibility).
             // I'm not sure if it still required.
-            sleep(10) // wait 10ms
             redrawAll(this)
         }
     }
@@ -197,7 +211,6 @@ class PageView(
 
     private fun moveToCache() {
         Log.i(TAG + "Cache", "Moving page to cache")
-
         // Move background unconditionally
         PageCacheManager.cacheBackground(id, currentBackground)
         currentBackground = CachedBackground(null, "", 0, 1.0f)
@@ -220,6 +233,7 @@ class PageView(
             images = emptyList()
         } else
             PageCacheManager.setCachedImagesToEmpty(id)
+
     }
 
 
@@ -240,21 +254,19 @@ class PageView(
         scope.launch(Dispatchers.Main.immediate) {
             val viewRectangle = Rect(0, 0, windowedCanvas.width, windowedCanvas.height)
             drawAreaScreenCoordinates(viewRectangle)
-            DrawCanvas.refreshUi.emit(Unit)
         }
     }
 
-    private fun loadPage(isBitmapCached: Boolean) {
+    private fun loadPage() {
         val isInCache = loadFromCache()
-        if (!isBitmapCached)
-            drawBg(
-                context, windowedCanvas, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
-                pageFromDb?.background ?: "blank", scroll, 1f, this
-            )
 
 
         val page = AppRepository(context).pageRepository.getById(id)
-        scroll = page!!.scroll
+        if (page == null) {
+            Log.e(TAG, "Page not found in database")
+            return
+        }
+        scroll = page.scroll
 
         if (isInCache) {
             Log.i(TAG + "Cache", "Page loaded from cache")
@@ -279,6 +291,7 @@ class PageView(
 
         cacheJob = coroutineScope.launch(Dispatchers.IO) {
             loadingJob?.join()
+            sleep(100)
             PageCacheManager.estimateMemoryUsage()
             try {
                 // Cache next page if not already cached
@@ -433,6 +446,11 @@ class PageView(
         } else {
             Log.i(TAG, "Cannot find cache image")
         }
+        // draw just background.
+        drawBg(
+            context, windowedCanvas, pageFromDb?.getBackgroundType() ?: BackgroundType.Native,
+            pageFromDb?.background ?: "blank", scroll, 1f, this
+        )
         return false
     }
 
@@ -465,19 +483,6 @@ class PageView(
             Log.e(TAG, "Strokes are still loading, trying to cancel and resume")
             cleanJob()
         }
-    }
-
-    /*
-        Cancel loading strokes, and save bitmap to disk
-    */
-    fun onDispose() {
-        if (loadingJob?.isActive == false) {
-            moveToCache()
-        }
-        cleanJob()
-        persistBitmap()
-        persistBitmapThumbnail()
-        // TODO: if we exited the book, we should clear the cache.
     }
 
 
