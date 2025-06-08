@@ -39,6 +39,7 @@ import com.onyx.android.sdk.pen.NeoMarkerPen
 import io.shipbook.shipbooksdk.Log
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
@@ -464,7 +465,10 @@ fun drawPdfPage(
         val imageBitmap = if (page != null) {
             page.getOrLoadBackground(pdfUriString, pageNumber, scale)
         } else {
-            loadBackgroundBitmap(pdfUriString, pageNumber,scale)
+            // here, if we don't have page, we assume are doing export,
+            // so background have to be in better quality
+            // (it is scaled down, but still takes whole screen, not like when we render it)
+            loadBackgroundBitmap(pdfUriString, pageNumber, 1f)
         }
         if (imageBitmap.isNotNull()) {
             drawBitmapToCanvas(canvas, imageBitmap, scroll, scale, false)
@@ -595,14 +599,24 @@ fun drawBg(
             }
         }
     }
+    drawMargin(canvas, scale)
 
+    if (GlobalAppSettings.current.visualizePdfPagination) {
+        drawPaginationLine(canvas, scroll, scale)
+    }
+    if (clipRect != null) {
+        canvas.restore()
+    }
+}
+
+fun drawMargin(canvas: Canvas, scale: Float) {
     // in landscape orientation add margin to indicate what will be visible in vertical orientation.
     if (SCREEN_WIDTH > SCREEN_HEIGHT || scale < 1.0f) {
         val paint = Paint().apply {
             this.color = Color.MAGENTA
             this.strokeWidth = 2f
         }
-        val margin = min( SCREEN_HEIGHT, SCREEN_WIDTH)
+        val margin = min(SCREEN_HEIGHT, SCREEN_WIDTH)
         // Draw vertical line with x= SCREEN_HEIGHT
         canvas.drawLine(
             margin.toFloat(),
@@ -612,8 +626,57 @@ fun drawBg(
             paint
         )
     }
-    if (clipRect != null) {
-        canvas.restore()
+}
+
+fun drawPaginationLine(canvas: Canvas, scroll: Int, scale: Float) {
+    val paint = Paint().apply {
+        color = Color.RED
+        strokeWidth = 4f
+        pathEffect = DashPathEffect(floatArrayOf(10f, 5f), 0f)
+    }
+
+    val textPaint = Paint().apply {
+        color = Color.BLACK
+        textSize = 24f
+        isAntiAlias = true
+    }
+
+    // A4 paper ratio (height/width in portrait)
+    val a4Ratio = 297f / 210f
+    val screenWidth = min(SCREEN_HEIGHT, SCREEN_WIDTH)
+    val pageHeight = screenWidth * a4Ratio
+
+    // Convert scroll position to canvas coordinates
+    // Calculate current page number (1-based)
+    val currentPage = floor(scroll / pageHeight).toInt() + 1
+
+    // Calculate position of first page break
+    var yPos = (currentPage * pageHeight) - scroll
+
+    var pageNum = currentPage
+    while (yPos < canvas.height/scale) {
+        if (yPos >= 0) { // Only draw visible lines
+            val yPosScaled = yPos
+            canvas.drawLine(
+                0f,
+                yPosScaled,
+                screenWidth.toFloat(),
+                yPosScaled,
+                paint
+            )
+
+            // Draw page number label (offset slightly below the line)
+            canvas.drawText(
+                "Subpage ${pageNum + 1}",
+                20f,
+                yPosScaled + 30f,
+                textPaint
+            )
+        } else {
+            Log.d(TAG + "Pagination", "Skipping line at $yPos (above visible area)")
+        }
+        yPos += pageHeight
+        pageNum++
     }
 }
 

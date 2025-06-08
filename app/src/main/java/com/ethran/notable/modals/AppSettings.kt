@@ -82,6 +82,8 @@ data class AppSettings(
     val smoothScroll: Boolean = false,
     val monochromeMode: Boolean = false,
     val continuousZoom: Boolean = false,
+    val visualizePdfPagination: Boolean = false,
+    val paginatePdf: Boolean = true,
 
     val doubleTapAction: GestureAction? = defaultDoubleTapAction,
     val twoFingerTapAction: GestureAction? = defaultTwoFingerTapAction,
@@ -216,6 +218,22 @@ fun GeneralSettings(kv: KvProxy, settings: AppSettings) {
         value = settings.monochromeMode,
         onToggle = { isChecked ->
             kv.setAppSettings(settings.copy(monochromeMode = isChecked))
+        }
+    )
+
+    SettingToggleRow(
+        label = "Paginate PDF",
+        value = settings.paginatePdf,
+        onToggle = { isChecked ->
+            kv.setAppSettings(settings.copy(paginatePdf = isChecked))
+        }
+    )
+
+    SettingToggleRow(
+        label = "Visualize PDF Pagination",
+        value = settings.visualizePdfPagination,
+        onToggle = { isChecked ->
+            kv.setAppSettings(settings.copy(visualizePdfPagination = isChecked))
         }
     )
     Spacer(Modifier.height(5.dp))
