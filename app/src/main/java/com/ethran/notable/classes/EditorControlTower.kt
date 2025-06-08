@@ -16,6 +16,7 @@ import com.ethran.notable.utils.offsetStroke
 import com.ethran.notable.utils.strokeBounds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -29,6 +30,8 @@ class EditorControlTower(
     val state: EditorState
 ) {
     private var scrollInProgress = Mutex()
+    private var scrollJob: Job? = null
+
 
     // returns delta if could not scroll, to be added to next request,
     // this ensures that smooth scroll works reliably even if rendering takes to long
@@ -40,7 +43,7 @@ class EditorControlTower(
             return delta
         } // Return unhandled part
 
-        scope.launch(Dispatchers.Main.immediate) {
+        scrollJob = scope.launch(Dispatchers.Main.immediate) {
             scrollInProgress.withLock {
                 val scaledDelta = (delta / page.zoomLevel.value).toInt()
                 Log.d(TAG, "scaledDelta: $scaledDelta, delta: $delta")

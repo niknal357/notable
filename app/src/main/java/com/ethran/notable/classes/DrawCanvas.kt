@@ -72,6 +72,7 @@ val pressure = EpdController.getMaxTouchPressure()
 // keep reference of the surface view presently associated to the singleton touchhelper
 var referencedSurfaceView: String = ""
 
+// TODO: Do not recreate surface on every page change
 class DrawCanvas(
     context: Context,
     val coroutineScope: CoroutineScope,

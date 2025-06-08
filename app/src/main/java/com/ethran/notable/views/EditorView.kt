@@ -105,7 +105,7 @@ fun EditorView(
             onDispose {
                 // finish selection operation
                 editorState.selectionState.applySelectionDisplace(page)
-                page.onDispose()
+                page.disposeOldPage()
             }
         }
 
