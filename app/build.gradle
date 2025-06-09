@@ -18,8 +18,8 @@ android {
         minSdk 29
         targetSdk 35
 
-        versionCode 16
-        versionName '0.0.16'
+        versionCode 17
+        versionName '0.0.17'
         if (project.hasProperty('IS_NEXT') && project.IS_NEXT.toBoolean()) {
             def timestamp = new Date().format('dd.MM.YYYY-HH:mm')
             versionName = "${versionName}-next-${timestamp}"
@@ -184,7 +184,7 @@ dependencies {
 
     implementation 'com.aventrix.jnanoid:jnanoid:2.0.0'
 
-    implementation platform('com.google.firebase:firebase-bom:33.14.0')
+    implementation platform('com.google.firebase:firebase-bom:33.15.0')
     implementation 'com.google.firebase:firebase-analytics-ktx'
 
     implementation 'br.com.devsrsouza.compose.icons.android:feather:1.0.0'
