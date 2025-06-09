@@ -37,7 +37,6 @@ import androidx.core.graphics.toRect
 import androidx.core.graphics.toRegion
 import com.ethran.notable.APP_SETTINGS_KEY
 import com.ethran.notable.R
-import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
@@ -55,7 +54,6 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import kotlin.math.min
 
 fun Modifier.noRippleClickable(
     onClick: () -> Unit

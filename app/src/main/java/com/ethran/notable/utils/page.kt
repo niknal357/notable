@@ -22,6 +22,7 @@ import com.ethran.notable.modals.A4_HEIGHT
 import com.ethran.notable.modals.A4_WIDTH
 import com.ethran.notable.modals.GlobalAppSettings
 import io.shipbook.shipbooksdk.Log
+import androidx.core.graphics.createBitmap
 
 
 fun drawCanvas(context: Context, pageId: String): Bitmap {
@@ -38,7 +39,7 @@ fun drawCanvas(context: Context, pageId: String): Bitmap {
     val height = strokeHeight.coerceAtLeast(SCREEN_HEIGHT)
     val width = strokeWidth.coerceAtLeast(SCREEN_WIDTH)
 
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(width, height)
     val canvas = Canvas(bitmap)
 
     // Draw background
