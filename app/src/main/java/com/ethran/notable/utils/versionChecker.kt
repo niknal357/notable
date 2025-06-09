@@ -112,8 +112,9 @@ fun getLatestPreReleaseTimestamp(owner: String, repo: String): Long? {
 
     val formatter = DateTimeFormatter.ISO_DATE_TIME
     // 900 000ms = 15minutes, added to compensate for compilation time.
+    // 86400000ms = 24hours, added to compensate for timezone difference.
     return asset.updated_at.let {
-        java.time.ZonedDateTime.parse(it, formatter).toInstant().toEpochMilli() + 900000
+        java.time.ZonedDateTime.parse(it, formatter).toInstant().toEpochMilli() + 900000 + 86400000
     }
 }
 
