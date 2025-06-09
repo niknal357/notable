@@ -105,7 +105,7 @@ fun EditorView(
             onDispose {
                 // finish selection operation
                 editorState.selectionState.applySelectionDisplace(page)
-                page.onDispose()
+                page.disposeOldPage()
             }
         }
 
@@ -133,7 +133,7 @@ fun EditorView(
 
         fun goToNextPage() {
             if (bookId != null) {
-                val newPageId = appRepository.getNextPageIdFromBookAndPage(
+                val newPageId = appRepository.getNextPageIdFromBookAndPageOrCreate(
                     pageId = pageId, notebookId = bookId
                 )
                 navController.navigate("books/${bookId}/pages/${newPageId}") {

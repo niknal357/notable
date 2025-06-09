@@ -37,7 +37,6 @@ import androidx.core.graphics.toRect
 import androidx.core.graphics.toRegion
 import com.ethran.notable.APP_SETTINGS_KEY
 import com.ethran.notable.R
-import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
@@ -55,7 +54,6 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import kotlin.math.min
 
 fun Modifier.noRippleClickable(
     onClick: () -> Unit
@@ -605,7 +603,8 @@ fun saveBitmapToCache(context: Context, bitmap: Bitmap): Uri? {
 }
 
 
-fun loadBackgroundBitmap(filePath: String, pageNumber: Int): Bitmap? {
+fun loadBackgroundBitmap(filePath: String, pageNumber: Int, scale: Float): Bitmap? {
+    Log.v(TAG, "Reloading background, path: $filePath, scale: $scale")
     val file = File(filePath)
     if (!file.exists()) {
         Log.e(TAG, "getOrLoadBackground: File does not exist at path: $filePath")
@@ -627,7 +626,7 @@ fun loadBackgroundBitmap(filePath: String, pageNumber: Int): Bitmap? {
                 }
 
                 renderer.openPage(pageNumber).use { pdfPage ->
-                    val targetWidth = min(SCREEN_WIDTH, SCREEN_HEIGHT)
+                    val targetWidth = SCREEN_WIDTH*scale
                     val scaleFactor = targetWidth.toFloat() / pdfPage.width
 
                     val width = (pdfPage.width * scaleFactor).toInt()
@@ -647,4 +646,14 @@ fun loadBackgroundBitmap(filePath: String, pageNumber: Int): Bitmap? {
         null
     }
     return newBitmap?.asAndroidBitmap()
+}
+
+fun logCallStack(reason: String) {
+    val stackTrace = Thread.currentThread().stackTrace
+        .drop(3) // Skip internal calls
+        .take(8) // Limit depth
+        .joinToString("\n") {
+            "${it.className.removePrefix("com.ethran.notable.")}.${it.methodName} (${it.fileName}:${it.lineNumber})"
+        }
+    Log.d(TAG, "$reason call stack:\n$stackTrace")
 }

@@ -53,6 +53,7 @@ import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,6 +72,7 @@ val pressure = EpdController.getMaxTouchPressure()
 // keep reference of the surface view presently associated to the singleton touchhelper
 var referencedSurfaceView: String = ""
 
+// TODO: Do not recreate surface on every page change
 class DrawCanvas(
     context: Context,
     val coroutineScope: CoroutineScope,
@@ -89,8 +91,7 @@ class DrawCanvas(
         var restartAfterConfChange = MutableSharedFlow<Unit>()
 
         // used for managing drawing state on regain focus
-        val isDrawingState = MutableStateFlow(false)
-        val wasDrawingBeforeFocusLost = MutableStateFlow(false)
+        val onFocusChange = MutableSharedFlow<Boolean>()
 
         // before undo we need to commit changes
         val commitHistorySignal = MutableSharedFlow<Unit>()
@@ -199,7 +200,8 @@ class DrawCanvas(
 
                 }
             } else thread {
-                val points = copyInputToSimplePointF(plist.points, page.scroll, page.zoomLevel.value)
+                val points =
+                    copyInputToSimplePointF(plist.points, page.scroll, page.zoomLevel.value)
                 if (getActualState().mode == Mode.Erase) {
                     handleErase(
                         this@DrawCanvas.page,
@@ -268,10 +270,6 @@ class DrawCanvas(
                 Log.i(TAG, "surface created $holder")
                 // set up the drawing surface
                 updateActiveSurface()
-                // This is supposed to let the ui update while the old surface is being unmounted
-                coroutineScope.launch {
-                    forceUpdate.emit(null)
-                }
             }
 
             override fun surfaceChanged(
@@ -280,7 +278,6 @@ class DrawCanvas(
                 Log.i(TAG, "surface changed $holder")
                 drawCanvasToView()
                 updatePenAndStroke()
-                refreshUi()
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
@@ -304,7 +301,18 @@ class DrawCanvas(
     fun registerObservers() {
 
         coroutineScope.launch {
-            page.zoomLevel.collect {
+            onFocusChange.collect { hasFocus ->
+                Log.i(TAG + "Observer", "App has focus: $hasFocus")
+                if (hasFocus) {
+                    state.checkForSelectionsAndMenus()
+                } else {
+                    isDrawing.emit(false)
+                }
+            }
+        }
+        coroutineScope.launch {
+            page.zoomLevel.drop(1).collect {
+                Log.v(TAG + "Observer", "zoom level change: ${page.zoomLevel.value}")
                 updatePenAndStroke()
             }
         }
@@ -312,7 +320,8 @@ class DrawCanvas(
         // observe forceUpdate
         coroutineScope.launch {
             forceUpdate.collect { zoneAffected ->
-                // Its newer used with non null value.
+                Log.w(TAG + "Observer", "forceUpdate, you are using not tested method")
+                // Its unused and untested.
                 if (zoneAffected != null) page.drawAreaPageCoordinates(zoneAffected)
                 refreshUiSuspend()
             }
@@ -387,8 +396,15 @@ class DrawCanvas(
         // observe is drawing
         coroutineScope.launch {
             snapshotFlow { state.isDrawing }.drop(1).collect {
-                Log.v(TAG + "Observer", "isDrawing change: ${state.isDrawing}")
-                isDrawingState.value = it
+                Log.v(TAG + "Observer", "isDrawing change to $it")
+                // We need to close all menus
+                if (it) {
+                    Log.v(TAG + "Observer", "closing all menus")
+                    val stackTrace = Thread.currentThread().stackTrace.joinToString("\n")
+                    Log.d(TAG, "Current stack trace:\n$stackTrace")
+                    state.closeAllMenus()
+                    repeat(3) { awaitFrame() }
+                }
                 updateIsDrawing()
             }
         }
@@ -398,6 +414,8 @@ class DrawCanvas(
             snapshotFlow { state.isToolbarOpen }.drop(1).collect {
                 Log.v(TAG + "Observer", "istoolbaropen change: ${state.isToolbarOpen}")
                 updateActiveSurface()
+                updatePenAndStroke()
+                refreshUi()
             }
         }
 
@@ -463,6 +481,7 @@ class DrawCanvas(
     }
 
     private fun refreshUi() {
+        Log.d(TAG, "refreshUi")
         // Use only if you have confidence that there are no strokes being drawn at the moment
         if (!state.isDrawing) {
             Log.w(TAG, "Not in drawing mode, skipping refreshUI")
@@ -538,7 +557,6 @@ class DrawCanvas(
             // image will be added to database when released, the same as with paste element.
             state.selectionState.placementMode = PlacementMode.Paste
             // make sure, that after regaining focus, we wont go back to drawing mode
-            wasDrawingBeforeFocusLost.value = false
         } else {
             // Handle cases where the bitmap could not be created
             Log.e("ImageProcessing", "Failed to create software bitmap from URI.")
@@ -632,9 +650,6 @@ class DrawCanvas(
             .openRawDrawing()
 
         touchHelper.setRawDrawingEnabled(true)
-        updatePenAndStroke()
-
-        refreshUi()
     }
 
 }

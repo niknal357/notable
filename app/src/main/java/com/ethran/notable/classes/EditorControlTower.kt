@@ -11,12 +11,12 @@ import com.ethran.notable.utils.History
 import com.ethran.notable.utils.Mode
 import com.ethran.notable.utils.Operation
 import com.ethran.notable.utils.PlacementMode
-import com.ethran.notable.utils.SimplePointF
 import com.ethran.notable.utils.divideStrokesFromCut
 import com.ethran.notable.utils.offsetStroke
 import com.ethran.notable.utils.strokeBounds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -30,17 +30,20 @@ class EditorControlTower(
     val state: EditorState
 ) {
     private var scrollInProgress = Mutex()
+    private var scrollJob: Job? = null
+
 
     // returns delta if could not scroll, to be added to next request,
     // this ensures that smooth scroll works reliably even if rendering takes to long
     fun onSingleFingerVerticalSwipe(delta: Int): Int {
+        if (delta == 0) return 0
         if (!page.scrollable) return 0
         if (scrollInProgress.isLocked) {
             Log.w(TAG, "Scroll in progress -- skipping")
             return delta
         } // Return unhandled part
 
-        scope.launch(Dispatchers.Main.immediate) {
+        scrollJob = scope.launch(Dispatchers.Main.immediate) {
             scrollInProgress.withLock {
                 val scaledDelta = (delta / page.zoomLevel.value).toInt()
                 Log.d(TAG, "scaledDelta: $scaledDelta, delta: $delta")
