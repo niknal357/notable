@@ -320,6 +320,7 @@ class DrawCanvas(
         // observe forceUpdate
         coroutineScope.launch {
             forceUpdate.collect { zoneAffected ->
+                Log.w(TAG + "Observer", "forceUpdate, you are using not tested method")
                 // Its unused and untested.
                 if (zoneAffected != null) page.drawAreaPageCoordinates(zoneAffected)
                 refreshUiSuspend()
@@ -500,7 +501,6 @@ class DrawCanvas(
     }
 
     private suspend fun refreshUiSuspend() {
-        Log.d(TAG, "refreshUiSuspend")
         // Do not use, if refresh need to be preformed without delay.
         // This function waits for strokes to be fully rendered.
         if (!state.isDrawing) {

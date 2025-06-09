@@ -137,12 +137,11 @@ class PageView(
         if (loadingJob?.isActive != true) {
             // only if job is not active or it's false
             moveToCache()
+            persistBitmap()
+            persistBitmapThumbnail()
+            // TODO: if we exited the book, we should clear the cache.
         }
         cleanJob()
-        persistBitmap()
-        persistBitmapThumbnail()
-        // TODO: if we exited the book, we should clear the cache.
-
     }
 
     private fun indexStrokes() {
@@ -280,6 +279,9 @@ class PageView(
             // If cache is incomplete, load from persistent storage
             PageCacheManager.ensureEnoughMemory(50, ::hasEnoughMemory)
             loadFromPersistLayer()
+        }
+        coroutineScope.launch {
+            DrawCanvas.refreshUi.emit(Unit)
         }
         PageCacheManager.ensureEnoughMemory(50, ::hasEnoughMemory)
         // Only attempt to cache neighbors if we have memory to spare.
