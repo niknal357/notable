@@ -24,7 +24,7 @@ const val PINCH_ZOOM_THRESHOLD = 0.5f
 const val SWIPE_THRESHOLD = 200f
 const val DOUBLE_TAP_TIMEOUT_MS = 170L
 const val DOUBLE_TAP_MIN_MS = 20L
-const val ZOOM_SNAP_THRESHOLD = 0.15f
+const val ZOOM_SNAP_THRESHOLD = 0.02f
 
 enum class GestureMode {
     Selection,
