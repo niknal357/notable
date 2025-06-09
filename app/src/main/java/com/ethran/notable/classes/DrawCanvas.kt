@@ -270,10 +270,6 @@ class DrawCanvas(
                 Log.i(TAG, "surface created $holder")
                 // set up the drawing surface
                 updateActiveSurface()
-                // This is supposed to let the ui update while the old surface is being unmounted
-                coroutineScope.launch {
-                    forceUpdate.emit(null)
-                }
             }
 
             override fun surfaceChanged(
@@ -282,7 +278,6 @@ class DrawCanvas(
                 Log.i(TAG, "surface changed $holder")
                 drawCanvasToView()
                 updatePenAndStroke()
-                refreshUi()
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
@@ -316,7 +311,8 @@ class DrawCanvas(
             }
         }
         coroutineScope.launch {
-            page.zoomLevel.collect {
+            page.zoomLevel.drop(1).collect {
+                Log.v(TAG + "Observer", "zoom level change: ${page.zoomLevel.value}")
                 updatePenAndStroke()
             }
         }
@@ -324,7 +320,7 @@ class DrawCanvas(
         // observe forceUpdate
         coroutineScope.launch {
             forceUpdate.collect { zoneAffected ->
-                // Its newer used with non null value.
+                // Its unused and untested.
                 if (zoneAffected != null) page.drawAreaPageCoordinates(zoneAffected)
                 refreshUiSuspend()
             }
@@ -417,6 +413,8 @@ class DrawCanvas(
             snapshotFlow { state.isToolbarOpen }.drop(1).collect {
                 Log.v(TAG + "Observer", "istoolbaropen change: ${state.isToolbarOpen}")
                 updateActiveSurface()
+                updatePenAndStroke()
+                refreshUi()
             }
         }
 
@@ -652,9 +650,6 @@ class DrawCanvas(
             .openRawDrawing()
 
         touchHelper.setRawDrawingEnabled(true)
-        updatePenAndStroke()
-
-        refreshUi()
     }
 
 }

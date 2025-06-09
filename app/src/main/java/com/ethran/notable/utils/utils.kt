@@ -649,3 +649,13 @@ fun loadBackgroundBitmap(filePath: String, pageNumber: Int, scale: Float): Bitma
     }
     return newBitmap?.asAndroidBitmap()
 }
+
+fun logCallStack(reason: String) {
+    val stackTrace = Thread.currentThread().stackTrace
+        .drop(3) // Skip internal calls
+        .take(8) // Limit depth
+        .joinToString("\n") {
+            "${it.className.removePrefix("com.ethran.notable.")}.${it.methodName} (${it.fileName}:${it.lineNumber})"
+        }
+    Log.d(TAG, "$reason call stack:\n$stackTrace")
+}

@@ -311,7 +311,6 @@ class PageView(
                         cachePage(prevPage)
                     }
                 }
-                PageCacheManager.estimateMemoryUsage()
                 // Enforce cache limits
                 PageCacheManager.reduceCache(20)
             } catch (e: CancellationException) {
