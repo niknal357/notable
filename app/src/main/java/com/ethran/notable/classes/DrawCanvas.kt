@@ -38,6 +38,7 @@ import com.ethran.notable.utils.copyInputToSimplePointF
 import com.ethran.notable.utils.drawImage
 import com.ethran.notable.utils.handleDraw
 import com.ethran.notable.utils.handleErase
+import com.ethran.notable.utils.logCallStack
 import com.ethran.notable.utils.penToStroke
 import com.ethran.notable.utils.pointsToPath
 import com.ethran.notable.utils.selectPaint
@@ -399,10 +400,9 @@ class DrawCanvas(
                 Log.v(TAG + "Observer", "isDrawing change to $it")
                 // We need to close all menus
                 if (it) {
-                    Log.v(TAG + "Observer", "closing all menus")
-                    val stackTrace = Thread.currentThread().stackTrace.joinToString("\n")
-                    Log.d(TAG, "Current stack trace:\n$stackTrace")
+//                    logCallStack("Closing all menus")
                     state.closeAllMenus()
+                    // TODO: Its not enough.
                     repeat(3) { awaitFrame() }
                 }
                 updateIsDrawing()

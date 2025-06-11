@@ -53,7 +53,7 @@ import androidx.navigation.NavController
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.classes.LocalSnackContext
-import com.ethran.notable.classes.PageCacheManager
+import com.ethran.notable.classes.PageDataManager
 import com.ethran.notable.classes.SnackConf
 import com.ethran.notable.classes.XoppFile
 import com.ethran.notable.components.BreadCrumb
@@ -91,7 +91,7 @@ import kotlin.concurrent.thread
 @ExperimentalComposeUiApi
 @Composable
 fun Library(navController: NavController, folderId: String? = null) {
-    PageCacheManager.clearCache()
+    PageDataManager.clearAllPages()
 
     val context = LocalContext.current
 

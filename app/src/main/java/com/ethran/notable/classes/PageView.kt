@@ -1,7 +1,6 @@
 package com.ethran.notable.classes
 
 
-import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -33,6 +32,7 @@ import com.ethran.notable.utils.drawImage
 import com.ethran.notable.utils.drawStroke
 import com.ethran.notable.utils.imageBounds
 import com.ethran.notable.utils.loadBackgroundBitmap
+import com.ethran.notable.utils.logCallStack
 import com.ethran.notable.utils.strokeBounds
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
@@ -62,16 +62,30 @@ class PageView(
     var viewHeight: Int
 ) {
     private var loadingJob: Job? = null
-    private var cacheJob: Job? = null
 
     private var snack: SnackConf? = null
 
     var windowedBitmap = createBitmap(viewWidth, viewHeight)
+        private set
     var windowedCanvas = Canvas(windowedBitmap)
-    var strokes = listOf<Stroke>()
-    private var strokesById: HashMap<String, Stroke> = hashMapOf()
-    var images = listOf<Image>()
-    private var imagesById: HashMap<String, Image> = hashMapOf()
+        private set
+
+    //    var strokes = listOf<Stroke>()
+    var strokes: List<Stroke>
+        get() = PageDataManager.getStrokes(id)
+        set(value) = PageDataManager.setStrokes(id, value)
+
+    var images: List<Image>
+        get() = PageDataManager.getImages(id)
+        set(value) = PageDataManager.setImages(id, value)
+
+    private var currentBackground: CachedBackground
+        get() = PageDataManager.getBackground(id)
+        set(value) {
+            PageDataManager.setBackground(id, value)
+        }
+
+
     var scroll by mutableIntStateOf(0) // is observed by ui
     val scrollable: Boolean
         get() = when (pageFromDb?.backgroundType) {
@@ -92,8 +106,6 @@ class PageView(
     private var dbStrokes = AppDatabase.getDatabase(context).strokeDao()
     private var dbImages = AppDatabase.getDatabase(context).ImageDao()
 
-
-    private var currentBackground = CachedBackground(null, "", 0, 1.0f)
 
     /*
         If pageNumber is -1, its assumed that the background is image type.
@@ -118,10 +130,23 @@ class PageView(
 
 
     init {
+        PageDataManager.setPage(id)
         Log.i(TAG, "PageView init")
-        loadInitialBitmap()
-        loadPage()
+        PageDataManager.getCachedBitmap(id)?.let { cached ->
+            Log.i(TAG, "PageView: using cached bitmap")
+            windowedBitmap = cached
+            windowedCanvas = Canvas(windowedBitmap)
+        } ?: run {
+            Log.i(TAG, "PageView: creating new bitmap")
+            windowedBitmap = createBitmap(viewWidth, viewHeight)
+            windowedCanvas = Canvas(windowedBitmap)
+            loadInitialBitmap()
+            PageDataManager.cacheBitmap(id, windowedBitmap)
+        }
+
         coroutineScope.launch {
+            sleep(1000)
+            loadPage()
             saveTopic.debounce(1000).collect {
                 launch { persistBitmap() }
                 launch { persistBitmapThumbnail() }
@@ -133,10 +158,12 @@ class PageView(
         Cancel loading strokes, and save bitmap to disk
     */
     fun disposeOldPage() {
+        PageDataManager.setPageHeight(id, computeHeight())
+        PageDataManager.calculateMemoryUsage(id)
+
         Log.d(TAG + "cache", "disposeOldPage, ${loadingJob?.isActive}")
         if (loadingJob?.isActive != true) {
             // only if job is not active or it's false
-            moveToCache()
             persistBitmap()
             persistBitmapThumbnail()
             // TODO: if we exited the book, we should clear the cache.
@@ -144,108 +171,59 @@ class PageView(
         cleanJob()
     }
 
-    private fun indexStrokes() {
-        coroutineScope.launch {
-            strokesById = hashMapOf(*strokes.map { s -> s.id to s }.toTypedArray())
-        }
-    }
-
-    private fun indexImages() {
-        coroutineScope.launch {
-            imagesById = hashMapOf(*images.map { img -> img.id to img }.toTypedArray())
-        }
-    }
-
     // Loads all the strokes on page
     private fun loadFromPersistLayer() {
         Log.i(TAG, "Init from persist layer")
         loadingJob = coroutineScope.launch(Dispatchers.IO) {
-            // Set duration as safety guard: in 60 s all strokes should be loaded
-            snack = SnackConf(text = "Loading strokes...", duration = 60000)
-            SnackState.globalSnackFlow.emit(snack!!)
-            val timeToLoad = measureTimeMillis {
-
-                val pageWithImages = AppRepository(context).pageRepository.getWithImageById(id)
-                images = pageWithImages.images
-                val pageWithStrokes =
-                    AppRepository(context).pageRepository.getWithStrokeByIdSuspend(id)
-                strokes = pageWithStrokes.strokes
-//                Thread.sleep(50000)
-                indexImages()
-                indexStrokes()
-                computeHeight()
+            try {
+                // Set duration as safety guard: in 60 s all strokes should be loaded
+                snack = SnackConf(text = "Loading strokes...", duration = 60000)
+                SnackState.globalSnackFlow.emit(snack!!)
+                PageDataManager.awaitPageIfLoading(id)
+                val timeToLoad = measureTimeMillis {
+                    getPageData(id)
+                    height = computeHeight()
+                    coroutineScope.launch(Dispatchers.IO) {
+                        PageDataManager.calculateMemoryUsage(id)
+                    }
+                }
+                Log.d(TAG + "Cache", "All strokes loaded in $timeToLoad ms")
+                // Ensure strokes are loaded and visible before drawing (switching to Main guarantees visibility).
+                // I'm not sure if it still required.
+                redrawAll(this)
+            } finally {
                 snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
+                Log.d(TAG + "Cache", "All done ${loadingJob?.isActive}")
             }
-            Log.d(TAG + "Cache", "All strokes loaded in $timeToLoad ms")
-
-            // Ensure strokes are loaded and visible before drawing (switching to Main guarantees visibility).
-            // I'm not sure if it still required.
-            redrawAll(this)
         }
     }
 
 
-    private fun hasEnoughMemory(requiredMemory: Int = 50): Boolean {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val memoryInfo = ActivityManager.MemoryInfo()
-        activityManager.getMemoryInfo(memoryInfo)
-        Log.i(TAG + "Cache", "Available memory: ${memoryInfo.availMem / (1024 * 1024)} MB")
-        // Only cache if we have more than 50MB available
-        return memoryInfo.availMem > requiredMemory * 1024 * 1024
-    }
-
     private fun isPageCached(pageId: String): Boolean {
-        return PageCacheManager.isPageCached(pageId)
+        return PageDataManager.isPageLoaded(pageId)
     }
 
-    private suspend fun cachePage(pageId: String) {
+    private suspend fun getPageData(pageId: String) {
         if (isPageCached(pageId)) return
+        if (PageDataManager.isPageLoading(pageId)) {
+            logCallStack("Double loading of the same page")
+            return
+        }
+        PageDataManager.markPageLoading(pageId)
+        Log.d(TAG + "Cache", "Loading page $pageId")
+//        sleep(5000)
         val pageWithStrokes =
             AppRepository(context).pageRepository.getWithStrokeByIdSuspend(pageId)
-        PageCacheManager.cacheStrokes(pageId, pageWithStrokes.strokes)
+        PageDataManager.cacheStrokes(pageId, pageWithStrokes.strokes)
         val pageWithImages = AppRepository(context).pageRepository.getWithImageById(pageId)
-        // Store in some cache manager
-        PageCacheManager.cacheImages(pageId, pageWithImages.images)
-    }
+        PageDataManager.cacheImages(pageId, pageWithImages.images)
+        PageDataManager.setPageHeight(pageId, computeHeight())
+        PageDataManager.calculateMemoryUsage(pageId)
+        PageDataManager.indexImages(coroutineScope, pageId)
+        PageDataManager.indexStrokes(coroutineScope, pageId)
+        PageDataManager.markPageLoaded(pageId)
+        Log.d(TAG + "Cache", "Loaded page $pageId")
 
-    private fun moveToCache() {
-        Log.i(TAG + "Cache", "Moving page to cache")
-        // Move background unconditionally
-        PageCacheManager.cacheBackground(id, currentBackground)
-        currentBackground = CachedBackground(null, "", 0, 1.0f)
-
-
-        // Move strokes if present
-        if (strokes.isNotEmpty()) {
-            (strokes as? MutableList<Stroke>)?.let {
-                PageCacheManager.moveStrokesToCache(id, it)
-            } ?: Log.w(TAG + "Cache", "Strokes list is not mutable, skipping move.")
-            strokes = emptyList()
-        } else
-            PageCacheManager.setCachedStrokesToEmpty(id)
-
-        // Move images if present
-        if (images.isNotEmpty()) {
-            (images as? MutableList<Image>)?.let {
-                PageCacheManager.moveImagesToCache(id, it)
-            } ?: Log.w(TAG + "Cache", "Images list is not mutable, skipping move.")
-            images = emptyList()
-        } else
-            PageCacheManager.setCachedImagesToEmpty(id)
-
-    }
-
-
-    private fun loadFromCache(): Boolean {
-        val cachedStrokes = PageCacheManager.takeStrokes(id) ?: return false
-        val cachedImages = PageCacheManager.takeImages(id) ?: return false
-
-        strokes = cachedStrokes.toList()
-        images = cachedImages.toList()
-        currentBackground =
-            PageCacheManager.getPageBackground(id) ?: CachedBackground(null, "", 0, 1.0f)
-
-        return true
     }
 
 
@@ -257,52 +235,48 @@ class PageView(
     }
 
     private fun loadPage() {
-        val isInCache = loadFromCache()
-
-
         val page = AppRepository(context).pageRepository.getById(id)
         if (page == null) {
             Log.e(TAG, "Page not found in database")
             return
         }
         scroll = page.scroll
-
+        val isInCache = PageDataManager.isPageLoaded(id)
         if (isInCache) {
             Log.i(TAG + "Cache", "Page loaded from cache")
-            indexImages()
-            indexStrokes()
-            computeHeight()
+            height = PageDataManager.getPageHeight(id) ?: viewHeight
             redrawAll(coroutineScope)
         } else {
             Log.i(TAG + "Cache", "Page not found in cache")
-            cleanJob()
+            // TODO: before canceling check if the page that we is being read
             // If cache is incomplete, load from persistent storage
-            PageCacheManager.ensureEnoughMemory(50, ::hasEnoughMemory)
+            PageDataManager.ensureMemoryAvailable(15)
             loadFromPersistLayer()
         }
         coroutineScope.launch {
+            sleep(100)
             DrawCanvas.refreshUi.emit(Unit)
         }
-        PageCacheManager.ensureEnoughMemory(50, ::hasEnoughMemory)
-        // Only attempt to cache neighbors if we have memory to spare.
-        if (!hasEnoughMemory(100)) return
+        PageDataManager.reduceCache(20)
+        cacheNeighbors()
+    }
 
-        Log.i(TAG + "Cache", "Caching neighbors")
+    private fun cacheNeighbors() {
+
+        // Only attempt to cache neighbors if we have memory to spare.
+        if (!PageDataManager.hasEnoughMemory(15)) return
         val appRepository = AppRepository(context)
         val bookId = pageFromDb?.notebookId ?: return
-
-        cacheJob = coroutineScope.launch(Dispatchers.IO) {
-            loadingJob?.join()
+        PageDataManager.cacheJob = PageDataManager.scope.launch {
             sleep(100)
-            PageCacheManager.estimateMemoryUsage()
             try {
                 // Cache next page if not already cached
                 val nextPageId =
                     appRepository.getNextPageIdFromBookAndPage(pageId = id, notebookId = bookId)
                 nextPageId?.let { nextPage ->
-                    cachePage(nextPage)
+                    getPageData(nextPage)
                 }
-                if (hasEnoughMemory(100)) {
+                if (PageDataManager.hasEnoughMemory(15)) {
                     // Cache previous page if not already cached
                     val prevPageId =
                         appRepository.getPreviousPageIdFromBookAndPage(
@@ -310,11 +284,10 @@ class PageView(
                             notebookId = bookId
                         )
                     prevPageId?.let { prevPage ->
-                        cachePage(prevPage)
+                        getPageData(prevPage)
                     }
                 }
                 // Enforce cache limits
-                PageCacheManager.reduceCache(20)
             } catch (e: CancellationException) {
                 Log.i(TAG + "Cache", "Caching was cancelled: ${e.message}")
             } catch (e: Exception) {
@@ -334,7 +307,7 @@ class PageView(
         }
 
         saveStrokesToPersistLayer(strokesToAdd)
-        indexStrokes()
+        PageDataManager.indexStrokes(coroutineScope, id)
 
         persistBitmapDebounced()
     }
@@ -342,14 +315,14 @@ class PageView(
     fun removeStrokes(strokeIds: List<String>) {
         strokes = strokes.filter { s -> !strokeIds.contains(s.id) }
         removeStrokesFromPersistLayer(strokeIds)
-        indexStrokes()
-        computeHeight()
+        PageDataManager.indexStrokes(coroutineScope, id)
+        height = computeHeight()
 
         persistBitmapDebounced()
     }
 
     fun getStrokes(strokeIds: List<String>): List<Stroke?> {
-        return strokeIds.map { s -> strokesById[s] }
+        return PageDataManager.getStrokes(strokeIds, id)
     }
 
     private fun saveStrokesToPersistLayer(strokes: List<Stroke>) {
@@ -367,7 +340,7 @@ class PageView(
         if (bottomPlusPadding > height) height = bottomPlusPadding
 
         saveImagesToPersistLayer(listOf(imageToAdd))
-        indexImages()
+        PageDataManager.indexImages(coroutineScope, id)
 
         persistBitmapDebounced()
     }
@@ -379,7 +352,7 @@ class PageView(
             if (bottomPlusPadding > height) height = bottomPlusPadding
         }
         saveImagesToPersistLayer(imageToAdd)
-        indexImages()
+        PageDataManager.indexImages(coroutineScope, id)
 
         persistBitmapDebounced()
     }
@@ -387,28 +360,24 @@ class PageView(
     fun removeImages(imageIds: List<String>) {
         images = images.filter { s -> !imageIds.contains(s.id) }
         removeImagesFromPersistLayer(imageIds)
-        indexImages()
-        computeHeight()
+        PageDataManager.indexImages(coroutineScope, id)
+        height = computeHeight()
 
         persistBitmapDebounced()
     }
 
-    fun getImage(imageId: String): Image? {
-        return imagesById[imageId]
-    }
-
-    fun getImages(imageIds: List<String>): List<Image?> {
-        return imageIds.map { i -> imagesById[i] }
-    }
+    fun getImage(imageId: String): Image? = PageDataManager.getImage(imageId, id)
 
 
-    private fun computeHeight() {
+    fun getImages(imageIds: List<String>): List<Image?> = PageDataManager.getImages(imageIds, id)
+
+
+    private fun computeHeight(): Int {
         if (strokes.isEmpty()) {
-            height = viewHeight
-            return
+            return viewHeight
         }
         val maxStrokeBottom = strokes.maxOf { it.bottom }.plus(50)
-        height = max(maxStrokeBottom.toInt(), viewHeight)
+        return max(maxStrokeBottom.toInt(), viewHeight)
     }
 
     fun computeWidth(): Int {
@@ -479,10 +448,9 @@ class PageView(
             snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
         }
         loadingJob?.cancel()
-        cacheJob?.cancel()
+        PageDataManager.removeMarkPageLoaded(id)
         if (loadingJob?.isActive == true) {
             Log.e(TAG, "Strokes are still loading, trying to cancel and resume")
-            cleanJob()
         }
     }
 
@@ -621,6 +589,7 @@ class PageView(
         }
     }
 
+    @Suppress("unused")
     suspend fun simpleUpdateScroll(dragDelta: Int) {
         // Just update scroll, for debugging.
         Log.d(TAG, "Simple update scroll")
@@ -644,7 +613,7 @@ class PageView(
         drawAreaScreenCoordinates(redrawRect)
         persistBitmapDebounced()
         saveToPersistLayer()
-
+        PageDataManager.cacheBitmap(id, windowedBitmap)
     }
 
     suspend fun updateScroll(dragDelta: Int) {
@@ -783,6 +752,7 @@ class PageView(
 
         persistBitmapDebounced()
         saveToPersistLayer()
+        PageDataManager.cacheBitmap(id, windowedBitmap)
         Log.i(TAG, "Zoom and redraw completed")
     }
 
@@ -809,6 +779,7 @@ class PageView(
             zoomLevel.value = 1.0f
             drawAreaScreenCoordinates(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
             persistBitmapDebounced()
+            PageDataManager.cacheBitmap(id, windowedBitmap)
         }
     }
 

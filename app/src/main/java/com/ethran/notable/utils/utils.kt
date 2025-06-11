@@ -655,5 +655,5 @@ fun logCallStack(reason: String) {
         .joinToString("\n") {
             "${it.className.removePrefix("com.ethran.notable.")}.${it.methodName} (${it.fileName}:${it.lineNumber})"
         }
-    Log.d(TAG, "$reason call stack:\n$stackTrace")
+    Log.d(TAG, "$reason Call stack:\n$stackTrace")
 }

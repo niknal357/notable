@@ -33,6 +33,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.LocalSnackContext
+import com.ethran.notable.classes.PageDataManager
 import com.ethran.notable.classes.SnackBar
 import com.ethran.notable.classes.SnackState
 import com.ethran.notable.datastore.EditorSettingCacheManager
@@ -62,7 +63,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableFullScreen()
         requestPermissions()
-
+        PageDataManager.registerComponentCallbacks(this)
 
         ShipBook.start(
             this.application, BuildConfig.SHIPBOOK_APP_ID, BuildConfig.SHIPBOOK_APP_KEY
