@@ -276,7 +276,6 @@ class PageView(
             }
         } else {
             Log.i(TAG + "Cache", "Page not found in cache")
-            // TODO: before canceling check if the page that we is being read
             // If cache is incomplete, load from persistent storage
             PageDataManager.ensureMemoryAvailable(15)
             loadFromPersistLayer()

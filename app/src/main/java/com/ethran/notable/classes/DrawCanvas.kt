@@ -38,7 +38,6 @@ import com.ethran.notable.utils.copyInputToSimplePointF
 import com.ethran.notable.utils.drawImage
 import com.ethran.notable.utils.handleDraw
 import com.ethran.notable.utils.handleErase
-import com.ethran.notable.utils.logCallStack
 import com.ethran.notable.utils.penToStroke
 import com.ethran.notable.utils.pointsToPath
 import com.ethran.notable.utils.selectPaint
@@ -46,6 +45,8 @@ import com.ethran.notable.utils.toPageCoordinates
 import com.ethran.notable.utils.transformToLine
 import com.ethran.notable.utils.uriToBitmap
 import com.onyx.android.sdk.api.device.epd.EpdController
+import com.onyx.android.sdk.api.device.epd.UpdateMode
+import com.onyx.android.sdk.api.device.epd.UpdateOption
 import com.onyx.android.sdk.data.note.TouchPoint
 import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
@@ -66,6 +67,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.concurrent.thread
+import com.onyx.android.sdk.device.Device;
 
 
 val pressure = EpdController.getMaxTouchPressure()
@@ -402,8 +404,8 @@ class DrawCanvas(
                 if (it) {
 //                    logCallStack("Closing all menus")
                     state.closeAllMenus()
-                    // TODO: Its not enough.
-                    repeat(3) { awaitFrame() }
+//                    EpdController.waitForUpdateFinished() // it does not work.
+                    waitForEpdRefresh()
                 }
                 updateIsDrawing()
             }
@@ -442,6 +444,38 @@ class DrawCanvas(
             }
         }
 
+    }
+
+    private suspend fun waitForEpdRefresh(updateOption: UpdateOption =Device.currentDevice().appScopeRefreshMode) {
+        Log.e(TAG, "Update mode: $updateOption")
+//        Device.currentDevice().waitForUpdateFinished()
+        // Then add mode-specific delays based on UpdateOption
+        when (updateOption) {
+            UpdateOption.NORMAL -> {
+                // HD mode
+                delay(190 ) // On my device ~160 is the minimal delay
+            }
+            UpdateOption.REGAL -> {
+                // regal mode
+                delay(180) // On my device ~150 is the minimal delay
+            }
+            UpdateOption.FAST -> {
+                //ultra fast, fast, balanced
+                delay(5) // From my testing it even works for 0
+            }
+            UpdateOption.FAST_X -> {
+                // no idea what it is
+                delay(4) // Minimal delay
+            }
+            UpdateOption.FAST_QUALITY -> {
+                // no idea what it is
+                delay(15)
+            }
+            else -> {
+                // Default fallback
+                delay(10)
+            }
+        }
     }
 
     private suspend fun selectRectangle(rectToSelect: Rect) {
