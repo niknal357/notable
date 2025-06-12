@@ -67,7 +67,6 @@ import com.ethran.notable.db.Folder
 import com.ethran.notable.db.Notebook
 import com.ethran.notable.db.Page
 import com.ethran.notable.db.PageRepository
-import com.ethran.notable.modals.AppSettingsModal
 import com.ethran.notable.modals.FolderConfigDialog
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.modals.NotebookConfigDialog
@@ -95,9 +94,6 @@ fun Library(navController: NavController, folderId: String? = null) {
 
     val context = LocalContext.current
 
-    var isSettingsOpen by remember {
-        mutableStateOf(false)
-    }
     val appRepository = AppRepository(LocalContext.current)
 
     val books by appRepository.bookRepository.getAllInFolder(folderId).observeAsState()
@@ -142,7 +138,7 @@ fun Library(navController: NavController, folderId: String? = null) {
                         Modifier
                             .padding(8.dp)
                             .noRippleClickable {
-                                isSettingsOpen = true
+                                navController.navigate("settings")
                             })
                 }
             }
@@ -481,8 +477,6 @@ fun Library(navController: NavController, folderId: String? = null) {
             }
         }
     }
-
-    if (isSettingsOpen) AppSettingsModal(onClose = { isSettingsOpen = false })
 
 // Add the FloatingEditorView here
     if (showFloatingEditor && floatingEditorPageId != null) {

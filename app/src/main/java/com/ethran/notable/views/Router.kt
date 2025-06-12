@@ -106,6 +106,11 @@ fun Router() {
                 bookId = it.arguments?.getString("bookId")!!,
             )
         }
+        composable(
+            route = "settings",
+        ) {
+            SettingsView(navController = navController)
+        }
     }
 
     if (isQuickNavOpen) QuickNav(
