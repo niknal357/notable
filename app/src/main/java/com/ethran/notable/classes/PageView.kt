@@ -45,7 +45,6 @@ import kotlinx.coroutines.launch
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.lang.Thread.sleep
 import java.nio.file.Files
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.io.path.Path
@@ -145,7 +144,6 @@ class PageView(
         }
 
         coroutineScope.launch {
-            sleep(1000)
             loadPage()
             saveTopic.debounce(1000).collect {
                 launch { persistBitmap() }
@@ -173,7 +171,7 @@ class PageView(
 
     // Loads all the strokes on page
     private fun loadFromPersistLayer() {
-        Log.i(TAG, "Init from persist layer")
+        Log.i(TAG + "cache", "Init from persist layer, pageId: $id")
         loadingJob = coroutineScope.launch(Dispatchers.IO) {
             try {
                 // Set duration as safety guard: in 60 s all strokes should be loaded
@@ -182,18 +180,28 @@ class PageView(
                 PageDataManager.awaitPageIfLoading(id)
                 val timeToLoad = measureTimeMillis {
                     getPageData(id)
+                    PageDataManager.dataLoadingJob?.join()
+                    Log.d(TAG + "Cache", "got page data. id $id")
                     height = computeHeight()
                     coroutineScope.launch(Dispatchers.IO) {
                         PageDataManager.calculateMemoryUsage(id)
                     }
                 }
                 Log.d(TAG + "Cache", "All strokes loaded in $timeToLoad ms")
-                // Ensure strokes are loaded and visible before drawing (switching to Main guarantees visibility).
-                // I'm not sure if it still required.
-                redrawAll(this)
             } finally {
                 snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
-                Log.d(TAG + "Cache", "All done ${loadingJob?.isActive}")
+                coroutineScope.launch(Dispatchers.Main.immediate) {
+                    DrawCanvas.forceUpdate.emit(
+                        Rect(
+                            0,
+                            0,
+                            windowedCanvas.width,
+                            windowedCanvas.height
+                        )
+                    )
+                }
+
+                Log.d(TAG + "Cache", "Loaded page from persistent layer $id")
             }
         }
     }
@@ -203,27 +211,37 @@ class PageView(
         return PageDataManager.isPageLoaded(pageId)
     }
 
-    private suspend fun getPageData(pageId: String) {
+    private fun getPageData(pageId: String) {
         if (isPageCached(pageId)) return
-        if (PageDataManager.isPageLoading(pageId)) {
-            logCallStack("Double loading of the same page")
-            return
-        }
-        PageDataManager.markPageLoading(pageId)
-        Log.d(TAG + "Cache", "Loading page $pageId")
+        PageDataManager.dataLoadingJob = PageDataManager.dataLoadingScope.launch {
+            if (PageDataManager.isPageLoading(pageId)) {
+                logCallStack("Double loading of the same page")
+                return@launch
+            }
+            try {
+                PageDataManager.markPageLoading(pageId)
+                Log.d(TAG + "Cache", "Loading page $pageId")
 //        sleep(5000)
-        val pageWithStrokes =
-            AppRepository(context).pageRepository.getWithStrokeByIdSuspend(pageId)
-        PageDataManager.cacheStrokes(pageId, pageWithStrokes.strokes)
-        val pageWithImages = AppRepository(context).pageRepository.getWithImageById(pageId)
-        PageDataManager.cacheImages(pageId, pageWithImages.images)
-        PageDataManager.setPageHeight(pageId, computeHeight())
-        PageDataManager.calculateMemoryUsage(pageId)
-        PageDataManager.indexImages(coroutineScope, pageId)
-        PageDataManager.indexStrokes(coroutineScope, pageId)
-        PageDataManager.markPageLoaded(pageId)
-        Log.d(TAG + "Cache", "Loaded page $pageId")
-
+                val pageWithStrokes =
+                    AppRepository(context).pageRepository.getWithStrokeByIdSuspend(pageId)
+                PageDataManager.cacheStrokes(pageId, pageWithStrokes.strokes)
+                val pageWithImages = AppRepository(context).pageRepository.getWithImageById(pageId)
+                PageDataManager.cacheImages(pageId, pageWithImages.images)
+                PageDataManager.setPageHeight(pageId, computeHeight())
+                PageDataManager.calculateMemoryUsage(pageId)
+                PageDataManager.indexImages(coroutineScope, pageId)
+                PageDataManager.indexStrokes(coroutineScope, pageId)
+                PageDataManager.markPageLoaded(pageId)
+            } catch (e: CancellationException) {
+                Log.w(TAG + "Cache", "Loading of page $pageId was cancelled.")
+                if (!PageDataManager.isPageLoaded(pageId))
+                    PageDataManager.removePage(pageId)
+                throw e  // rethrow cancellation
+            } finally {
+                PageDataManager.markPageLoaded(pageId)
+                Log.d(TAG + "Cache", "Loaded page $pageId")
+            }
+        }
     }
 
 
@@ -244,18 +262,24 @@ class PageView(
         val isInCache = PageDataManager.isPageLoaded(id)
         if (isInCache) {
             Log.i(TAG + "Cache", "Page loaded from cache")
-            height = PageDataManager.getPageHeight(id) ?: viewHeight
+            height = PageDataManager.getPageHeight(id) ?: viewHeight //TODO: correct
             redrawAll(coroutineScope)
+            coroutineScope.launch(Dispatchers.Main.immediate) {
+                DrawCanvas.forceUpdate.emit(
+                    Rect(
+                        0,
+                        0,
+                        windowedCanvas.width,
+                        windowedCanvas.height
+                    )
+                )
+            }
         } else {
             Log.i(TAG + "Cache", "Page not found in cache")
             // TODO: before canceling check if the page that we is being read
             // If cache is incomplete, load from persistent storage
             PageDataManager.ensureMemoryAvailable(15)
             loadFromPersistLayer()
-        }
-        coroutineScope.launch {
-            sleep(100)
-            DrawCanvas.refreshUi.emit(Unit)
         }
         PageDataManager.reduceCache(20)
         cacheNeighbors()
@@ -267,36 +291,37 @@ class PageView(
         if (!PageDataManager.hasEnoughMemory(15)) return
         val appRepository = AppRepository(context)
         val bookId = pageFromDb?.notebookId ?: return
-        PageDataManager.cacheJob = PageDataManager.scope.launch {
-            sleep(100)
-            try {
-                // Cache next page if not already cached
-                val nextPageId =
-                    appRepository.getNextPageIdFromBookAndPage(pageId = id, notebookId = bookId)
-                nextPageId?.let { nextPage ->
-                    getPageData(nextPage)
-                }
-                if (PageDataManager.hasEnoughMemory(15)) {
-                    // Cache previous page if not already cached
-                    val prevPageId =
-                        appRepository.getPreviousPageIdFromBookAndPage(
-                            pageId = id,
-                            notebookId = bookId
-                        )
-                    prevPageId?.let { prevPage ->
-                        getPageData(prevPage)
-                    }
-                }
-                // Enforce cache limits
-            } catch (e: CancellationException) {
-                Log.i(TAG + "Cache", "Caching was cancelled: ${e.message}")
-            } catch (e: Exception) {
-                // All other unexpected exceptions
-                Log.e(TAG + "Cache", "Error caching neighbor pages", e)
-                showHint("Error encountered while caching neighbors", duration = 5000)
+        try {
+            // Cache next page if not already cached
+            val nextPageId =
+                appRepository.getNextPageIdFromBookAndPage(pageId = id, notebookId = bookId)
+            Log.d(TAG + "Cache", "Caching next page $nextPageId")
 
+            nextPageId?.let { nextPage ->
+                getPageData(nextPage)
             }
+            if (PageDataManager.hasEnoughMemory(15)) {
+                // Cache previous page if not already cached
+                val prevPageId =
+                    appRepository.getPreviousPageIdFromBookAndPage(
+                        pageId = id,
+                        notebookId = bookId
+                    )
+                Log.d(TAG + "Cache", "Caching prev page $prevPageId")
+
+                prevPageId?.let { prevPage ->
+                    getPageData(prevPage)
+                }
+            }
+        } catch (e: CancellationException) {
+            Log.i(TAG + "Cache", "Caching was cancelled: ${e.message}")
+        } catch (e: Exception) {
+            // All other unexpected exceptions
+            Log.e(TAG + "Cache", "Error caching neighbor pages", e)
+            showHint("Error encountered while caching neighbors", duration = 5000)
+
         }
+
     }
 
     fun addStrokes(strokesToAdd: List<Stroke>) {
@@ -446,9 +471,9 @@ class PageView(
         //ensure that snack is canceled, even on dispose of the page.
         CoroutineScope(Dispatchers.IO).launch {
             snack?.let { SnackState.cancelGlobalSnack.emit(it.id) }
+            PageDataManager.removeMarkPageLoaded(id)
         }
         loadingJob?.cancel()
-        PageDataManager.removeMarkPageLoaded(id)
         if (loadingJob?.isActive == true) {
             Log.e(TAG, "Strokes are still loading, trying to cancel and resume")
         }

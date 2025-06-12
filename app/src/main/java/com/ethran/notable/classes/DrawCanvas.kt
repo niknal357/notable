@@ -323,7 +323,7 @@ class DrawCanvas(
             forceUpdate.collect { zoneAffected ->
                 Log.w(TAG + "Observer", "forceUpdate, you are using not tested method")
                 // Its unused and untested.
-                if (zoneAffected != null) page.drawAreaPageCoordinates(zoneAffected)
+                if (zoneAffected != null) page.drawAreaScreenCoordinates(zoneAffected)
                 refreshUiSuspend()
             }
         }

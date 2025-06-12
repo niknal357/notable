@@ -47,26 +47,33 @@ object PageDataManager {
 
     private val accessLock = Any()
     private var entrySizeMB = LinkedHashMap<String, Int>()
-    var cacheJob: Job? = null
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    var dataLoadingJob: Job? = null
+    val dataLoadingScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 
     suspend fun markPageLoading(pageId: String) {
         lockLoadingPages.withLock {
             if (!loadingPages.containsKey(pageId)) {
+                Log.d(TAG + "Cache", "Marking page $pageId as loading")
                 loadingPages[pageId] = CompletableDeferred()
             }
         }
     }
 
     suspend fun markPageLoaded(pageId: String) {
-        lockLoadingPages.withLock {
-            loadingPages.remove(pageId)?.complete(Unit)
+        return lockLoadingPages.withLock {
+            Log.d(TAG + "Cache", "Marking page $pageId as loaded")
+            loadingPages[pageId]?.complete(Unit)
+            Log.d(TAG + "Cache", "marking done. Page $pageId, ${loadingPages[pageId].toString()}")
         }
     }
 
-    fun removeMarkPageLoaded(pageId: String) {
-        loadingPages.remove(pageId)?.cancel()
+    suspend fun removeMarkPageLoaded(pageId: String) {
+        Log.d(TAG + "Cache", "trying to remove mark for  $pageId")
+        lockLoadingPages.withLock {
+            Log.d(TAG + "Cache", "Removing mark for page $pageId")
+            loadingPages.remove(pageId)?.cancel()
+        }
     }
 
     suspend fun awaitPageIfLoading(pageId: String) {
@@ -76,12 +83,14 @@ object PageDataManager {
             Log.d(TAG + "Cache", "waiting done. Page $pageId")
         } else {
             Log.d(TAG + "Cache", "Page $pageId is not loading, canceling unnecessary caching")
-            cacheJob?.cancel()
+            dataLoadingJob?.cancel()
         }
     }
 
-    fun isPageLoading(pageId: String): Boolean {
-        return loadingPages.containsKey(pageId)
+    suspend fun isPageLoading(pageId: String): Boolean {
+        lockLoadingPages.withLock {
+            return loadingPages.containsKey(pageId)
+        }
     }
 
 
@@ -193,7 +202,7 @@ object PageDataManager {
     private var currentCacheSizeMB = 0
     private val cacheLock = ReentrantReadWriteLock()
 
-    private fun removePage(pageId: String) {
+    fun removePage(pageId: String) {
         synchronized(accessLock) {
             strokes.remove(pageId)
             images.remove(pageId)
@@ -202,6 +211,9 @@ object PageDataManager {
             bitmapCache.remove(pageId)
             strokesById.remove(pageId)
             imagesById.remove(pageId)
+            dataLoadingScope.launch {
+                removeMarkPageLoaded(pageId)
+            }
         }
     }
 
@@ -329,6 +341,7 @@ object PageDataManager {
     fun registerComponentCallbacks(context: Context) {
         context.registerComponentCallbacks(object : ComponentCallbacks2 {
             override fun onTrimMemory(level: Int) {
+                Log.d(TAG, "onTrimMemory: $level")
                 when (level) {
                     ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> clearAllCache()
                     ComponentCallbacks2.TRIM_MEMORY_MODERATE -> freeMemory(25)
