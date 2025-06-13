@@ -79,12 +79,13 @@ class MainActivity : ComponentActivity() {
         snackState.registerCancelGlobalSnackObserver()
         PageDataManager.registerComponentCallbacks(this)
         if (hasRequiredPermissions()) {
-            // Refactor - we prob don't need this
-            EditorSettingCacheManager.init(applicationContext)
             GlobalAppSettings.update(
                 KvProxy(this).get(APP_SETTINGS_KEY, AppSettings.serializer())
                     ?: AppSettings(version = 1)
             )
+            // Refactor - we prob don't need this
+            // for now its needed to remember state of eraser
+            EditorSettingCacheManager.init(applicationContext)
         }
 
         //EpdDeviceManager.enterAnimationUpdate(true);

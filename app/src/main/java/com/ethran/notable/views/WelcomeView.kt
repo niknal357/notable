@@ -27,13 +27,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DoDisturb
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -212,10 +212,11 @@ private fun PermissionItem(
                     modifier = Modifier.size(48.dp)
                 )
             } else {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = MaterialTheme.colors.primary,
-                    strokeWidth = 2.dp
+                Icon(
+                    imageVector = Icons.Default.DoDisturb,
+                    contentDescription = "Granted",
+                    tint = MaterialTheme.colors.primary,
+                    modifier = Modifier.size(48.dp)
                 )
             }
         }
