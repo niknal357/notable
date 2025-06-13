@@ -449,7 +449,9 @@ class DrawCanvas(
     private suspend fun waitForEpdRefresh(updateOption: UpdateOption =Device.currentDevice().appScopeRefreshMode) {
         Log.e(TAG, "Update mode: $updateOption")
 //        Device.currentDevice().waitForUpdateFinished()
-        // Then add mode-specific delays based on UpdateOption
+        // depending on device, it may take different amount of time to
+        // refresh the screen. So for example, when closing menus, we
+        // need to wait before we freeze screen.
         when (updateOption) {
             UpdateOption.NORMAL -> {
                 // HD mode
@@ -461,7 +463,7 @@ class DrawCanvas(
             }
             UpdateOption.FAST -> {
                 //ultra fast, fast, balanced
-                delay(5) // From my testing it even works for 0
+                delay(20) // 5ms is problematic sometimes on balanced mode.
             }
             UpdateOption.FAST_X -> {
                 // no idea what it is
