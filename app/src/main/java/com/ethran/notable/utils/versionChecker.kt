@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 import java.net.URL
 import java.sql.Timestamp
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Date
@@ -79,6 +80,16 @@ data class Version(
         }
         return this.patch.compareTo(other.patch)
     }
+    override fun toString(): String {
+        return if (buildTimestamp != null && isNext) {
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z")
+                .withZone(ZoneId.systemDefault())
+            val instant = buildTimestamp.toInstant()
+            formatter.format(instant)
+        } else {
+            "v$major.$minor.$patch"
+        }
+    }
 }
 
 private val jsonParser = Json { ignoreUnknownKeys = true }
@@ -112,9 +123,11 @@ fun getLatestPreReleaseTimestamp(owner: String, repo: String): Long? {
 
     val formatter = DateTimeFormatter.ISO_DATE_TIME
     // 900 000ms = 15minutes, added to compensate for compilation time.
-    // 86400000ms = 24hours, added to compensate for timezone difference.
     return asset.updated_at.let {
-        java.time.ZonedDateTime.parse(it, formatter).toInstant().toEpochMilli() + 900000 + 86400000
+        // Parse with timezone information from GitHub
+        val zonedDateTime = java.time.ZonedDateTime.parse(it, formatter)
+        // Convert to system default timezone
+        zonedDateTime.withZoneSameInstant(ZoneId.systemDefault()).toInstant().toEpochMilli() + 900000
     }
 }
 
@@ -161,7 +174,7 @@ fun isLatestVersion(context: Context, force: Boolean = false): Boolean {
             if (!isLatestVersion!!) {
                 showHint(
                     "A newer preview version is available!\n" +
-                            "You are using $currentVersion, while the latest is ${latest.buildTimestamp}.",
+                            "You are using released $current, and newest is from ${latest}.",
                     duration = 5000
                 )
             }
@@ -187,7 +200,7 @@ fun isLatestVersion(context: Context, force: Boolean = false): Boolean {
             if (!isLatestVersion!!) {
                 showHint(
                     "A newer stable version is available!\n" +
-                            "You are using $currentVersion, while the latest is $latestVersion.",
+                            "You are using ${current}, while the latest is $latest.",
                     duration = 5000
                 )
             }
