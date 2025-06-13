@@ -320,10 +320,10 @@ class DrawCanvas(
             }
         }
 
-        // observe forceUpdate
+        // observe forceUpdate, takes rect in screen coordinates
         coroutineScope.launch {
             forceUpdate.collect { zoneAffected ->
-                Log.w(TAG + "Observer", "forceUpdate, you are using not tested method")
+                Log.w(TAG + "Observer", "Force update, zone: $zoneAffected")
                 // Its unused and untested.
                 if (zoneAffected != null) page.drawAreaScreenCoordinates(zoneAffected)
                 refreshUiSuspend()

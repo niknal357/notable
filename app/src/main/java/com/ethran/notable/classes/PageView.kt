@@ -157,8 +157,7 @@ class PageView(
     */
     fun disposeOldPage() {
         PageDataManager.setPageHeight(id, computeHeight())
-        PageDataManager.calculateMemoryUsage(id)
-
+        PageDataManager.calculateMemoryUsage(id, 0)
         Log.d(TAG + "cache", "disposeOldPage, ${loadingJob?.isActive}")
         if (loadingJob?.isActive != true) {
             // only if job is not active or it's false
@@ -183,9 +182,6 @@ class PageView(
                     PageDataManager.dataLoadingJob?.join()
                     Log.d(TAG + "Cache", "got page data. id $id")
                     height = computeHeight()
-                    coroutineScope.launch(Dispatchers.IO) {
-                        PageDataManager.calculateMemoryUsage(id)
-                    }
                 }
                 Log.d(TAG + "Cache", "All strokes loaded in $timeToLoad ms")
             } finally {
@@ -228,7 +224,7 @@ class PageView(
                 val pageWithImages = AppRepository(context).pageRepository.getWithImageById(pageId)
                 PageDataManager.cacheImages(pageId, pageWithImages.images)
                 PageDataManager.setPageHeight(pageId, computeHeight())
-                PageDataManager.calculateMemoryUsage(pageId)
+                PageDataManager.calculateMemoryUsage(pageId, 1)
                 PageDataManager.indexImages(coroutineScope, pageId)
                 PageDataManager.indexStrokes(coroutineScope, pageId)
                 PageDataManager.markPageLoaded(pageId)

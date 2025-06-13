@@ -18,7 +18,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.lang.ref.SoftReference
-import java.util.concurrent.locks.ReentrantReadWriteLock
 
 
 // Save bitmap, to avoid loading from disk every time.
@@ -45,7 +44,7 @@ object PageDataManager {
     private val loadingPages = mutableMapOf<String, CompletableDeferred<Unit>>()
     private val lockLoadingPages = Mutex()
 
-    private val accessLock = Any()
+    private val accessLock = Any() // Lock for accessing Images, Strokes, Backgrounds & derived
     private var entrySizeMB = LinkedHashMap<String, Int>()
     var dataLoadingJob: Job? = null
     val dataLoadingScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -62,14 +61,12 @@ object PageDataManager {
 
     suspend fun markPageLoaded(pageId: String) {
         return lockLoadingPages.withLock {
-            Log.d(TAG + "Cache", "Marking page $pageId as loaded")
             loadingPages[pageId]?.complete(Unit)
             Log.d(TAG + "Cache", "marking done. Page $pageId, ${loadingPages[pageId].toString()}")
         }
     }
 
     suspend fun removeMarkPageLoaded(pageId: String) {
-        Log.d(TAG + "Cache", "trying to remove mark for  $pageId")
         lockLoadingPages.withLock {
             Log.d(TAG + "Cache", "Removing mark for page $pageId")
             loadingPages.remove(pageId)?.cancel()
@@ -200,7 +197,6 @@ object PageDataManager {
 
     @Volatile
     private var currentCacheSizeMB = 0
-    private val cacheLock = ReentrantReadWriteLock()
 
     fun removePage(pageId: String) {
         synchronized(accessLock) {
@@ -214,6 +210,8 @@ object PageDataManager {
             dataLoadingScope.launch {
                 removeMarkPageLoaded(pageId)
             }
+            currentCacheSizeMB -= entrySizeMB[pageId] ?: 0
+            entrySizeMB[pageId] = 0
         }
     }
 
@@ -229,7 +227,7 @@ object PageDataManager {
     fun ensureMemoryAvailable(requiredMb: Int): Boolean {
         return when {
             hasEnoughMemory(requiredMb) -> true
-            else -> freeMemory(requiredMb)
+            else -> ensureMemoryCapacity(requiredMb)
         }
     }
 
@@ -243,8 +241,8 @@ object PageDataManager {
         }
     }
 
-
-    fun calculateMemoryUsage(pageId: String): Int {
+    // sign: if 1, add, if -1, remove, if 0 don't modify
+    fun calculateMemoryUsage(pageId: String, sign: Int = 1): Int {
         return synchronized(accessLock) {
             var totalBytes = 0L
 
@@ -287,30 +285,13 @@ object PageDataManager {
             // Convert to MB and update cache
             val memoryUsedMB = (totalBytes / (1024 * 1024)).toInt()
             entrySizeMB[pageId] = memoryUsedMB
-
-            Log.d(
-                "CacheMetrics",
-                "Memory for page $pageId: $memoryUsedMB MB " + "(Strokes: ${strokes[pageId]?.size ?: 0}, " + "Images: ${images[pageId]?.size ?: 0})"
-            )
-
+            currentCacheSizeMB += memoryUsedMB * sign
             memoryUsedMB
         }
     }
 
     fun clearAllCache() {
-        cacheLock.writeLock().lock()
-        try {
-            while (strokes.size > 1) {
-                val oldestPage = strokes.iterator().next().key
-                if (oldestPage != currentPage) {
-                    removePage(oldestPage)
-                    currentCacheSizeMB -= entrySizeMB[oldestPage] ?: 0
-
-                } else logCallStack("clearAllCache")
-            }
-        } finally {
-            cacheLock.writeLock().unlock()
-        }
+        freeMemory(0)
     }
 
     fun hasEnoughMemory(requiredMb: Int): Boolean {
@@ -318,21 +299,24 @@ object PageDataManager {
         return availableMem > requiredMb * 1024 * 1024L
     }
 
-    private fun freeMemory(requiredMb: Int): Boolean {
-        cacheLock.writeLock().lock()
-        try {
-            val iterator = strokes.iterator()
-            while (iterator.hasNext() && !hasEnoughMemory(requiredMb)) {
-                val oldestPage = iterator.next().key
-                if (oldestPage != currentPage) {
-                    removePage(oldestPage)
-                    currentCacheSizeMB -= entrySizeMB[oldestPage] ?: 0
-                    System.gc()
-                }
+    private fun ensureMemoryCapacity(requiredMb: Int): Boolean {
+        val availableMem = ((Runtime.getRuntime().maxMemory() - Runtime.getRuntime().totalMemory())/(1024*1024)).toInt()
+        if (availableMem > requiredMb)
+            return true
+        val toFree =  requiredMb - availableMem
+        freeMemory(toFree)
+        return hasEnoughMemory(requiredMb)
+    }
+
+    private fun freeMemory(cacheSizeLimit: Int): Boolean {
+        synchronized(accessLock) {
+            val pagesToRemove = strokes.keys.filter { it != currentPage }
+            for (pageId in pagesToRemove) {
+                if (currentCacheSizeMB <= cacheSizeLimit) break
+                removePage(pageId)
             }
-            return hasEnoughMemory(requiredMb)
-        } finally {
-            cacheLock.writeLock().unlock()
+            currentCacheSizeMB = maxOf(0, currentCacheSizeMB)
+            return currentCacheSizeMB <= cacheSizeLimit
         }
     }
 
@@ -341,16 +325,17 @@ object PageDataManager {
     fun registerComponentCallbacks(context: Context) {
         context.registerComponentCallbacks(object : ComponentCallbacks2 {
             override fun onTrimMemory(level: Int) {
-                Log.d(TAG, "onTrimMemory: $level")
+                Log.d(TAG, "onTrimMemory: $level, currentCacheSizeMB: $currentCacheSizeMB")
                 when (level) {
                     ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> clearAllCache()
-                    ComponentCallbacks2.TRIM_MEMORY_MODERATE -> freeMemory(25)
-                    ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> freeMemory(15)
-                    ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> freeMemory(10)
-                    ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE -> freeMemory(5)
-                    ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> freeMemory(2)
-                    ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> freeMemory(1)
+                    ComponentCallbacks2.TRIM_MEMORY_MODERATE -> freeMemory(32)
+                    ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> freeMemory(64)
+                    ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> freeMemory(128)
+                    ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE -> freeMemory(256)
+                    ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> freeMemory(32)
+                    ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> freeMemory(10)
                 }
+                Log.d(TAG, "after trim currentCacheSizeMB: $currentCacheSizeMB")
             }
 
             override fun onConfigurationChanged(newConfig: Configuration) {
