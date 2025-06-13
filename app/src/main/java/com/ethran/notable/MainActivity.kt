@@ -13,6 +13,7 @@ import android.provider.Settings
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
@@ -187,6 +188,14 @@ class MainActivity : ComponentActivity() {
     // written by GPT, but it works
     // needs to be checked if it is ok approach.
     private fun enableFullScreen() {
+        // Turn on onyx optimization, no idea what it does.
+        // https://github.com/onyx-intl/OnyxAndroidDemo/blob/3290434f0edba751ec907d777fe95208378ae752/app/OnyxAndroidDemo/src/main/java/com/android/onyx/demo/AppOptimizeActivity.java#L4
+        Intent().apply {
+            action = "com.onyx.app.optimize.setting"
+            putExtra("optimize_fullScreen", true)
+            putExtra("optimize_pkgName", "com.ethran.notable")
+            sendBroadcast(this)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // For Android 11 and above
             // 'setDecorFitsSystemWindows(Boolean): Unit' is deprecated. Deprecated in Java
