@@ -24,6 +24,7 @@ object GlobalAppSettings {
 @Serializable
 data class AppSettings(
     val version: Int,
+    val showWelcome: Boolean = true,
     val defaultNativeTemplate: String = "blank",
     val quickNavPages: List<String> = listOf(),
     val debugMode: Boolean = false,

@@ -196,6 +196,13 @@ fun GeneralSettings(kv: KvProxy, settings: AppSettings) {
     Spacer(Modifier.height(3.dp))
 
     SettingToggleRow(
+        label = "Show welcome screen",
+        value = settings.showWelcome,
+        onToggle = { isChecked ->
+            kv.setAppSettings(settings.copy(showWelcome = isChecked))
+        }
+    )
+    SettingToggleRow(
         label = "Debug Mode (show changed area)",
         value = settings.debugMode,
         onToggle = { isChecked ->

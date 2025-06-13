@@ -13,7 +13,6 @@ import android.provider.Settings
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
@@ -54,6 +53,7 @@ var SCREEN_HEIGHT = EpdController.getEpdWidth().toInt()
 
 var TAG = "MainActivity"
 const val APP_SETTINGS_KEY = "APP_SETTINGS"
+const val PACKAGE_NAME = "com.ethran.notable"
 
 
 @ExperimentalAnimationApi
@@ -63,9 +63,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableFullScreen()
-        requestPermissions()
-        PageDataManager.registerComponentCallbacks(this)
-
         ShipBook.start(
             this.application, BuildConfig.SHIPBOOK_APP_ID, BuildConfig.SHIPBOOK_APP_KEY
         )
@@ -80,14 +77,15 @@ class MainActivity : ComponentActivity() {
         val snackState = SnackState()
         snackState.registerGlobalSnackObserver()
         snackState.registerCancelGlobalSnackObserver()
-
-        // Refactor - we prob don't need this
-        EditorSettingCacheManager.init(applicationContext)
-
-        GlobalAppSettings.update(
-            KvProxy(this).get(APP_SETTINGS_KEY, AppSettings.serializer())
-                ?: AppSettings(version = 1)
-        )
+        PageDataManager.registerComponentCallbacks(this)
+        if (hasRequiredPermissions()) {
+            // Refactor - we prob don't need this
+            EditorSettingCacheManager.init(applicationContext)
+            GlobalAppSettings.update(
+                KvProxy(this).get(APP_SETTINGS_KEY, AppSettings.serializer())
+                    ?: AppSettings(version = 1)
+            )
+        }
 
         //EpdDeviceManager.enterAnimationUpdate(true);
 
@@ -159,6 +157,18 @@ class MainActivity : ComponentActivity() {
 //        }
     }
 
+    private fun hasRequiredPermissions(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) != PackageManager.PERMISSION_GRANTED
+            )
+                return false
+        } else if (!Environment.isExternalStorageManager())
+            return false
+        return true
+    }
     private fun requestPermissions() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             if (ContextCompat.checkSelfPermission(
