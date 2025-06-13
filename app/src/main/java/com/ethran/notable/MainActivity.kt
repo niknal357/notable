@@ -83,8 +83,8 @@ class MainActivity : ComponentActivity() {
                 KvProxy(this).get(APP_SETTINGS_KEY, AppSettings.serializer())
                     ?: AppSettings(version = 1)
             )
-            // Refactor - we prob don't need this
-            // for now its needed to remember state of eraser
+            // Used to load up app settings, latter used in
+            // class EditorState
             EditorSettingCacheManager.init(applicationContext)
         }
 
