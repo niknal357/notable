@@ -127,7 +127,7 @@ fun getLatestPreReleaseTimestamp(owner: String, repo: String): Long? {
         // Parse with timezone information from GitHub
         val zonedDateTime = java.time.ZonedDateTime.parse(it, formatter)
         // Convert to system default timezone
-        zonedDateTime.withZoneSameInstant(ZoneId.systemDefault()).toInstant().toEpochMilli() + 900000
+        zonedDateTime.withZoneSameInstant(ZoneId.systemDefault()).toInstant().toEpochMilli() - 900000
     }
 }
 
