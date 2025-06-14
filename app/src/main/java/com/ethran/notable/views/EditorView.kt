@@ -114,7 +114,8 @@ fun EditorView(
             editorState.isToolbarOpen,
             editorState.pen,
             editorState.penSettings,
-            editorState.mode
+            editorState.mode,
+            editorState.eraser
         ) {
             Log.i(TAG, "EditorView: saving")
             EditorSettingCacheManager.setEditorSettings(

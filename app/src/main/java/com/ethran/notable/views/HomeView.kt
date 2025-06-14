@@ -53,7 +53,7 @@ import androidx.navigation.NavController
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.AppRepository
 import com.ethran.notable.classes.LocalSnackContext
-import com.ethran.notable.classes.PageCacheManager
+import com.ethran.notable.classes.PageDataManager
 import com.ethran.notable.classes.SnackConf
 import com.ethran.notable.classes.XoppFile
 import com.ethran.notable.components.BreadCrumb
@@ -67,7 +67,6 @@ import com.ethran.notable.db.Folder
 import com.ethran.notable.db.Notebook
 import com.ethran.notable.db.Page
 import com.ethran.notable.db.PageRepository
-import com.ethran.notable.modals.AppSettingsModal
 import com.ethran.notable.modals.FolderConfigDialog
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.modals.NotebookConfigDialog
@@ -91,13 +90,10 @@ import kotlin.concurrent.thread
 @ExperimentalComposeUiApi
 @Composable
 fun Library(navController: NavController, folderId: String? = null) {
-    PageCacheManager.clearCache()
+    PageDataManager.clearAllPages()
 
     val context = LocalContext.current
 
-    var isSettingsOpen by remember {
-        mutableStateOf(false)
-    }
     val appRepository = AppRepository(LocalContext.current)
 
     val books by appRepository.bookRepository.getAllInFolder(folderId).observeAsState()
@@ -142,7 +138,7 @@ fun Library(navController: NavController, folderId: String? = null) {
                         Modifier
                             .padding(8.dp)
                             .noRippleClickable {
-                                isSettingsOpen = true
+                                navController.navigate("settings")
                             })
                 }
             }
@@ -481,8 +477,6 @@ fun Library(navController: NavController, folderId: String? = null) {
             }
         }
     }
-
-    if (isSettingsOpen) AppSettingsModal(onClose = { isSettingsOpen = false })
 
 // Add the FloatingEditorView here
     if (showFloatingEditor && floatingEditorPageId != null) {

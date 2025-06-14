@@ -13,6 +13,7 @@ import com.ethran.notable.APP_SETTINGS_KEY
 import com.ethran.notable.TAG
 import com.ethran.notable.modals.AppSettings
 import com.ethran.notable.modals.GlobalAppSettings
+import com.ethran.notable.views.hasFilePermission
 import io.shipbook.shipbooksdk.Log
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -44,6 +45,12 @@ interface KvDao {
 
 class KvRepository(context: Context) {
     var db = AppDatabase.getDatabase(context).kvDao()
+
+    init {
+        if (!hasFilePermission(context)) {
+            throw IllegalStateException("Storage permission not granted or DB not accessible.")
+        }
+    }
 
     fun get(key: String): Kv? {
         return db.get(key)

@@ -45,6 +45,7 @@ import com.ethran.notable.classes.PageView
 import com.ethran.notable.components.BackgroundSelector
 import com.ethran.notable.db.BackgroundType
 import com.ethran.notable.utils.copyBackgroundToDatabase
+import com.ethran.notable.utils.logCallStack
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.launch
 import java.io.File
@@ -356,7 +357,8 @@ fun getPdfPageCount(uri: String): Int {
             0
         }
     } catch (e: Exception) {
-        Log.e(TAG, "Failed to open PDF: ${e.message}")
+        Log.e(TAG, "Failed to open PDF: ${e.message}, for file $uri")
+        logCallStack("getPdfPageCount")
         0
     }
 }

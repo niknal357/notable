@@ -10,6 +10,7 @@ import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Looper
 import androidx.compose.ui.unit.IntOffset
+import androidx.core.graphics.createBitmap
 import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
 import com.ethran.notable.TAG
@@ -22,7 +23,6 @@ import com.ethran.notable.modals.A4_HEIGHT
 import com.ethran.notable.modals.A4_WIDTH
 import com.ethran.notable.modals.GlobalAppSettings
 import io.shipbook.shipbooksdk.Log
-import androidx.core.graphics.createBitmap
 
 
 fun drawCanvas(context: Context, pageId: String): Bitmap {
@@ -63,7 +63,9 @@ fun PdfDocument.writePage(context: Context, number: Int, repo: PageRepository, i
     //TODO: improve that function
     val (_, images) = repo.getWithImageById(id)
 
-    val strokeHeight = if (strokes.isEmpty()) 0 else strokes.maxOf(Stroke::bottom).toInt() + 50
+    //add 50 only if we are not cutting pdf on export.
+    val strokeHeight = if (strokes.isEmpty()) 0 else strokes.maxOf(Stroke::bottom)
+        .toInt() + if (GlobalAppSettings.current.visualizePdfPagination) 0 else 50
     val strokeWidth = if (strokes.isEmpty()) 0 else strokes.maxOf(Stroke::right).toInt() + 50
     val scaleFactor = A4_WIDTH.toFloat() / SCREEN_WIDTH
 
@@ -72,11 +74,19 @@ fun PdfDocument.writePage(context: Context, number: Int, repo: PageRepository, i
 
     if (GlobalAppSettings.current.paginatePdf) {
         var currentTop = 0
-        while (currentTop<pageHeight) {
+        while (currentTop < pageHeight) {
             // TODO: pageNumber are wrong
             val documentPage =
                 startPage(PdfDocument.PageInfo.Builder(A4_WIDTH, A4_HEIGHT, number).create())
-            drawPageContent(context, documentPage.canvas, page, strokes, images, currentTop, scaleFactor)
+            drawPageContent(
+                context,
+                documentPage.canvas,
+                page,
+                strokes,
+                images,
+                currentTop,
+                scaleFactor
+            )
             finishPage(documentPage)
             currentTop += A4_HEIGHT
         }
@@ -98,7 +108,7 @@ private fun drawPageContent(
     scaleFactor: Float
 ) {
     canvas.scale(scaleFactor, scaleFactor)
-    val scaledScroll = (scroll/scaleFactor).toInt()
+    val scaledScroll = (scroll / scaleFactor).toInt()
     drawBg(
         context,
         canvas,

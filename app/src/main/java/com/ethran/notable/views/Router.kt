@@ -31,6 +31,7 @@ import androidx.navigation.navArgument
 import com.ethran.notable.TAG
 import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.components.QuickNav
+import com.ethran.notable.modals.GlobalAppSettings
 
 @ExperimentalAnimationApi
 @ExperimentalFoundationApi
@@ -45,10 +46,15 @@ fun Router() {
         Log.d(TAG, "Changing drawing state, isQuickNavOpen: $isQuickNavOpen")
         DrawCanvas.isDrawing.emit(!isQuickNavOpen)
     }
+    val startDestination =
+        if (GlobalAppSettings.current.showWelcome)
+            "welcome"
+        else
+            "library?folderId={folderId}"
 
     NavHost(
         navController = navController,
-        startDestination = "library?folderId={folderId}",
+        startDestination = startDestination,
 
         enterTransition = { EnterTransition.None },
         exitTransition = { ExitTransition.None },
@@ -62,6 +68,13 @@ fun Router() {
             Library(
                 navController = navController,
                 folderId = it.arguments?.getString("folderId"),
+            )
+        }
+        composable(
+            route = "welcome",
+        ) {
+            WelcomeView(
+                navController = navController,
             )
         }
         composable(
@@ -105,6 +118,11 @@ fun Router() {
                 navController = navController,
                 bookId = it.arguments?.getString("bookId")!!,
             )
+        }
+        composable(
+            route = "settings",
+        ) {
+            SettingsView(navController = navController)
         }
     }
 
