@@ -111,6 +111,18 @@ fun setAnimationMode(isAnimationMode: Boolean) {
     }
 }
 
+fun setRecommendedMode() {
+    EpdController.setAppScopeRefreshMode(UpdateOption.NORMAL)
+}
+
+fun isRecommendedRefreshMode(): Boolean {
+    val updateOption: UpdateOption = Device.currentDevice().appScopeRefreshMode
+    return updateOption == UpdateOption.NORMAL || updateOption == UpdateOption.REGAL
+}
+fun getCurRefreshModeString(): String {
+    return (Device.currentDevice().appScopeRefreshMode).toString()
+}
+
 suspend fun waitForEpdRefresh(updateOption: UpdateOption = Device.currentDevice().appScopeRefreshMode) {
     Log.e(TAG, "Update mode: $updateOption")
 //        Device.currentDevice().waitForUpdateFinished()

@@ -49,6 +49,9 @@ import androidx.navigation.NavController
 import com.ethran.notable.PACKAGE_NAME
 import com.ethran.notable.db.KvProxy
 import com.ethran.notable.modals.GlobalAppSettings
+import com.ethran.notable.utils.getCurRefreshModeString
+import com.ethran.notable.utils.isRecommendedRefreshMode
+import com.ethran.notable.utils.setRecommendedMode
 
 @ExperimentalFoundationApi
 @Composable
@@ -57,6 +60,10 @@ fun WelcomeView(navController: NavController) {
     val filePermissionGranted = remember { mutableStateOf(hasFilePermission(context)) }
     val batteryOptimizationDisabled =
         remember { mutableStateOf(isIgnoringBatteryOptimizations(context)) }
+    val recommendedRefreshMode =
+        remember { mutableStateOf(isRecommendedRefreshMode()) }
+    val refreshModeString = remember { mutableStateOf(getCurRefreshModeString()) }
+
 
     // For automatic permission state updates
     LaunchedEffect(Unit) {
@@ -68,6 +75,8 @@ fun WelcomeView(navController: NavController) {
         }.collect {
             filePermissionGranted.value = hasFilePermission(context)
             batteryOptimizationDisabled.value = isIgnoringBatteryOptimizations(context)
+            recommendedRefreshMode.value = isRecommendedRefreshMode()
+            refreshModeString.value = getCurRefreshModeString()
         }
     }
 
@@ -141,6 +150,32 @@ fun WelcomeView(navController: NavController) {
                             context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                         },
                         enabled = !batteryOptimizationDisabled.value
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Battery Optimization Column
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    PermissionItem(
+                        title = "Set Recommended Refresh Mode",
+                        description = "Its recommended to use HD mode or Regal mode",
+                        isGranted = recommendedRefreshMode.value,
+                        buttonText = if (recommendedRefreshMode.value)
+                            "Applied (${refreshModeString.value})"
+                        else
+                            "Set HD Mode (currently in ${refreshModeString.value})",
+                        onClick = {
+                            setRecommendedMode()
+                        },
+                        enabled = !recommendedRefreshMode.value
                     )
                 }
             }
