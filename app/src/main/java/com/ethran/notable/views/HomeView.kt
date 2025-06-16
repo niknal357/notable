@@ -27,7 +27,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Badge
 import androidx.compose.material.BadgedBox
@@ -40,6 +42,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -74,6 +77,7 @@ import com.ethran.notable.modals.getPdfPageCount
 import com.ethran.notable.utils.copyBackgroundToDatabase
 import com.ethran.notable.utils.isLatestVersion
 import com.ethran.notable.utils.noRippleClickable
+import com.ethran.notable.utils.setAnimationMode
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.FilePlus
 import compose.icons.feathericons.Folder
@@ -83,6 +87,8 @@ import compose.icons.feathericons.Upload
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.concurrent.thread
 
@@ -117,6 +123,44 @@ fun Library(navController: NavController, folderId: String? = null) {
     var floatingEditorPageId by remember { mutableStateOf<String?>(null) }
 
     val snackManager = LocalSnackContext.current
+
+
+    // ensure scrolling is done in animation mode.
+    val lazyGridStateNotebooks = rememberLazyGridState()
+    val lazyListStateFolders = rememberLazyListState()
+    val lazyListStateQuickPages = rememberLazyListState()
+    var isScrolling by remember { mutableStateOf(false) }
+    var scrollJob by remember { mutableStateOf<Job?>(null) }
+    fun handleAnimations(scope: CoroutineScope, scrolling: Boolean){
+        if (scrolling) {
+            // User started scrolling
+            isScrolling = true
+            setAnimationMode(true)
+            scrollJob?.cancel()
+        } else {
+            // User stopped scrolling - delay before resetting
+            scrollJob = scope.launch {
+                delay(500) // Wait 500ms to ensure scrolling really stopped
+                setAnimationMode(false)
+                isScrolling = false
+            }
+        }
+    }
+    LaunchedEffect(lazyGridStateNotebooks, lazyListStateFolders) {
+        snapshotFlow { lazyGridStateNotebooks.isScrollInProgress }
+            .collect { scrolling ->
+                handleAnimations(this, scrolling)
+            }
+        snapshotFlow { lazyListStateFolders.isScrollInProgress }
+            .collect { scrolling ->
+                handleAnimations(this, scrolling)
+            }
+        snapshotFlow { lazyListStateQuickPages.isScrollInProgress }
+            .collect { scrolling ->
+                handleAnimations(this, scrolling)
+            }
+    }
+
 
     Column(
         Modifier.fillMaxSize()
@@ -176,6 +220,7 @@ fun Library(navController: NavController, folderId: String? = null) {
             Spacer(Modifier.height(10.dp))
 
             LazyRow(
+                state = lazyListStateFolders,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -237,6 +282,7 @@ fun Library(navController: NavController, folderId: String? = null) {
             Spacer(Modifier.height(10.dp))
 
             LazyRow(
+                state = lazyListStateQuickPages,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -300,6 +346,7 @@ fun Library(navController: NavController, folderId: String? = null) {
             Spacer(Modifier.height(10.dp))
 
             LazyVerticalGrid(
+                state = lazyGridStateNotebooks,
                 columns = GridCells.Adaptive(100.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
