@@ -4,6 +4,7 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Rect
 import android.util.Log
 import com.ethran.notable.TAG
 import com.ethran.notable.db.Image
@@ -348,4 +349,32 @@ object PageDataManager {
             }
         })
     }
+
+    // Assuming Rect uses 'left', 'top', 'right', 'bottom'
+    fun getImagesInRectangle(inPageCoordinates: Rect, id: String): List<Image>? {
+        synchronized(accessLock) {
+            if (!isPageLoaded(id)) return null
+            val imageList = images[id] ?: return emptyList()
+            return imageList.filter { image ->
+                image.x < inPageCoordinates.right &&
+                        (image.x + image.width) > inPageCoordinates.left &&
+                        image.y < inPageCoordinates.bottom &&
+                        (image.y + image.height) > inPageCoordinates.top
+            }
+        }
+    }
+
+    fun getStrokesInRectangle(inPageCoordinates: Rect, id: String): List<Stroke>? {
+        synchronized(accessLock) {
+            if (!isPageLoaded(id)) return null
+            val strokeList = strokes[id] ?: return emptyList()
+            return strokeList.filter { stroke ->
+                stroke.right > inPageCoordinates.left &&
+                        stroke.left < inPageCoordinates.right &&
+                        stroke.bottom > inPageCoordinates.top &&
+                        stroke.top < inPageCoordinates.bottom
+            }
+        }
+    }
+
 }
