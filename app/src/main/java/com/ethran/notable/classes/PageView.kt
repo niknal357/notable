@@ -224,10 +224,10 @@ class PageView(
                 val pageWithImages = AppRepository(context).pageRepository.getWithImageById(pageId)
                 PageDataManager.cacheImages(pageId, pageWithImages.images)
                 PageDataManager.setPageHeight(pageId, computeHeight())
-                PageDataManager.calculateMemoryUsage(pageId, 1)
                 PageDataManager.indexImages(coroutineScope, pageId)
                 PageDataManager.indexStrokes(coroutineScope, pageId)
                 PageDataManager.markPageLoaded(pageId)
+                PageDataManager.calculateMemoryUsage(pageId, 1)
             } catch (e: CancellationException) {
                 Log.w(TAG + "Cache", "Loading of page $pageId was cancelled.")
                 if (!PageDataManager.isPageLoaded(pageId))

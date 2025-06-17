@@ -188,7 +188,7 @@ object PageDataManager {
 
     fun isPageLoaded(pageId: String): Boolean {
         return synchronized(accessLock) {
-            strokes.containsKey(pageId) && images.containsKey(pageId)
+            strokes.containsKey(pageId) && images.containsKey(pageId) && entrySizeMB.containsKey(pageId)
         }
     }
 
