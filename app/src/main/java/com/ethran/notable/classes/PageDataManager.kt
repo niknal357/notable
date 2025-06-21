@@ -199,6 +199,7 @@ object PageDataManager {
     private var currentCacheSizeMB = 0
 
     fun removePage(pageId: String) {
+        Log.d(TAG, "Removing page $pageId")
         synchronized(accessLock) {
             strokes.remove(pageId)
             images.remove(pageId)
