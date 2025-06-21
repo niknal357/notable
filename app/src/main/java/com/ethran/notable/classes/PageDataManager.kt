@@ -9,6 +9,7 @@ import android.util.Log
 import com.ethran.notable.TAG
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.Stroke
+import com.ethran.notable.utils.loadBackgroundBitmap
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +22,15 @@ import java.lang.ref.SoftReference
 
 
 // Save bitmap, to avoid loading from disk every time.
-data class CachedBackground(
-    val bitmap: Bitmap?, val path: String, val pageNumber: Int, val scale: Float
-)
+data class CachedBackground(val path: String, val pageNumber: Int, val scale: Float) {
+    var bitmap: Bitmap? = loadBackgroundBitmap(path, pageNumber, scale)
+    fun matches(filePath: String, pageNum: Int, targetScale: Float): Boolean {
+        return path == filePath &&
+                pageNumber == pageNum &&
+                scale >= targetScale // Consider valid if our scale is larger
+    }
+
+}
 
 // Cache manager companion object
 object PageDataManager {
@@ -172,17 +179,13 @@ object PageDataManager {
 
     fun setBackground(pageId: String, background: CachedBackground) {
         synchronized(accessLock) {
-            if (!cachedBackgrounds.containsKey(pageId)) {
-                cachedBackgrounds[pageId] = background
-            }
+            cachedBackgrounds[pageId] = background
         }
     }
 
     fun getBackground(pageId: String): CachedBackground {
         return synchronized(accessLock) {
-            cachedBackgrounds[pageId] ?: CachedBackground(
-                null, "", 0, 1.0f
-            )
+            cachedBackgrounds[pageId] ?: CachedBackground("", 0, 1.0f)
         }
     }
 

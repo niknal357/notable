@@ -110,15 +110,8 @@ class PageView(
         If pageNumber is -1, its assumed that the background is image type.
      */
     fun getOrLoadBackground(filePath: String, pageNumber: Int, scale: Float): Bitmap? {
-        if (currentBackground.path != filePath || currentBackground.pageNumber != pageNumber || currentBackground.scale < scale) {
-            currentBackground =
-                CachedBackground(
-                    loadBackgroundBitmap(filePath, pageNumber, scale),
-                    filePath,
-                    pageNumber,
-                    scale
-                )
-        }
+        if (!currentBackground.matches(filePath, pageNumber, scale))
+            currentBackground = CachedBackground(filePath, pageNumber, scale)
         return currentBackground.bitmap
     }
 
@@ -782,6 +775,7 @@ class PageView(
     fun updatePageSettings(page: Page) {
         AppRepository(context).pageRepository.update(page)
         pageFromDb = AppRepository(context).pageRepository.getById(id)
+        Log.i(TAG, "Page settings updated, ${pageFromDb?.background} | ${page.background}")
         drawAreaScreenCoordinates(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
         persistBitmapDebounced()
     }
