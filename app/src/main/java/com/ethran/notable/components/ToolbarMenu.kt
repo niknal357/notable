@@ -270,7 +270,13 @@ fun ToolbarMenu(
                         }
                 ) { Text("Export book to xopp") }
             }
-
+            Box(
+                Modifier
+                    .padding(10.dp)
+                    .noRippleClickable {
+                        navController.navigate("bugReport") {}
+                    }
+            ) { Text("Bug Report") }
             Box(
                 Modifier
                     .fillMaxWidth()
