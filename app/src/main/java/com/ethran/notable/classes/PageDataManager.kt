@@ -235,6 +235,9 @@ object PageDataManager {
         }
     }
 
+    fun getUsedMemory(): Int {
+        return currentCacheSizeMB
+    }
 
     fun reduceCache(maxPages: Int) {
         synchronized(accessLock) {
