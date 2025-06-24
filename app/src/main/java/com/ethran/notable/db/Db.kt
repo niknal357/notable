@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Environment
 import androidx.room.*
 import androidx.room.migration.AutoMigrationSpec
+import com.ethran.notable.utils.getDbDir
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.Date
@@ -76,12 +77,7 @@ abstract class AppDatabase : RoomDatabase() {
         fun getDatabase(context: Context): AppDatabase {
             if (INSTANCE == null) {
                 synchronized(this) {
-                    val documentsDir =
-                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-                    val dbDir = File(documentsDir, "notabledb")
-                    if (!dbDir.exists()) {
-                        dbDir.mkdirs()
-                    }
+                    val dbDir = getDbDir()
                     val dbFile = File(dbDir, "app_database")
 
                     // Use Room to build the database
