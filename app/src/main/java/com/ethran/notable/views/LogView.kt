@@ -2,7 +2,12 @@ package com.ethran.notable.views
 
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.BatteryManager
 import android.os.Build
+import android.os.Environment
+import android.os.StatFs
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,13 +57,16 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
 import java.net.URLEncoder
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.log10
+import kotlin.math.pow
 
 
-class ReportData {
-    val deviceInfo: String = buildDeviceInfo()
+class ReportData(context: Context) {
+    val deviceInfo: String = buildDeviceInfo(context)
     private val logs: String = getRecentLogs()
 
     companion object {
@@ -128,54 +136,110 @@ class ReportData {
         }
     }
 
-    private fun buildDeviceInfo(): String {
-        val usedHeapMB = Runtime.getRuntime().totalMemory() / 1024 / 1024
-        val maxHeapMB = Runtime.getRuntime().maxMemory() / 1024 / 1024
-        val appMemory = getMemoryUsedByApp()
-        val diskUsage = getDiscSpaceUsage()
+    private fun buildDeviceInfo(context: Context): String {
+        val runtime = Runtime.getRuntime()
+
+        // Memory
+        val maxHeap = runtime.maxMemory().toHumanReadable()
+        val appUsed = (runtime.totalMemory() - runtime.freeMemory()).toHumanReadable()
+        val pageMemoryMB = PageDataManager.getUsedMemory()
+
+        // Storage
+        val dbDir = getDbDir()
+        val dbUsed = getFolderSize(dbDir).toHumanReadable()
+        val freeSpace = StatFs(dbDir.path).availableBytes.toHumanReadable()
+        val totalStorage = getTotalDeviceStorage().toHumanReadable()
+        val totalMemory = getTotalDeviceMemory().toHumanReadable()
+        val batteryPct = getBatteryPercentage(context)
+        val threadCount = Thread.activeCount()
+        val buildType = getSignature(context)
 
         return """
-        |• Model: ${Build.MANUFACTURER} ${Build.MODEL}
-        |• Android: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})
-        |• App Version: ${BuildConfig.VERSION_NAME}
-        |• Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())}
-        |• Available RAM: $usedHeapMB / $maxHeapMB MB
-        |• App Memory(PageData/AllMemory): ${PageDataManager.getUsedMemory()}/$appMemory
-        |• Disk Usage: $diskUsage
+        |• Device: ${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE},  SDK ${Build.VERSION.SDK_INT})
+        |• System: $totalMemory RAM | $totalStorage storage | Battery: $batteryPct% | Threads: $threadCount
+        |• Memory: ${pageMemoryMB}MB used by pages | $appUsed used by app | $maxHeap max
+        |• Storage: $dbUsed used by app | $freeSpace free
+        |• Version: ${BuildConfig.VERSION_NAME} ($buildType)
+        |• Current time: ${SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())}
     """.trimMargin()
     }
 
-    private fun getDiscSpaceUsage(): String {
+
+    private fun Long.toHumanReadable(): String {
+        if (this <= 0) return "0 B"
+
+        val units = arrayOf("B", "KB", "MB", "GB")
+        val digitGroups = (log10(this.toDouble()) / log10(1024.0)).toInt()
+        val unit = units[minOf(digitGroups, units.size - 1)]
+        val value = this / 1024.0.pow(minOf(digitGroups, units.size - 1).toDouble())
+
+        return "%.1f %s".format(Locale.US, value, unit)
+    }
+
+    private fun getTotalDeviceMemory(): Long {
         return try {
-            val dbDir = getDbDir()
-            val usedBytes = getFolderSize(dbDir)
-            val usedMB = usedBytes / (1024 * 1024) // Convert to MB
-            "$usedMB MB"
+            val memInfoFile = File("/proc/meminfo")
+            if (memInfoFile.exists()) {
+                memInfoFile.readLines().firstOrNull { it.startsWith("MemTotal:") }
+                    ?.split("\\s+".toRegex())?.getOrNull(1)?.toLongOrNull()?.times(1024) ?: 0L
+            } else {
+                0L
+            }
         } catch (e: Exception) {
-            "Unavailable"
+            0L
         }
+    }
+
+    private fun getTotalDeviceStorage(): Long {
+        val stat = StatFs(Environment.getDataDirectory().path)
+        return stat.totalBytes
     }
 
     private fun getFolderSize(dir: File): Long {
         if (!dir.exists()) return 0L
         if (dir.isFile) return dir.length()
-        var total = 0L
-        dir.listFiles()?.forEach { file ->
-            total += if (file.isDirectory) getFolderSize(file) else file.length()
-        }
-        return total
+        return dir.listFiles()?.sumOf { file ->
+            if (file.isDirectory) getFolderSize(file) else file.length()
+        } ?: 0L
     }
 
-    private fun getMemoryUsedByApp(): String {
+
+    // Example helper functions (stubs - implement as needed)
+    private fun getBatteryPercentage(context: Context): Int {
+        val batteryIntent =
+            context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        return batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+    }
+
+    private fun getSignature(context: Context): String {
         return try {
-            val runtime = Runtime.getRuntime()
-            val usedMem = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024 // MB
-            "$usedMem MB"
+            val packageInfo =
+                context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.GET_SIGNING_CERTIFICATES
+                )
+
+            val signatures =
+                packageInfo.signingInfo?.apkContentsSigners ?: emptyArray()
+
+            if (signatures.isNotEmpty()) {
+                val cert = signatures[0].toByteArray()
+                val md = MessageDigest.getInstance("SHA-1")
+                val digest = md.digest(cert)
+                val currentFingerprint = digest.joinToString(":") { "%02X".format(it) }
+
+                when (currentFingerprint) {
+                    "2B:28:68:8C:78:69:D9:9F:12:F8:73:EE:C3:45:2C:D7:8B:49:FD:70" -> "next build"
+                    "3E:7E:96:AA:01:E3:1E:90:43:50:B5:30:EB:55:FF:12:60:B1:FE:9D" -> "release build"
+                    else -> "Dev build"
+                }
+            } else {
+                "no signatures found"
+            }
         } catch (e: Exception) {
-            "Unavailable"
+            "error: ${e.message ?: "unknown error"}"
         }
     }
-
 
     fun copyReportToClipboard(context: Context, description: String, includeLogs: Boolean) {
         copyToClipboard(
@@ -205,7 +269,7 @@ fun BugReportScreen(navController: NavController) {
     var description by remember { mutableStateOf("") }
     var includeLogs by remember { mutableStateOf(true) }
     val focusManager = LocalFocusManager.current
-    val reportData = ReportData()
+    val reportData = ReportData(context)
 
     Column(
         modifier = Modifier
