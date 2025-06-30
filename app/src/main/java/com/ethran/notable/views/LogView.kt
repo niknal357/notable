@@ -70,7 +70,7 @@ class ReportData(context: Context) {
     private val logs: String = getRecentLogs()
 
     companion object {
-        private const val MAX_LOG_LINES = 40
+        private const val MAX_LOG_LINES = 40 //max characters for github is 8201
         private const val LOG_LINE_REGEX =
             """^(\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3})\s+(\d+)\s+(\d+)\s([VDIWE])\s([^:]+):\s(.*)$"""
     }
