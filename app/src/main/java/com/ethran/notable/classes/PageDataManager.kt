@@ -5,11 +5,10 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Rect
-import android.util.Log
-import com.ethran.notable.TAG
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.Stroke
 import com.ethran.notable.utils.loadBackgroundBitmap
+import io.shipbook.shipbooksdk.ShipBook
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +33,8 @@ data class CachedBackground(val path: String, val pageNumber: Int, val scale: Fl
 
 // Cache manager companion object
 object PageDataManager {
+    val log = ShipBook.getLogger("PageDataManager")
+
     private val strokes = LinkedHashMap<String, MutableList<Stroke>>()
     private var strokesById = LinkedHashMap<String, HashMap<String, Stroke>>()
 
@@ -60,8 +61,10 @@ object PageDataManager {
     suspend fun markPageLoading(pageId: String) {
         lockLoadingPages.withLock {
             if (!loadingPages.containsKey(pageId)) {
-                Log.d(TAG + "Cache", "Marking page $pageId as loading")
+                log.d("Marking page $pageId as loading")
                 loadingPages[pageId] = CompletableDeferred()
+            } else {
+                log.e("Page $pageId is already loading")
             }
         }
     }
@@ -69,24 +72,24 @@ object PageDataManager {
     suspend fun markPageLoaded(pageId: String) {
         return lockLoadingPages.withLock {
             loadingPages[pageId]?.complete(Unit)
-            Log.d(TAG + "Cache", "marking done. Page $pageId, ${loadingPages[pageId].toString()}")
+            log.d("marking done. Page $pageId, ${loadingPages[pageId].toString()}")
         }
     }
 
     suspend fun removeMarkPageLoaded(pageId: String) {
         lockLoadingPages.withLock {
-            Log.d(TAG + "Cache", "Removing mark for page $pageId")
+            log.d("Removing mark for page $pageId")
             loadingPages.remove(pageId)?.cancel()
         }
     }
 
     suspend fun awaitPageIfLoading(pageId: String) {
         if (isPageLoading(pageId)) {
-            Log.d(TAG + "Cache", "Awaiting page $pageId")
+            log.d("Awaiting page $pageId")
             loadingPages[pageId]?.await()
-            Log.d(TAG + "Cache", "waiting done. Page $pageId")
+            log.d("waiting done. Page $pageId")
         } else {
-            Log.d(TAG + "Cache", "Page $pageId is not loading, canceling unnecessary caching")
+            log.d("Page $pageId is not loading, canceling unnecessary caching")
             dataLoadingJob?.cancel()
         }
     }
@@ -164,6 +167,9 @@ object PageDataManager {
         synchronized(accessLock) {
             if (!this.strokes.containsKey(pageId)) {
                 this.strokes[pageId] = strokes.toMutableList()
+            } else {
+                log.d("Joining strokes drawn during page loading and existing strokes")
+                this.strokes[pageId]?.addAll(strokes)
             }
         }
     }
@@ -172,6 +178,9 @@ object PageDataManager {
         synchronized(accessLock) {
             if (!this.images.containsKey(pageId)) {
                 this.images[pageId] = images.toMutableList()
+            } else {
+                log.d("Joining images drawn during page loading and existing images")
+                this.images[pageId]?.addAll(images)
             }
         }
     }
@@ -202,7 +211,7 @@ object PageDataManager {
     private var currentCacheSizeMB = 0
 
     fun removePage(pageId: String) {
-        Log.d(TAG, "Removing page $pageId")
+        log.d("Removing page $pageId")
         synchronized(accessLock) {
             strokes.remove(pageId)
             images.remove(pageId)
@@ -220,7 +229,7 @@ object PageDataManager {
     }
 
     fun clearAllPages() {
-        Log.i(TAG + "Cache", "Clearing cache")
+        log.i("Clearing cache")
         synchronized(accessLock) {
             strokes.clear()
             images.clear()
@@ -332,7 +341,7 @@ object PageDataManager {
     fun registerComponentCallbacks(context: Context) {
         context.registerComponentCallbacks(object : ComponentCallbacks2 {
             override fun onTrimMemory(level: Int) {
-                Log.d(TAG, "onTrimMemory: $level, currentCacheSizeMB: $currentCacheSizeMB")
+                log.d("onTrimMemory: $level, currentCacheSizeMB: $currentCacheSizeMB")
                 when (level) {
                     ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> clearAllCache()
                     ComponentCallbacks2.TRIM_MEMORY_MODERATE -> freeMemory(32)
@@ -342,7 +351,7 @@ object PageDataManager {
                     ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> freeMemory(32)
                     ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> freeMemory(10)
                 }
-                Log.d(TAG, "after trim currentCacheSizeMB: $currentCacheSizeMB")
+                log.d("after trim currentCacheSizeMB: $currentCacheSizeMB")
             }
 
             override fun onConfigurationChanged(newConfig: Configuration) {
