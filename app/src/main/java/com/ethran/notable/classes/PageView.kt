@@ -219,7 +219,6 @@ class PageView(
                 PageDataManager.setPageHeight(pageId, computeHeight())
                 PageDataManager.indexImages(coroutineScope, pageId)
                 PageDataManager.indexStrokes(coroutineScope, pageId)
-                PageDataManager.markPageLoaded(pageId)
                 PageDataManager.calculateMemoryUsage(pageId, 1)
             } catch (e: CancellationException) {
                 Log.w(TAG + "Cache", "Loading of page $pageId was cancelled.")
