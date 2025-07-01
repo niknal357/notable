@@ -124,6 +124,11 @@ fun Router() {
         ) {
             SettingsView(navController = navController)
         }
+        composable(
+            route = "bugReport",
+        ) {
+            BugReportScreen(navController = navController)
+        }
     }
 
     if (isQuickNavOpen) QuickNav(

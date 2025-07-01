@@ -17,8 +17,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ethran.notable.TAG
 import com.ethran.notable.db.Image
-import com.ethran.notable.db.ImageRepository
-import com.ethran.notable.db.StrokeRepository
 import com.ethran.notable.db.handleSelect
 import com.ethran.notable.db.selectImage
 import com.ethran.notable.db.selectImagesAndStrokes
@@ -47,6 +45,7 @@ import com.ethran.notable.utils.uriToBitmap
 import com.ethran.notable.utils.waitForEpdRefresh
 import com.onyx.android.sdk.api.device.epd.EpdController
 import com.onyx.android.sdk.data.note.TouchPoint
+import com.onyx.android.sdk.extension.isNotNull
 import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPointList
@@ -62,7 +61,6 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.concurrent.thread
 
@@ -447,24 +445,26 @@ class DrawCanvas(
         Log.d(TAG + "Observer", "Area to Select (screen): $rectToSelect")
         val inPageCoordinates = toPageCoordinates(rectToSelect, page.zoomLevel.value, page.scroll)
 
-        // Query the database to find an image that coincides with the point
-        val imagesToSelect = withContext(Dispatchers.IO) {
-            ImageRepository(context).getImagesInRectangle(inPageCoordinates, page.id)
-        }
-        val strokesToSelect = withContext(Dispatchers.IO) {
-            StrokeRepository(context).getStrokesInRectangle(inPageCoordinates, page.id)
-        }
-        rectangleToSelect.value = null
-        if (imagesToSelect.isNotEmpty() || strokesToSelect.isNotEmpty()) {
-            selectImagesAndStrokes(coroutineScope, page, state, imagesToSelect, strokesToSelect)
-        } else {
-            SnackState.globalSnackFlow.emit(
-                SnackConf(
-                    text = "There isn't anything.",
-                    duration = 3000,
+        val imagesToSelect = PageDataManager.getImagesInRectangle(inPageCoordinates, page.id)
+        val strokesToSelect = PageDataManager.getStrokesInRectangle(inPageCoordinates, page.id)
+        if (imagesToSelect.isNotNull() && strokesToSelect.isNotNull()) {
+            rectangleToSelect.value = null
+            if (imagesToSelect.isNotEmpty() || strokesToSelect.isNotEmpty()) {
+                selectImagesAndStrokes(coroutineScope, page, state, imagesToSelect, strokesToSelect)
+            } else {
+                SnackState.globalSnackFlow.emit(
+                    SnackConf(
+                        text = "There isn't anything.",
+                        duration = 3000,
+                    )
                 )
+            }
+        } else SnackState.globalSnackFlow.emit(
+            SnackConf(
+                text = "Page isn't loaded!",
+                duration = 3000,
             )
-        }
+        )
 
     }
 

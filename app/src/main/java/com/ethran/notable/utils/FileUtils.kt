@@ -71,23 +71,30 @@ fun copyStreamToFile(inputStream: InputStream, outputFile: File) {
     }
 }
 
-fun ensureImagesFolder(): File {
+fun getDbDir(): File {
     val documentsDir =
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-    val dbDir = File(File(documentsDir, "notabledb"), "images")
+    val dbDir = File(documentsDir, "notabledb")
     if (!dbDir.exists()) {
         dbDir.mkdirs()
     }
     return dbDir
 }
 
+fun ensureImagesFolder(): File {
+    val dbDir = getDbDir()
+    val imagesDir = File(dbDir, "images")
+    if (!imagesDir.exists()) {
+        imagesDir.mkdirs()
+    }
+    return imagesDir
+}
 
 fun ensureBackgroundsFolder(): File {
-    val documentsDir =
-        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-    val dbDir = File(File(documentsDir, "notabledb"), "backgrounds")
-    if (!dbDir.exists()) {
-        dbDir.mkdirs()
+    val dbDir = getDbDir()
+    val backgroundsDir = File(dbDir, "backgrounds")
+    if (!backgroundsDir.exists()) {
+        backgroundsDir.mkdirs()
     }
-    return dbDir
+    return backgroundsDir
 }

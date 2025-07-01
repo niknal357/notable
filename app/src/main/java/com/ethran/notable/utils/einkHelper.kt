@@ -124,7 +124,7 @@ fun getCurRefreshModeString(): String {
 }
 
 suspend fun waitForEpdRefresh(updateOption: UpdateOption = Device.currentDevice().appScopeRefreshMode) {
-    Log.e(TAG, "Update mode: $updateOption")
+    Log.d(TAG, "Update mode: $updateOption")
 //        Device.currentDevice().waitForUpdateFinished()
     // depending on device, it may take different amount of time to
     // refresh the screen. So for example, when closing menus, we
