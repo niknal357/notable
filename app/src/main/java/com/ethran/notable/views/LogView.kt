@@ -99,10 +99,39 @@ class ReportData(context: Context) {
             // Get logs with threadtime format (most detailed format)
             val process = Runtime.getRuntime().exec("logcat -d -v threadtime")
             val reader = BufferedReader(InputStreamReader(process.inputStream))
+            val excludedTags = setOf(
+                "OnBackInvokedCallback",      // System back gesture
+                "OpenGLRenderer",             // Graphics system
+                "GoogleInputMethodService",   // Keyboard
+                "ProfileInstaller",           // Code optimization
+                "Parcel",                     // IPC
+                "InputMethodManager",         // Keyboard/input manager
+                "InsetsController",           // System UI/IME transitions
+                "Choreographer",              // Frame timing/animation
+                "ViewRootImpl",               // UI framework internals
+                "SurfaceView",                // Surface rendering
+                "BLASTBufferQueue",           // Graphics buffer management
+                "TrafficStats",               // Network stats
+                "StrictMode",                 // Policy violations
+                "androidx.compose",           // Jetpack Compose framework
+                "HwBinder",                   // Hardware binder subsystem
+                "libc",                       // Native C/C++ library
+                "lib_touch_reader",           // Touch input driver logs
+                "RawInputReader\$a",          // Raw input reader internal threads
+                "AdrenoGLES-0"                // GPU driver and Adreno graphics logs
+            )
 
             // Read all lines and keep only the newest matching entries
             val allLines = reader.useLines { lines ->
-                lines.filter { it.matches(Regex(LOG_LINE_REGEX)) }
+                lines.filter {
+                    val match = Regex(LOG_LINE_REGEX).matchEntire(it)
+                    if (match != null) {
+                        val tag = match.groupValues[5].trim()
+                        tag !in excludedTags
+                    } else {
+                        false
+                    }
+                }
                     .toList()
             }
 
