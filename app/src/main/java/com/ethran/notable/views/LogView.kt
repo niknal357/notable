@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import android.widget.Toast
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.Card
+import androidx.compose.material.Checkbox
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
@@ -65,9 +67,13 @@ import kotlin.math.log10
 import kotlin.math.pow
 
 
-class ReportData(context: Context) {
+class ReportData(
+    context: Context,
+    selectedTags: Map<String, Boolean>,
+    includeLibrariesLogs: Boolean
+) {
     val deviceInfo: String = buildDeviceInfo(context)
-    private val logs: String = getRecentLogs()
+    private val logs: String = getRecentLogs(selectedTags, includeLibrariesLogs)
 
     companion object {
         private const val MAX_LOG_LINES = 40 //max characters for github is 8201
@@ -94,43 +100,24 @@ class ReportData(context: Context) {
         return description.take(40)
     }
 
-    private fun getRecentLogs(): String {
+    private fun getRecentLogs(
+        selectedTags: Map<String, Boolean>,
+        includeLibrariesLogs: Boolean
+    ): String {
         return try {
             // Get logs with threadtime format (most detailed format)
             val process = Runtime.getRuntime().exec("logcat -d -v threadtime")
             val reader = BufferedReader(InputStreamReader(process.inputStream))
-            val excludedTags = setOf(
-                "OnBackInvokedCallback",      // System back gesture
-                "OpenGLRenderer",             // Graphics system
-                "GoogleInputMethodService",   // Keyboard
-                "ProfileInstaller",           // Code optimization
-                "Parcel",                     // IPC
-                "InputMethodManager",         // Keyboard/input manager
-                "InsetsController",           // System UI/IME transitions
-                "Choreographer",              // Frame timing/animation
-                "ViewRootImpl",               // UI framework internals
-                "SurfaceView",                // Surface rendering
-                "BLASTBufferQueue",           // Graphics buffer management
-                "TrafficStats",               // Network stats
-                "StrictMode",                 // Policy violations
-                "androidx.compose",           // Jetpack Compose framework
-                "HwBinder",                   // Hardware binder subsystem
-                "libc",                       // Native C/C++ library
-                "lib_touch_reader",           // Touch input driver logs
-                "RawInputReader\$a",          // Raw input reader internal threads
-                "AdrenoGLES-0"                // GPU driver and Adreno graphics logs
-            )
+
 
             // Read all lines and keep only the newest matching entries
             val allLines = reader.useLines { lines ->
                 lines.filter {
                     val match = Regex(LOG_LINE_REGEX).matchEntire(it)
-                    if (match != null) {
-                        val tag = match.groupValues[5].trim()
-                        tag !in excludedTags
-                    } else {
-                        false
-                    }
+                    excludeLibraryLogs(match, includeLibrariesLogs) && filterLogsByTags(
+                        match,
+                        selectedTags
+                    )
                 }
                     .toList()
             }
@@ -143,6 +130,51 @@ class ReportData(context: Context) {
         } catch (e: Exception) {
             "Error reading logs: ${e.message}"
         }
+    }
+
+    private fun excludeLibraryLogs(match: MatchResult?, includeLibrariesLogs: Boolean): Boolean {
+        if (includeLibrariesLogs) return true
+        val excludedTags = setOf(
+            "OnBackInvokedCallback",      // System back gesture
+            "OpenGLRenderer",             // Graphics system
+            "GoogleInputMethodService",   // Keyboard
+            "ProfileInstaller",           // Code optimization
+            "Parcel",                     // IPC
+            "InputMethodManager",         // Keyboard/input manager
+            "InsetsController",           // System UI/IME transitions
+            "Choreographer",              // Frame timing/animation
+            "ViewRootImpl",               // UI framework internals
+            "SurfaceView",                // Surface rendering
+            "BLASTBufferQueue",           // Graphics buffer management
+            "BufferQueueProducer",        //
+            "TrafficStats",               // Network stats
+            "StrictMode",                 // Policy violations
+            "androidx.compose",           // Jetpack Compose framework
+            "HwBinder",                   // Hardware binder subsystem
+            "libc",                       // Native C/C++ library
+            "lib_touch_reader",           // Touch input driver logs
+            "RawInputReader\$a",          // Raw input reader internal threads
+            "AdrenoGLES-0"                // GPU driver and Adreno graphics logs
+        )
+        if (match != null) {
+            val tag = match.groupValues[5].trim()
+            return tag !in excludedTags
+        } else {
+            return false
+        }
+    }
+
+    private fun filterLogsByTags(match: MatchResult?, selectedTags: Map<String, Boolean>): Boolean {
+        return if (match != null) {
+            val tag = match.groupValues[5].trim()
+            if (selectedTags.containsKey(tag))
+                selectedTags[tag] == true
+            else
+                true
+        } else {
+            false
+        }
+
     }
 
     fun formatLogsForDisplay(): String {
@@ -298,7 +330,11 @@ fun BugReportScreen(navController: NavController) {
     var description by remember { mutableStateOf("") }
     var includeLogs by remember { mutableStateOf(true) }
     val focusManager = LocalFocusManager.current
-    val reportData = ReportData(context)
+    val logTags =
+        listOf("PageDataManager", "PageViewCache", "GestureReceiver" /*, more if needed */)
+    var selectedTags by remember { mutableStateOf(logTags.associateWith { true }) }
+    var includeLibrariesLogs by remember { mutableStateOf(false) }
+    val reportData = ReportData(context, selectedTags, includeLibrariesLogs)
 
     Column(
         modifier = Modifier
@@ -325,14 +361,7 @@ fun BugReportScreen(navController: NavController) {
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
         )
-
-        Spacer(Modifier.height(16.dp))
-
-        // Report Preview Card
-        ReportPreviewCard(reportData, description.ifBlank { "_No description provided_" }, includeLogs)
-
-        Spacer(Modifier.height(16.dp))
-
+        Spacer(Modifier.height(8.dp))
         // Include logs toggle
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(
@@ -342,6 +371,45 @@ fun BugReportScreen(navController: NavController) {
             Spacer(Modifier.width(8.dp))
             Text("Include diagnostic logs")
         }
+        if (includeLogs) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Include logs from(leave default if unsure):",
+                style = MaterialTheme.typography.caption
+            )
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+            ) {
+                logTags.forEach { tag ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = selectedTags[tag] == true,
+                            onCheckedChange = { checked ->
+                                selectedTags =
+                                    selectedTags.toMutableMap().apply { put(tag, checked) }
+                            }
+                        )
+                        Text(tag, modifier = Modifier.padding(end = 8.dp))
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = includeLibrariesLogs,
+                        onCheckedChange = { checked ->
+                            includeLibrariesLogs = checked
+                        }
+                    )
+                    Text("Include libraries logs", modifier = Modifier.padding(end = 8.dp))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Report Preview Card
+        ReportPreviewCard(reportData, description.ifBlank { "_No description provided_" }, includeLogs)
 
         Spacer(Modifier.height(16.dp))
 
