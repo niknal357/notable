@@ -280,7 +280,11 @@ fun handleDraw(
     history: History
 ): Boolean {
     try {
-        if (isScribble(touchPoints)) {
+        // Check global setting for scribble-to-erase
+        val scribbleToEraseEnabled = try {
+            com.ethran.notable.modals.GlobalAppSettings.current.scribbleToEraseEnabled
+        } catch (_: Exception) { true }
+        if (scribbleToEraseEnabled && isScribble(touchPoints)) {
             val points = touchPoints.map { SimplePointF(it.x, it.y) }
             val path = pointsToPath(points)
             val outPath = Path()
@@ -334,7 +338,7 @@ fun handleDraw(
         page.drawAreaPageCoordinates(strokeBounds(stroke).toRect())
         historyBucket.add(stroke.id)
     } catch (e: Exception) {
-        Log.e(TAG, "Handle Draw: An error occurred while handling the drawing: ${e.message}")
+        Log.e(TAG, "Handle Draw: An error occurred while handling the drawing: [${e.message}")
     }
     return false
 }

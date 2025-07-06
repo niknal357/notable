@@ -219,6 +219,14 @@ fun GeneralSettings(kv: KvProxy, settings: AppSettings) {
     )
 
     SettingToggleRow(
+        label = "Enable scribble-to-erase (draw a fast scribble to erase strokes)",
+        value = settings.scribbleToEraseEnabled,
+        onToggle = { isChecked ->
+            kv.setAppSettings(settings.copy(scribbleToEraseEnabled = isChecked))
+        }
+    )
+
+    SettingToggleRow(
         label = "Enable smooth scrolling",
         value = settings.smoothScroll,
         onToggle = { isChecked ->
