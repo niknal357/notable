@@ -259,10 +259,6 @@ fun isScribble(points: List<StrokePoint>): Boolean {
 
     if (width == 0f || height == 0f) return false
 
-    val aspectRatio = if (width > height) width / height else height / width
-    Log.v(TAG, "isScribble: Aspect ratio: $aspectRatio")
-    if (aspectRatio > 5) return false // not a scribble if it's too long/thin
-
     var totalDistance = 0.0
     for (i in 1 until points.size) {
         val dx = points[i].x - points[i-1].x
