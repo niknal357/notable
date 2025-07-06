@@ -288,7 +288,7 @@ fun handleDraw(
             val points = touchPoints.map { SimplePointF(it.x, it.y) }
             val path = pointsToPath(points)
             val outPath = Path()
-            // calucalte stroke width based on bounding box
+            // calculate stroke width based on bounding box
             // bigger swinging in scribble = bigger bounding box => larger stroke size
             val boundingBox = calculateBoundingBox(touchPoints)
             val strokeSizeForDetection = if (boundingBox.width() < boundingBox.height()) {
