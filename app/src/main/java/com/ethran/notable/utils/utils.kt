@@ -284,7 +284,16 @@ fun handleDraw(
         // Check global setting for scribble-to-erase
         val scribbleToEraseEnabled = try {
             com.ethran.notable.modals.GlobalAppSettings.current.scribbleToEraseEnabled
-        } catch (_: Exception) { false }
+        } catch (e: NullPointerException) {
+            Log.w(TAG, "GlobalAppSettings not initialized: ${e.message}")
+            false
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "GlobalAppSettings in illegal state: ${e.message}")
+            false
+        } catch (e: Exception) {
+            Log.w(TAG, "Error accessing GlobalAppSettings: ${e.message}")
+            false
+        }
         if (scribbleToEraseEnabled && isScribble(touchPoints)) {
             val points = touchPoints.map { SimplePointF(it.x, it.y) }
             val path = pointsToPath(points)
