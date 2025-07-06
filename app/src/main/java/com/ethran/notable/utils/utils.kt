@@ -247,6 +247,37 @@ fun calculateBoundingBox(touchPoints: List<StrokePoint>): RectF {
     return boundingBox
 }
 
+fun isScribble(points: List<StrokePoint>): Boolean {
+    Log.v(TAG, "isScribble: Checking if points represent a scribble, points size: ${points.size}")
+    if (points.size < 15) return false
+
+    Log.d(TAG, "isScribble: Points represent a scribble")
+    val boundingBox = calculateBoundingBox(points)
+    val width = boundingBox.width()
+    val height = boundingBox.height()
+    Log.v(TAG, "isScribble: Bounding box width: $width, height: $height")
+
+    if (width == 0f || height == 0f) return false
+
+    val aspectRatio = if (width > height) width / height else height / width
+    Log.v(TAG, "isScribble: Aspect ratio: $aspectRatio")
+    if (aspectRatio > 5) return false // not a scribble if it's too long/thin
+
+    var totalDistance = 0.0
+    for (i in 1 until points.size) {
+        val dx = points[i].x - points[i-1].x
+        val dy = points[i].y - points[i-1].y
+        totalDistance += kotlin.math.sqrt(dx*dx + dy*dy)
+    }
+    Log.v(TAG, "isScribble: Total distance: $totalDistance")
+
+    val diagonal = kotlin.math.sqrt(width*width + height*height)
+    Log.v(TAG, "isScribble: Bounding box diagonal: $diagonal")
+    // if the total path length is shorter than ~3x the bounding box diagonal, it's likely not a scribble
+    if (totalDistance < diagonal * 3) return false
+    return true
+}
+
 // touchpoints are in page coordinates
 fun handleDraw(
     page: PageView,
@@ -254,9 +285,46 @@ fun handleDraw(
     strokeSize: Float,
     color: Int,
     pen: Pen,
-    touchPoints: List<StrokePoint>
-) {
+    touchPoints: List<StrokePoint>,
+    history: History
+): Boolean {
     try {
+        if (isScribble(touchPoints)) {
+            Log.d(TAG, "handleDraw: Detected scribble")
+            val points = touchPoints.map { SimplePointF(it.x, it.y) }
+            val path = pointsToPath(points)
+            val outPath = Path()
+            // calucalte stroke width based on bounding box
+            // bigger swinging in scribble = bigger bounding box => larger stroke size
+            val boundingBox = calculateBoundingBox(touchPoints)
+            val strokeSizeForDetection = if (boundingBox.width() < boundingBox.height()) {
+                boundingBox.width() / 10f
+            } else {
+                boundingBox.height() / 10f
+            }
+            val paint = Paint().apply {
+                this.strokeWidth = strokeSizeForDetection
+                this.style = Paint.Style.STROKE
+                this.strokeCap = Paint.Cap.ROUND
+                this.strokeJoin = Paint.Join.ROUND
+                this.isAntiAlias = true
+            }
+            paint.getFillPath(path, outPath)
+
+            val deletedStrokes = selectStrokesFromPath(page.strokes, outPath)
+            Log.v(TAG, "handleDraw: Detected scribble, deleted strokes: ${deletedStrokes.size}")
+            Log.v(TAG, "handleDraw: Detected scribble, deleted strokes: ${deletedStrokes.isNotEmpty()}")
+            if (deletedStrokes.isNotEmpty()) {
+                val deletedStrokeIds = deletedStrokes.map { it.id }
+                page.removeStrokes(deletedStrokeIds)
+                history.addOperationsToHistory(listOf(Operation.AddStroke(deletedStrokes)))
+                page.drawAreaScreenCoordinates(
+                    screenArea = page.toScreenCoordinates(strokeBounds(deletedStrokes))
+                )
+                return true
+            }
+        }
+
         val boundingBox = calculateBoundingBox(touchPoints)
 
         //move rectangle
@@ -280,6 +348,7 @@ fun handleDraw(
     } catch (e: Exception) {
         Log.e(TAG, "Handle Draw: An error occurred while handling the drawing: ${e.message}")
     }
+    return false
 }
 
 /*
@@ -552,7 +621,6 @@ fun shareBitmap(context: Context, bitmap: Bitmap) {
 }
 
 
-// move to SelectionState?
 fun copyBitmapToClipboard(context: Context, bitmap: Bitmap) {
     // Save bitmap to cache and get a URI
     val uri = saveBitmapToCache(context, bitmap) ?: return

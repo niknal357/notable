@@ -175,15 +175,16 @@ class DrawCanvas(
                             else
                                 copyInput(plist.points, page.scroll, page.zoomLevel.value)
                         // draw the stroke
-                        handleDraw(
+                        val needsRefresh = handleDraw(
                             this@DrawCanvas.page,
                             strokeHistoryBatch,
                             getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
                             getActualState().penSettings[getActualState().pen.penName]!!.color,
                             getActualState().pen,
-                            scaledPoints
+                            scaledPoints,
+                            history
                         )
-                        if (getActualState().mode == Mode.Line)
+                        if (getActualState().mode == Mode.Line || needsRefresh)
                             refreshUi()
 //                        val drawEndTime = System.currentTimeMillis()
 //                        Log.d(TAG, "Drawing operation took ${drawEndTime - startTime} ms")
