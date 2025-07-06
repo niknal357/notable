@@ -320,9 +320,7 @@ fun handleDraw(
                 val deletedStrokeIds = deletedStrokes.map { it.id }
                 page.removeStrokes(deletedStrokeIds)
                 history.addOperationsToHistory(listOf(Operation.AddStroke(deletedStrokes)))
-                page.drawAreaScreenCoordinates(
-                    screenArea = page.toScreenCoordinates(strokeBounds(deletedStrokes))
-                )
+                page.drawAreaPageCoordinates(strokeBounds(deletedStrokes))
                 return true
             }
         }
