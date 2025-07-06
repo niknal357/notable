@@ -338,7 +338,7 @@ fun handleDraw(
         page.drawAreaPageCoordinates(strokeBounds(stroke).toRect())
         historyBucket.add(stroke.id)
     } catch (e: Exception) {
-        Log.e(TAG, "Handle Draw: An error occurred while handling the drawing: [${e.message}")
+        Log.e(TAG, "Handle Draw: An error occurred while handling the drawing: ${e.message}")
     }
     return false
 }
