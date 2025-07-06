@@ -248,14 +248,11 @@ fun calculateBoundingBox(touchPoints: List<StrokePoint>): RectF {
 }
 
 fun isScribble(points: List<StrokePoint>): Boolean {
-    Log.v(TAG, "isScribble: Checking if points represent a scribble, points size: ${points.size}")
     if (points.size < 15) return false
 
-    Log.d(TAG, "isScribble: Points represent a scribble")
     val boundingBox = calculateBoundingBox(points)
     val width = boundingBox.width()
     val height = boundingBox.height()
-    Log.v(TAG, "isScribble: Bounding box width: $width, height: $height")
 
     if (width == 0f || height == 0f) return false
 
@@ -265,10 +262,8 @@ fun isScribble(points: List<StrokePoint>): Boolean {
         val dy = points[i].y - points[i-1].y
         totalDistance += kotlin.math.sqrt(dx*dx + dy*dy)
     }
-    Log.v(TAG, "isScribble: Total distance: $totalDistance")
 
     val diagonal = kotlin.math.sqrt(width*width + height*height)
-    Log.v(TAG, "isScribble: Bounding box diagonal: $diagonal")
     // if the total path length is shorter than ~3x the bounding box diagonal, it's likely not a scribble
     if (totalDistance < diagonal * 3) return false
     return true
@@ -286,7 +281,6 @@ fun handleDraw(
 ): Boolean {
     try {
         if (isScribble(touchPoints)) {
-            Log.d(TAG, "handleDraw: Detected scribble")
             val points = touchPoints.map { SimplePointF(it.x, it.y) }
             val path = pointsToPath(points)
             val outPath = Path()
@@ -308,8 +302,6 @@ fun handleDraw(
             paint.getFillPath(path, outPath)
 
             val deletedStrokes = selectStrokesFromPath(page.strokes, outPath)
-            Log.v(TAG, "handleDraw: Detected scribble, deleted strokes: ${deletedStrokes.size}")
-            Log.v(TAG, "handleDraw: Detected scribble, deleted strokes: ${deletedStrokes.isNotEmpty()}")
             if (deletedStrokes.isNotEmpty()) {
                 val deletedStrokeIds = deletedStrokes.map { it.id }
                 page.removeStrokes(deletedStrokeIds)
