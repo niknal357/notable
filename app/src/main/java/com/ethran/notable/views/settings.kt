@@ -219,7 +219,7 @@ fun GeneralSettings(kv: KvProxy, settings: AppSettings) {
     )
 
     SettingToggleRow(
-        label = "Enable scribble-to-erase (draw a fast scribble to erase strokes)",
+        label = "Enable scribble-to-erase (scribble out your mistakes to erase them)",
         value = settings.scribbleToEraseEnabled,
         onToggle = { isChecked ->
             kv.setAppSettings(settings.copy(scribbleToEraseEnabled = isChecked))
