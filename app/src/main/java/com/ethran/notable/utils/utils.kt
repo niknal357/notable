@@ -247,8 +247,9 @@ fun calculateBoundingBox(touchPoints: List<StrokePoint>): RectF {
     return boundingBox
 }
 
+const val MINIMUM_SCRIBBLE_POINTS = 15
 fun isScribble(points: List<StrokePoint>): Boolean {
-    if (points.size < 15) return false
+    if (points.size < MINIMUM_SCRIBBLE_POINTS) return false
 
     val boundingBox = calculateBoundingBox(points)
     val width = boundingBox.width()
