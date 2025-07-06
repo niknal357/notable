@@ -613,6 +613,7 @@ fun shareBitmap(context: Context, bitmap: Bitmap) {
 }
 
 
+// move to SelectionState?
 fun copyBitmapToClipboard(context: Context, bitmap: Bitmap) {
     // Save bitmap to cache and get a URI
     val uri = saveBitmapToCache(context, bitmap) ?: return
