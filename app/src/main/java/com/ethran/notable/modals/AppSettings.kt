@@ -35,7 +35,7 @@ data class AppSettings(
     val continuousZoom: Boolean = false,
     val visualizePdfPagination: Boolean = false,
     val paginatePdf: Boolean = true,
-    val scribbleToEraseEnabled: Boolean = true, // NEW: Enable scribble-to-erase
+    val scribbleToEraseEnabled: Boolean = false,
 
     val doubleTapAction: GestureAction? = defaultDoubleTapAction,
     val twoFingerTapAction: GestureAction? = defaultTwoFingerTapAction,
