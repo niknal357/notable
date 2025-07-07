@@ -76,23 +76,63 @@ class ReportData(
     private val logs: String = getRecentLogs(selectedTags, includeLibrariesLogs)
 
     companion object {
-        private const val MAX_LOG_LINES = 40 //max characters for github is 8201
+        private const val MAX_LOG_LINES = 100
         private const val LOG_LINE_REGEX =
             """^(\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3})\s+(\d+)\s+(\d+)\s([VDIWE])\s([^:]+):\s(.*)$"""
     }
 
     private fun rapportMarkdown(includeLogs: Boolean, description: String): String {
-        val formatedLogs = formatLogsForDisplay()
-        return buildString {
+        val formattedLogs = formatLogsForDisplay()
+        val baseReport = buildString {
             append("### Description\n")
             append(description).append("\n\n")
             append("### Device Info\n")
             append(deviceInfo.replace("•", "-")).append("\n")
-            if (includeLogs) {
-                append("\n### Diagnostic Logs\n```\n")
-                append(formatedLogs)
-                append("\n```")
+        }
+
+        if (!includeLogs) return baseReport
+
+        val logHeader = "\n### Diagnostic Logs\n```\n"
+        val logFooter = "\n```"
+        val logBoxLength = URLEncoder.encode(logFooter + logHeader, "UTF-8").length
+        // Calculate space available for logs
+        val urlPrefixLength = ("https://github.com/ethran/notable/issues/new?" +
+                "title=${URLEncoder.encode("Bug: ${getTitle(description)}", "UTF-8")}" +
+                "&body=").length
+
+        val encodedBaseLength = URLEncoder.encode(baseReport, "UTF-8").length
+
+        val availableSpace = 8201 - (encodedBaseLength + logBoxLength + urlPrefixLength+50)
+
+        val wholeLogsLength = URLEncoder.encode(formattedLogs, "UTF-8").length
+        val trimmedLogs = if (wholeLogsLength > availableSpace) {
+            // Binary search for optimal truncation point
+            var low = 0
+            var high = wholeLogsLength
+            var bestLength = 0
+
+            while (low <= high) {
+                val mid = (low + high) / 2
+                val testLogs = formattedLogs.take(mid)
+                val testEncoded = URLEncoder.encode(testLogs, "UTF-8")
+
+                if (testEncoded.length <= availableSpace) {
+                    bestLength = mid
+                    low = mid + 1
+                } else {
+                    high = mid - 1
+                }
             }
+            formattedLogs.take(bestLength)
+        } else {
+            formattedLogs
+        }
+
+        return buildString {
+            append(baseReport)
+            append(logHeader)
+            append(trimmedLogs)
+            append(logFooter)
         }
     }
 
@@ -154,7 +194,8 @@ class ReportData(
             "libc",                       // Native C/C++ library
             "lib_touch_reader",           // Touch input driver logs
             "RawInputReader\$a",          // Raw input reader internal threads
-            "AdrenoGLES-0"                // GPU driver and Adreno graphics logs
+            "AdrenoGLES-0",                // GPU driver and Adreno graphics logs
+            "CompatibilityChangeReporter", ".ethran.notable"
         )
         if (match != null) {
             val tag = match.groupValues[5].trim()
