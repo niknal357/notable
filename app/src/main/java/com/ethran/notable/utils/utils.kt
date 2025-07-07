@@ -55,6 +55,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
+const val SCRIBBLE_TO_ERASE_GRACE_PERIOD_MS = 100L
+var scribbleToEraseGracePeriodEnd: Long = 0
+
 fun Modifier.noRippleClickable(
     onClick: () -> Unit
 ): Modifier = composed {
@@ -295,33 +298,35 @@ fun handleDraw(
             false
         }
         if (scribbleToEraseEnabled && isScribble(touchPoints)) {
-            val points = touchPoints.map { SimplePointF(it.x, it.y) }
-            val path = pointsToPath(points)
-            val outPath = Path()
-            // calculate stroke width based on bounding box
-            // bigger swinging in scribble = bigger bounding box => larger stroke size
-            val boundingBox = calculateBoundingBox(touchPoints)
-            val strokeSizeForDetection = if (boundingBox.width() < boundingBox.height()) {
-                boundingBox.width() / 10f
-            } else {
-                boundingBox.height() / 10f
-            }
-            val paint = Paint().apply {
-                this.strokeWidth = strokeSizeForDetection
-                this.style = Paint.Style.STROKE
-                this.strokeCap = Paint.Cap.ROUND
-                this.strokeJoin = Paint.Join.ROUND
-                this.isAntiAlias = true
-            }
-            paint.getFillPath(path, outPath)
+            if (touchPoints.first().timestamp >= scribbleToEraseGracePeriodEnd) {
+                val points = touchPoints.map { SimplePointF(it.x, it.y) }
+                val path = pointsToPath(points)
+                val outPath = Path()
+                // calculate stroke width based on bounding box
+                // bigger swinging in scribble = bigger bounding box => larger stroke size
+                val boundingBox = calculateBoundingBox(touchPoints)
+                val strokeSizeForDetection = if (boundingBox.width() < boundingBox.height()) {
+                    boundingBox.width() / 10f
+                } else {
+                    boundingBox.height() / 10f
+                }
+                val paint = Paint().apply {
+                    this.strokeWidth = strokeSizeForDetection
+                    this.style = Paint.Style.STROKE
+                    this.strokeCap = Paint.Cap.ROUND
+                    this.strokeJoin = Paint.Join.ROUND
+                    this.isAntiAlias = true
+                }
+                paint.getFillPath(path, outPath)
 
-            val deletedStrokes = selectStrokesFromPath(page.strokes, outPath)
-            if (deletedStrokes.isNotEmpty()) {
-                val deletedStrokeIds = deletedStrokes.map { it.id }
-                page.removeStrokes(deletedStrokeIds)
-                history.addOperationsToHistory(listOf(Operation.AddStroke(deletedStrokes)))
-                page.drawAreaPageCoordinates(strokeBounds(deletedStrokes))
-                return true
+                val deletedStrokes = selectStrokesFromPath(page.strokes, outPath)
+                if (deletedStrokes.isNotEmpty()) {
+                    val deletedStrokeIds = deletedStrokes.map { it.id }
+                    page.removeStrokes(deletedStrokeIds)
+                    history.addOperationsToHistory(listOf(Operation.AddStroke(deletedStrokes)))
+                    page.drawAreaPageCoordinates(strokeBounds(deletedStrokes))
+                    return true
+                }
             }
         }
 
@@ -345,6 +350,7 @@ fun handleDraw(
         // this is causing lagging and crushing, neo pens are not good
         page.drawAreaPageCoordinates(strokeBounds(stroke).toRect())
         historyBucket.add(stroke.id)
+        scribbleToEraseGracePeriodEnd = System.currentTimeMillis() + SCRIBBLE_TO_ERASE_GRACE_PERIOD_MS
     } catch (e: Exception) {
         Log.e(TAG, "Handle Draw: An error occurred while handling the drawing: ${e.message}")
     }
