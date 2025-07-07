@@ -36,6 +36,7 @@ import com.ethran.notable.utils.copyInputToSimplePointF
 import com.ethran.notable.utils.drawImage
 import com.ethran.notable.utils.handleDraw
 import com.ethran.notable.utils.handleErase
+import com.ethran.notable.utils.handleScribbleToErase
 import com.ethran.notable.utils.penToStroke
 import com.ethran.notable.utils.pointsToPath
 import com.ethran.notable.utils.selectPaint
@@ -174,17 +175,20 @@ class DrawCanvas(
                                 )
                             else
                                 copyInput(plist.points, page.scroll, page.zoomLevel.value)
-                        // draw the stroke
-                        val needsRefresh = handleDraw(
+
+                        val erasedByScribble = handleScribbleToErase(page, scaledPoints, history)
+                        if (!erasedByScribble) {
+                            // draw the stroke
+                            handleDraw(
                             this@DrawCanvas.page,
                             strokeHistoryBatch,
                             getActualState().penSettings[getActualState().pen.penName]!!.strokeSize,
                             getActualState().penSettings[getActualState().pen.penName]!!.color,
                             getActualState().pen,
-                            scaledPoints,
-                            history
-                        )
-                        if (getActualState().mode == Mode.Line || needsRefresh)
+                                scaledPoints
+                            )
+                        }
+                        if (getActualState().mode == Mode.Line || erasedByScribble)
                             refreshUi()
 //                        val drawEndTime = System.currentTimeMillis()
 //                        Log.d(TAG, "Drawing operation took ${drawEndTime - startTime} ms")

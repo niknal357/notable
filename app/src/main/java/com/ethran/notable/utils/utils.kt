@@ -45,6 +45,7 @@ import com.ethran.notable.db.Image
 import com.ethran.notable.db.Stroke
 import com.ethran.notable.db.StrokePoint
 import com.ethran.notable.modals.AppSettings
+import com.ethran.notable.modals.GlobalAppSettings
 import com.onyx.android.sdk.data.note.TouchPoint
 import io.shipbook.shipbooksdk.Log
 import kotlinx.coroutines.flow.Flow
@@ -56,7 +57,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 const val SCRIBBLE_TO_ERASE_GRACE_PERIOD_MS = 100L
-var scribbleToEraseGracePeriodEnd: Long = 0
+var timeOfLastStrokeDrawn: Long = 0
 
 fun Modifier.noRippleClickable(
     onClick: () -> Unit
@@ -273,6 +274,50 @@ fun isScribble(points: List<StrokePoint>): Boolean {
     return true
 }
 
+// Erases strokes if touchPoints are "scribble", returns true if erased.
+fun handleScribbleToErase(
+    page: PageView,
+    touchPoints: List<StrokePoint>,
+    history: History
+): Boolean {
+    if (!GlobalAppSettings.current.scribbleToEraseEnabled)
+        return false // scribble to erase is disabled
+    if (!isScribble(touchPoints))
+        return false // not scribble
+    if (touchPoints.first().timestamp < timeOfLastStrokeDrawn + SCRIBBLE_TO_ERASE_GRACE_PERIOD_MS)
+        return false // not enough time has passed since last stroke
+
+    val points = touchPoints.map { SimplePointF(it.x, it.y) }
+    val path = pointsToPath(points)
+    val outPath = Path()
+    // calculate stroke width based on bounding box
+    // bigger swinging in scribble = bigger bounding box => larger stroke size
+    val boundingBox = calculateBoundingBox(touchPoints)
+    val strokeSizeForDetection = if (boundingBox.width() < boundingBox.height()) {
+        boundingBox.width() / 10f
+    } else {
+        boundingBox.height() / 10f
+    }
+    val paint = Paint().apply {
+        this.strokeWidth = strokeSizeForDetection
+        this.style = Paint.Style.STROKE
+        this.strokeCap = Paint.Cap.ROUND
+        this.strokeJoin = Paint.Join.ROUND
+        this.isAntiAlias = true
+    }
+    paint.getFillPath(path, outPath)
+
+    val deletedStrokes = selectStrokesFromPath(page.strokes, outPath)
+    if (deletedStrokes.isNotEmpty()) {
+        val deletedStrokeIds = deletedStrokes.map { it.id }
+        page.removeStrokes(deletedStrokeIds)
+        history.addOperationsToHistory(listOf(Operation.AddStroke(deletedStrokes)))
+        page.drawAreaPageCoordinates(strokeBounds(deletedStrokes))
+        return true
+    }
+    return false
+}
+
 // touchpoints are in page coordinates
 fun handleDraw(
     page: PageView,
@@ -280,56 +325,9 @@ fun handleDraw(
     strokeSize: Float,
     color: Int,
     pen: Pen,
-    touchPoints: List<StrokePoint>,
-    history: History
-): Boolean {
+    touchPoints: List<StrokePoint>
+) {
     try {
-        // Check global setting for scribble-to-erase
-        val scribbleToEraseEnabled = try {
-            com.ethran.notable.modals.GlobalAppSettings.current.scribbleToEraseEnabled
-        } catch (e: NullPointerException) {
-            Log.w(TAG, "GlobalAppSettings not initialized: ${e.message}")
-            false
-        } catch (e: IllegalStateException) {
-            Log.w(TAG, "GlobalAppSettings in illegal state: ${e.message}")
-            false
-        } catch (e: Exception) {
-            Log.w(TAG, "Error accessing GlobalAppSettings: ${e.message}")
-            false
-        }
-        if (scribbleToEraseEnabled && isScribble(touchPoints)) {
-            if (touchPoints.first().timestamp >= scribbleToEraseGracePeriodEnd) {
-                val points = touchPoints.map { SimplePointF(it.x, it.y) }
-                val path = pointsToPath(points)
-                val outPath = Path()
-                // calculate stroke width based on bounding box
-                // bigger swinging in scribble = bigger bounding box => larger stroke size
-                val boundingBox = calculateBoundingBox(touchPoints)
-                val strokeSizeForDetection = if (boundingBox.width() < boundingBox.height()) {
-                    boundingBox.width() / 10f
-                } else {
-                    boundingBox.height() / 10f
-                }
-                val paint = Paint().apply {
-                    this.strokeWidth = strokeSizeForDetection
-                    this.style = Paint.Style.STROKE
-                    this.strokeCap = Paint.Cap.ROUND
-                    this.strokeJoin = Paint.Join.ROUND
-                    this.isAntiAlias = true
-                }
-                paint.getFillPath(path, outPath)
-
-                val deletedStrokes = selectStrokesFromPath(page.strokes, outPath)
-                if (deletedStrokes.isNotEmpty()) {
-                    val deletedStrokeIds = deletedStrokes.map { it.id }
-                    page.removeStrokes(deletedStrokeIds)
-                    history.addOperationsToHistory(listOf(Operation.AddStroke(deletedStrokes)))
-                    page.drawAreaPageCoordinates(strokeBounds(deletedStrokes))
-                    return true
-                }
-            }
-        }
-
         val boundingBox = calculateBoundingBox(touchPoints)
 
         //move rectangle
@@ -350,11 +348,10 @@ fun handleDraw(
         // this is causing lagging and crushing, neo pens are not good
         page.drawAreaPageCoordinates(strokeBounds(stroke).toRect())
         historyBucket.add(stroke.id)
-        scribbleToEraseGracePeriodEnd = System.currentTimeMillis() + SCRIBBLE_TO_ERASE_GRACE_PERIOD_MS
+        timeOfLastStrokeDrawn = System.currentTimeMillis()
     } catch (e: Exception) {
         Log.e(TAG, "Handle Draw: An error occurred while handling the drawing: ${e.message}")
     }
-    return false
 }
 
 /*
