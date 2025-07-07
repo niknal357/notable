@@ -633,7 +633,7 @@ class PageView(
     }
 
     suspend fun updateScroll(dragDelta: Int) {
-        log.d("Update scroll, dragDelta: $dragDelta, scroll: $scroll, zoomLevel.value: $zoomLevel.value")
+//        log.d("Update scroll, dragDelta: $dragDelta, scroll: $scroll, zoomLevel.value: $zoomLevel.value")
         // drag delta is in screen coordinates,
         // so we have to scale it back to page coordinates.
         var deltaInPageCord = (dragDelta / zoomLevel.value).toInt()

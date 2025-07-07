@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.ethran.notable.TAG
 import com.ethran.notable.db.Image
 import com.ethran.notable.db.handleSelect
 import com.ethran.notable.db.selectImage
@@ -51,6 +50,7 @@ import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPointList
 import io.shipbook.shipbooksdk.Log
+import io.shipbook.shipbooksdk.ShipBook
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -80,8 +80,9 @@ class DrawCanvas(
     val history: History
 ) : SurfaceView(context) {
     private val strokeHistoryBatch = mutableListOf<String>()
-//    private val commitHistorySignal = MutableSharedFlow<Unit>()
-
+    private val logCanvasObserver = ShipBook.getLogger("CanvasObservers")
+    private val log =  ShipBook.getLogger("DrawCanvas")
+    //private val commitHistorySignal = MutableSharedFlow<Unit>()
 
     companion object {
         var forceUpdate = MutableSharedFlow<Rect?>()
@@ -112,7 +113,7 @@ class DrawCanvas(
                 while (drawingInProgress.isLocked) {
                     delay(5)
                 }
-            } ?: Log.e(TAG, "Timeout while waiting for drawing lock. Potential deadlock.")
+            } ?: Log.e("DrawCanvas.waitForDrawing", "Timeout while waiting for drawing lock. Potential deadlock.")
         }
 
         suspend fun waitForDrawingWithSnack() {
@@ -152,7 +153,7 @@ class DrawCanvas(
 
             if (getActualState().mode == Mode.Draw || getActualState().mode == Mode.Line) {
 //                val newThread = System.currentTimeMillis()
-//                Log.d(TAG,"Got to new thread ${Thread.currentThread().name}, in ${newThread - startTime}}")
+//                log.d( "Got to new thread ${Thread.currentThread().name}, in ${newThread - startTime}}")
                 coroutineScope.launch(Dispatchers.Main.immediate) {
                     // After each stroke ends, we draw it on our canvas.
                     // This way, when screen unfreezes the strokes are shown.
@@ -162,7 +163,7 @@ class DrawCanvas(
                     // before anything else happens.
                     drawingInProgress.withLock {
                         val lock = System.currentTimeMillis()
-                        Log.d(TAG, "lock obtained in ${lock - startTime} ms")
+                        log.d(  "lock obtained in ${lock - startTime} ms")
 
 //                        Thread.sleep(1000)
                         // transform points to page space
@@ -191,7 +192,7 @@ class DrawCanvas(
                         if (getActualState().mode == Mode.Line || erasedByScribble)
                             refreshUi()
 //                        val drawEndTime = System.currentTimeMillis()
-//                        Log.d(TAG, "Drawing operation took ${drawEndTime - startTime} ms")
+//                        log.d(  "Drawing operation took ${drawEndTime - startTime} ms")
 
                     }
                     coroutineScope.launch {
@@ -199,7 +200,7 @@ class DrawCanvas(
                     }
 
 //                    val endTime = System.currentTimeMillis()
-//                    Log.d(TAG,"onRawDrawingTouchPointListReceived completed in ${endTime - startTime} ms")
+//                    log.d( "onRawDrawingTouchPointListReceived completed in ${endTime - startTime} ms")
 
                 }
             } else thread {
@@ -266,11 +267,11 @@ class DrawCanvas(
     }
 
     fun init() {
-        Log.i(TAG, "Initializing Canvas")
+        log.i(  "Initializing Canvas")
 
         val surfaceCallback: SurfaceHolder.Callback = object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
-                Log.i(TAG, "surface created $holder")
+                log.i(  "surface created $holder")
                 // set up the drawing surface
                 updateActiveSurface()
             }
@@ -278,14 +279,13 @@ class DrawCanvas(
             override fun surfaceChanged(
                 holder: SurfaceHolder, format: Int, width: Int, height: Int
             ) {
-                Log.i(TAG, "surface changed $holder")
+                log.i(  "surface changed $holder")
                 drawCanvasToView()
                 updatePenAndStroke()
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
-                Log.i(
-                    TAG,
+                log.i(
                     "surface destroyed ${
                         this@DrawCanvas.hashCode()
                     } - ref $referencedSurfaceView"
@@ -305,7 +305,7 @@ class DrawCanvas(
 
         coroutineScope.launch {
             onFocusChange.collect { hasFocus ->
-                Log.i(TAG + "Observer", "App has focus: $hasFocus")
+               logCanvasObserver.v("App has focus: $hasFocus")
                 if (hasFocus) {
                     state.checkForSelectionsAndMenus()
                 } else {
@@ -315,7 +315,7 @@ class DrawCanvas(
         }
         coroutineScope.launch {
             page.zoomLevel.drop(1).collect {
-                Log.v(TAG + "Observer", "zoom level change: ${page.zoomLevel.value}")
+                logCanvasObserver.v("zoom level change: ${page.zoomLevel.value}")
                 updatePenAndStroke()
             }
         }
@@ -323,9 +323,10 @@ class DrawCanvas(
         // observe forceUpdate, takes rect in screen coordinates
         coroutineScope.launch {
             forceUpdate.collect { zoneAffected ->
-                Log.w(TAG + "Observer", "Force update, zone: $zoneAffected")
+                logCanvasObserver.v("Force update, zone: $zoneAffected")
                 // Its unused and untested.
                 if (zoneAffected != null) page.drawAreaScreenCoordinates(zoneAffected)
+                else logCanvasObserver.w("Zone affected is null")
                 refreshUiSuspend()
             }
         }
@@ -333,13 +334,13 @@ class DrawCanvas(
         // observe refreshUi
         coroutineScope.launch {
             refreshUi.collect {
-                Log.v(TAG + "Observer", "Refreshing UI!")
+                logCanvasObserver.v("Refreshing UI!")
                 refreshUiSuspend()
             }
         }
         coroutineScope.launch {
             isDrawing.collect {
-                Log.v(TAG + "Observer", "drawing state changed to $it!")
+                logCanvasObserver.v("drawing state changed to $it!")
                 state.isDrawing = it
             }
         }
@@ -347,17 +348,17 @@ class DrawCanvas(
 
         coroutineScope.launch {
             addImageByUri.drop(1).collect { imageUri ->
-                Log.v(TAG + "Observer", "Received image!")
-
                 if (imageUri != null) {
+                    logCanvasObserver.v("Received image: $imageUri")
                     handleImage(imageUri)
                 } //else
-//                    Log.i(TAG, "Image uri is empty")
+//                    log.i(  "Image uri is empty")
             }
         }
         coroutineScope.launch {
             rectangleToSelect.drop(1).collect {
                 if (it != null) {
+                    logCanvasObserver.v("Area to Select (screen): $it")
                     selectRectangle(it)
                 }
             }
@@ -367,7 +368,7 @@ class DrawCanvas(
         // observe restartcount
         coroutineScope.launch {
             restartAfterConfChange.collect {
-                Log.v(TAG + "Observer", "Configuration changed!")
+                logCanvasObserver.v("Configuration changed!")
                 init()
                 drawCanvasToView()
             }
@@ -376,21 +377,21 @@ class DrawCanvas(
         // observe pen and stroke size
         coroutineScope.launch {
             snapshotFlow { state.pen }.drop(1).collect {
-                Log.v(TAG + "Observer", "pen change: ${state.pen}")
+                logCanvasObserver.v("pen change: ${state.pen}")
                 updatePenAndStroke()
                 refreshUiSuspend()
             }
         }
         coroutineScope.launch {
             snapshotFlow { state.penSettings.toMap() }.drop(1).collect {
-                Log.v(TAG + "Observer", "pen settings change: ${state.penSettings}")
+                logCanvasObserver.v("pen settings change: ${state.penSettings}")
                 updatePenAndStroke()
                 refreshUiSuspend()
             }
         }
         coroutineScope.launch {
             snapshotFlow { state.eraser }.drop(1).collect {
-                Log.v(TAG + "Observer", "eraser change: ${state.eraser}")
+                logCanvasObserver.v("eraser change: ${state.eraser}")
                 updatePenAndStroke()
                 refreshUiSuspend()
             }
@@ -399,7 +400,7 @@ class DrawCanvas(
         // observe is drawing
         coroutineScope.launch {
             snapshotFlow { state.isDrawing }.drop(1).collect {
-                Log.v(TAG + "Observer", "isDrawing change to $it")
+                logCanvasObserver.v("isDrawing change to $it")
                 // We need to close all menus
                 if (it) {
 //                    logCallStack("Closing all menus")
@@ -414,7 +415,7 @@ class DrawCanvas(
         // observe toolbar open
         coroutineScope.launch {
             snapshotFlow { state.isToolbarOpen }.drop(1).collect {
-                Log.v(TAG + "Observer", "istoolbaropen change: ${state.isToolbarOpen}")
+                logCanvasObserver.v("istoolbaropen change: ${state.isToolbarOpen}")
                 updateActiveSurface()
                 updatePenAndStroke()
                 refreshUi()
@@ -424,7 +425,7 @@ class DrawCanvas(
         // observe mode
         coroutineScope.launch {
             snapshotFlow { getActualState().mode }.drop(1).collect {
-                Log.v(TAG + "Observer", "mode change: ${getActualState().mode}")
+                logCanvasObserver.v("mode change: ${getActualState().mode}")
                 updatePenAndStroke()
                 refreshUiSuspend()
             }
@@ -433,7 +434,7 @@ class DrawCanvas(
         coroutineScope.launch {
             //After 500ms add to history strokes
             commitHistorySignal.debounce(500).collect {
-                Log.v(TAG + "Observer", "Commiting to history")
+                logCanvasObserver.v("Commiting to history")
                 commitToHistory()
             }
         }
@@ -447,7 +448,6 @@ class DrawCanvas(
     }
 
     private suspend fun selectRectangle(rectToSelect: Rect) {
-        Log.d(TAG + "Observer", "Area to Select (screen): $rectToSelect")
         val inPageCoordinates = toPageCoordinates(rectToSelect, page.zoomLevel.value, page.scroll)
 
         val imagesToSelect = PageDataManager.getImagesInRectangle(inPageCoordinates, page.id)
@@ -485,14 +485,14 @@ class DrawCanvas(
     }
 
     private fun refreshUi() {
-        Log.d(TAG, "refreshUi")
+        log.d(  "refreshUi")
         // Use only if you have confidence that there are no strokes being drawn at the moment
         if (!state.isDrawing) {
-            Log.w(TAG, "Not in drawing mode, skipping refreshUI")
+            log.w(  "Not in drawing mode, skipping refreshUI")
             return
         }
         if (drawingInProgress.isLocked)
-            Log.w(TAG, "Drawing is still in progress there might be a bug.")
+            log.w(  "Drawing is still in progress there might be a bug.")
 
         drawCanvasToView()
 
@@ -510,22 +510,20 @@ class DrawCanvas(
         if (!state.isDrawing) {
             waitForDrawing()
             drawCanvasToView()
-            Log.w(TAG, "Not in drawing mode -- refreshUi ")
+            log.w(  "Not in drawing mode -- refreshUi ")
             return
         }
         if (Looper.getMainLooper().isCurrentThread) {
-            Log.i(
-                TAG, "refreshUiSuspend() is called from the main thread."
+            log.i(  "refreshUiSuspend() is called from the main thread."
             )
         } else
-            Log.i(
-                TAG, "refreshUiSuspend() is called from the non-main thread."
+            log.i(  "refreshUiSuspend() is called from the non-main thread."
             )
         waitForDrawing()
         drawCanvasToView()
         touchHelper.setRawDrawingEnabled(false)
         if (drawingInProgress.isLocked)
-            Log.w(TAG, "Lock was acquired during refreshing UI. It might cause errors.")
+            log.w(  "Lock was acquired during refreshing UI. It might cause errors.")
         touchHelper.setRawDrawingEnabled(true)
     }
 
@@ -574,7 +572,7 @@ class DrawCanvas(
         if (getActualState().mode == Mode.Select) {
             // render selection
             if (getActualState().selectionState.firstPageCut != null) {
-                Log.i(TAG, "render cut")
+                log.i(  "render cut")
                 val path = pointsToPath(getActualState().selectionState.firstPageCut!!.map {
                     SimplePointF(
                         it.x, it.y - page.scroll
@@ -588,7 +586,7 @@ class DrawCanvas(
     }
 
     private suspend fun updateIsDrawing() {
-        Log.i(TAG, "Update is drawing: ${state.isDrawing}")
+        log.i(  "Update is drawing: ${state.isDrawing}")
         if (state.isDrawing) {
             touchHelper.setRawDrawingEnabled(true)
         } else {
@@ -601,7 +599,7 @@ class DrawCanvas(
     }
 
     fun updatePenAndStroke() {
-        Log.i(TAG, "Update pen and stroke")
+        log.i(  "Update pen and stroke")
         when (state.mode) {
             // we need to change size according to zoom level before drawing on screen
             Mode.Draw -> touchHelper.setStrokeStyle(penToStroke(state.pen))
@@ -629,7 +627,7 @@ class DrawCanvas(
     }
 
     fun updateActiveSurface() {
-        Log.i(TAG, "Update editable surface")
+        log.i(  "Update editable surface")
 
         val toolbarHeight =
             if (state.isToolbarOpen) convertDpToPixel(40.dp, context).toInt() else 0

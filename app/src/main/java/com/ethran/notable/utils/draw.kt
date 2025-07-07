@@ -21,7 +21,6 @@ import androidx.core.net.toUri
 import com.ethran.notable.R
 import com.ethran.notable.SCREEN_HEIGHT
 import com.ethran.notable.SCREEN_WIDTH
-import com.ethran.notable.TAG
 import com.ethran.notable.classes.DrawCanvas
 import com.ethran.notable.classes.PageView
 import com.ethran.notable.classes.pressure
@@ -36,7 +35,7 @@ import com.onyx.android.sdk.pen.NeoBrushPen
 import com.onyx.android.sdk.pen.NeoCharcoalPen
 import com.onyx.android.sdk.pen.NeoFountainPen
 import com.onyx.android.sdk.pen.NeoMarkerPen
-import io.shipbook.shipbooksdk.Log
+import io.shipbook.shipbooksdk.ShipBook
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
@@ -44,6 +43,8 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+private val drawUtilsLog = ShipBook.getLogger("DrawUtilsLog")
 
 
 fun drawBallPenStroke(
@@ -72,7 +73,7 @@ fun drawBallPenStroke(
     try {
         canvas.drawPath(path, copyPaint)
     } catch (e: Exception) {
-        Log.e(TAG, "Exception during draw", e)
+        drawUtilsLog.e("Exception during draw", e)
     }
 }
 
@@ -186,7 +187,7 @@ fun drawStroke(canvas: Canvas, stroke: Stroke, offset: IntOffset) {
 
         }
     } catch (e: Exception) {
-        Log.e(TAG, "draw.kt: Drawing strokes failed: ${e.message}")
+        drawUtilsLog.e("draw.kt: Drawing strokes failed: ${e.message}")
     }
     //canvas.restore()
 }
@@ -231,9 +232,9 @@ fun drawImage(context: Context, canvas: Canvas, image: Image, offset: IntOffset)
         canvas.drawBitmap(softwareBitmap, rectOnImage, rectOnCanvas, null)
 
         // Log after drawing
-        Log.i(TAG, "Image drawn successfully at center!")
+        drawUtilsLog.i("Image drawn successfully at center!")
     } else
-        Log.e(TAG, "Could not get image from: ${image.uri}")
+        drawUtilsLog.e("Could not get image from: ${image.uri}")
 }
 
 
@@ -269,8 +270,6 @@ fun drawLinedBg(canvas: Canvas, scroll: Int, scale: Float) {
 fun drawDottedBg(canvas: Canvas, offset: Int, scale: Float) {
     val height = (canvas.height / scale).toInt()
     val width = (canvas.width / scale).toInt()
-    Log.d(TAG, "height(drawDottedBg): $height, width: $width")
-
     // white bg
     canvas.drawColor(Color.WHITE)
 
@@ -405,10 +404,10 @@ fun drawBackgroundImages(
         if (imageBitmap != null) {
             drawBitmapToCanvas(canvas, imageBitmap, scroll, scale, repeat)
         } else {
-            Log.e(TAG, "Failed to load image from $backgroundImage")
+            drawUtilsLog.e("Failed to load image from $backgroundImage")
         }
     } catch (e: Exception) {
-        Log.e(TAG, "Error loading background image: ${e.message}", e)
+        drawUtilsLog.e("Error loading background image: ${e.message}", e)
     }
 }
 
@@ -458,7 +457,7 @@ fun drawPdfPage(
     scale: Float = 1.0f
 ) {
     if (pageNumber == -1) {
-        Log.e(TAG, "Page number should not be -1, uri: $pdfUriString")
+        drawUtilsLog.e("Page number should not be -1, uri: $pdfUriString")
         return
     }
     try {
@@ -475,7 +474,7 @@ fun drawPdfPage(
         }
 
     } catch (e: Exception) {
-        Log.e(TAG, "drawPdfPage: Failed to render PDF", e)
+        drawUtilsLog.e("drawPdfPage: Failed to render PDF", e)
     }
 }
 
@@ -673,7 +672,7 @@ fun drawPaginationLine(canvas: Canvas, scroll: Int, scale: Float) {
                 textPaint
             )
         } else {
-            Log.d(TAG + "Pagination", "Skipping line at $yPos (above visible area)")
+            drawUtilsLog.d("Skipping line at $yPos (above visible area)")
         }
         yPos += pageHeight
         pageNum++

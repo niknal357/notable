@@ -46,7 +46,6 @@ class EditorControlTower(
         scrollJob = scope.launch(Dispatchers.Main.immediate) {
             scrollInProgress.withLock {
                 val scaledDelta = (delta / page.zoomLevel.value).toInt()
-                Log.d(TAG, "scaledDelta: $scaledDelta, delta: $delta")
                 if (state.mode == Mode.Select) {
                     if (state.selectionState.firstPageCut != null) {
                         onOpenPageCut(scaledDelta)

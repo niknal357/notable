@@ -26,7 +26,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.ethran.notable.TAG
 import com.ethran.notable.classes.DOUBLE_TAP_MIN_MS
 import com.ethran.notable.classes.DOUBLE_TAP_TIMEOUT_MS
 import com.ethran.notable.classes.DrawCanvas
@@ -43,12 +42,15 @@ import com.ethran.notable.utils.EditorState
 import com.ethran.notable.utils.History
 import com.ethran.notable.utils.Mode
 import com.ethran.notable.utils.UndoRedoType
-import io.shipbook.shipbooksdk.Log
+import io.shipbook.shipbooksdk.ShipBook
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
+
+private val log = ShipBook.getLogger("GestureReceiver")
+
 
 @Composable
 @ExperimentalComposeUiApi
@@ -85,7 +87,7 @@ fun EditorGestureReceiver(
 
                         // Ignore non-touch input
                         if (down.type != PointerType.Touch) {
-                            Log.i(TAG, "Ignoring non-touch input")
+                            log.i("Ignoring non-touch input")
                             return@awaitEachGesture
                         }
                         gestureState.initialTimestamp = System.currentTimeMillis()
@@ -105,7 +107,7 @@ fun EditorGestureReceiver(
 
                                 // is already consumed return
                                 if (fingerChange.find { it.isConsumed } != null) {
-                                    Log.i(TAG, "Canceling gesture - already consumed")
+                                    log.i("Canceling gesture - already consumed")
                                     if (gestureState.gestureMode == GestureMode.Selection) {
                                         crossPosition = null
                                         rectangleBounds = null
@@ -191,10 +193,7 @@ fun EditorGestureReceiver(
                                         val secondDown = awaitFirstDown()
                                         val deltaTime =
                                             System.currentTimeMillis() - gestureState.lastTimestamp
-                                        Log.v(
-                                            TAG,
-                                            "Second down detected: ${secondDown.type}, position: ${secondDown.position}, deltaTime: $deltaTime"
-                                        )
+                                        log.v("Second down detected: ${secondDown.type}, position: ${secondDown.position}, deltaTime: $deltaTime")
                                         if (deltaTime < DOUBLE_TAP_MIN_MS) {
                                             showHint(
                                                 text = "Too quick for double click! time between: $deltaTime",
@@ -202,13 +201,10 @@ fun EditorGestureReceiver(
                                             )
                                             return@withTimeoutOrNull null
                                         } else {
-                                            Log.v(TAG, "double click!")
+                                            log.v("double click!")
                                         }
                                         if (secondDown.type != PointerType.Touch) {
-                                            Log.i(
-                                                TAG,
-                                                "Ignoring non-touch input during double-tap detection"
-                                            )
+                                            log.i("Ignoring non-touch input during double-tap detection")
                                             return@withTimeoutOrNull null
                                         }
                                         resolveGesture(
@@ -225,7 +221,7 @@ fun EditorGestureReceiver(
                                     } != null) return@awaitEachGesture
                             }
                         } else if (gestureState.isTwoFingers()) {
-                            Log.v(TAG, "Two finger tap")
+                            log.v("Two finger tap")
                             if (gestureState.isTwoFingersTap()) {
                                 resolveGesture(
                                     settings = appSettings,
@@ -241,14 +237,14 @@ fun EditorGestureReceiver(
                             val zoomDelta = gestureState.getPinchDrag()
                             if (!appSettings.continuousZoom && abs(zoomDelta) > PINCH_ZOOM_THRESHOLD) {
                                 controlTower.onPinchToZoom(zoomDelta)
-                                Log.d(TAG, "Discrete zoom: $zoomDelta")
+                                log.d("Discrete zoom: $zoomDelta")
                             }
                         }
 
                         val horizontalDrag = gestureState.getHorizontalDrag()
                         val verticalDrag = gestureState.getVerticalDrag()
 
-                        Log.v(TAG, "horizontalDrag $horizontalDrag, verticalDrag $verticalDrag")
+                        log.v("horizontalDrag $horizontalDrag, verticalDrag $verticalDrag")
 
 
                         if (gestureState.gestureMode == GestureMode.Normal) {
@@ -276,14 +272,13 @@ fun EditorGestureReceiver(
                         if (!GlobalAppSettings.current.smoothScroll && gestureState.isOneFinger()
                             && abs(verticalDrag) > SWIPE_THRESHOLD
                         ) {
-                            controlTower.onSingleFingerVerticalSwipe(
-                                verticalDrag
-                            )
+                            log.d("Discrete scrolling, verticalDrag: $verticalDrag")
+                            controlTower.onSingleFingerVerticalSwipe(verticalDrag)
                         }
                     } catch (e: CancellationException) {
-                        Log.w(TAG, "Gesture coroutine canceled", e)
+                        log.w("Gesture coroutine canceled", e)
                     } catch (e: Exception) {
-                        Log.e(TAG, "Unexpected error in gesture handling", e)
+                        log.e("Unexpected error in gesture handling", e)
                     }
                 }
             }
@@ -360,7 +355,7 @@ private fun resolveGesture(
     rectangle: Rect = Rect()
 ) {
     when (if (settings != null) override(settings) else default) {
-        null -> Log.i(TAG, "No Action")
+        null -> log.i("No Action")
         AppSettings.GestureAction.PreviousPage -> previousPage()
         AppSettings.GestureAction.NextPage -> nextPage()
 
@@ -371,7 +366,7 @@ private fun resolveGesture(
             state.isToolbarOpen = !state.isToolbarOpen
 
         AppSettings.GestureAction.Undo -> {
-            Log.i(TAG, "Undo")
+            log.i("Undo")
             scope.launch {
                 History.moveHistory(UndoRedoType.Undo)
 //                moved to history operation - avoids unnecessary refresh, and ensures that it will be done after drawing.
@@ -380,7 +375,7 @@ private fun resolveGesture(
         }
 
         AppSettings.GestureAction.Redo -> {
-            Log.i(TAG, "Redo")
+            log.i("Redo")
             scope.launch {
                 History.moveHistory(UndoRedoType.Redo)
 //                DrawCanvas.refreshUi.emit(Unit)
@@ -388,9 +383,9 @@ private fun resolveGesture(
         }
 
         AppSettings.GestureAction.Select -> {
-            Log.i(TAG, "select")
+            log.i("select")
             scope.launch {
-//                Log.w(TAG, "rect in screen coord: $rectangle")
+//                log.w( "rect in screen coord: $rectangle")
                 DrawCanvas.rectangleToSelect.emit(rectangle)
             }
         }

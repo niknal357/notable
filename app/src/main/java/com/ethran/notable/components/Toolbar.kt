@@ -48,9 +48,10 @@ import com.ethran.notable.utils.noRippleClickable
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Clipboard
 import compose.icons.feathericons.EyeOff
-import io.shipbook.shipbooksdk.Log
+import io.shipbook.shipbooksdk.ShipBook
 import kotlinx.coroutines.launch
 
+private val toolbarLog = ShipBook.getLogger("Toolbar")
 fun presentlyUsedToolIcon(mode: Mode, pen: Pen): Int {
     return when (mode) {
         Mode.Draw -> {
@@ -103,10 +104,7 @@ fun Toolbar(
                 val copiedFile = copyImageToDatabase(context, uri)
 
                 // Set isImageLoaded to true
-                Log.i(
-                    "InsertImage",
-                    "Image was received and copied, it is now at:${copiedFile.toUri()}"
-                )
+                toolbarLog.i("Image was received and copied, it is now at:${copiedFile.toUri()}")
                 DrawCanvas.addImageByUri.value = copiedFile.toUri()
 
             }
@@ -115,7 +113,7 @@ fun Toolbar(
     // on exit of toolbar, update drawing state
     LaunchedEffect(state.menuStates.isPageSettingsModalOpen, state.menuStates.isMenuOpen) {
         // TODO: move it to menuState.
-        Log.i("Toolbar", "Updating drawing state")
+        toolbarLog.i("Updating drawing state")
         state.checkForSelectionsAndMenus()
     }
     fun handleChangePen(pen: Pen) {
@@ -146,7 +144,7 @@ fun Toolbar(
     }
 
     if (state.menuStates.isPageSettingsModalOpen) {
-        Log.i("PageSettings", "Opening page settings modal")
+        toolbarLog.i("Opening page settings modal")
         PageSettingsModal(pageView = state.pageView) {
             state.menuStates.isPageSettingsModalOpen = false
         }
@@ -323,7 +321,7 @@ fun Toolbar(
                     contentDescription = "library",
                     onSelect = {
                         // Call insertImage when the button is tapped
-                        Log.i("InsertImage", "Launching image picker...")
+                        toolbarLog.i("Launching image picker...")
                         pickMedia.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
                     }
                 )
@@ -442,7 +440,7 @@ fun Toolbar(
                         state = state,
                         onClose = { state.menuStates.isMenuOpen = false },
                         onPageSettingsOpen = {
-                            Log.i("PageSettings", "Opening page settings modal")
+                            toolbarLog.i("Opening page settings modal")
                             state.menuStates.isPageSettingsModalOpen = true
                         })
                 }
