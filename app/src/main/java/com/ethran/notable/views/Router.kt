@@ -51,6 +51,7 @@ fun Router() {
             "welcome"
         else
             "library?folderId={folderId}"
+//            "bugReport"
 
     NavHost(
         navController = navController,

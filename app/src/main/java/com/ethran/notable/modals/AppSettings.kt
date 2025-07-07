@@ -30,7 +30,7 @@ data class AppSettings(
     val debugMode: Boolean = false,
     val neoTools: Boolean = false,
     val toolbarPosition: Position = Position.Top,
-    val smoothScroll: Boolean = false,
+    val smoothScroll: Boolean = true,
     val monochromeMode: Boolean = false,
     val continuousZoom: Boolean = false,
     val visualizePdfPagination: Boolean = false,

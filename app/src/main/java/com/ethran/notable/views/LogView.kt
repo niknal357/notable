@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import android.widget.Toast
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.Card
+import androidx.compose.material.Checkbox
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
@@ -65,28 +67,72 @@ import kotlin.math.log10
 import kotlin.math.pow
 
 
-class ReportData(context: Context) {
+class ReportData(
+    context: Context,
+    selectedTags: Map<String, Boolean>,
+    includeLibrariesLogs: Boolean
+) {
     val deviceInfo: String = buildDeviceInfo(context)
-    private val logs: String = getRecentLogs()
+    private val logs: String = getRecentLogs(selectedTags, includeLibrariesLogs)
 
     companion object {
-        private const val MAX_LOG_LINES = 40
+        private const val MAX_LOG_LINES = 100
         private const val LOG_LINE_REGEX =
             """^(\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3})\s+(\d+)\s+(\d+)\s([VDIWE])\s([^:]+):\s(.*)$"""
     }
 
     private fun rapportMarkdown(includeLogs: Boolean, description: String): String {
-        val formatedLogs = formatLogsForDisplay()
-        return buildString {
+        val formattedLogs = formatLogsForDisplay()
+        val baseReport = buildString {
             append("### Description\n")
             append(description).append("\n\n")
             append("### Device Info\n")
             append(deviceInfo.replace("•", "-")).append("\n")
-            if (includeLogs) {
-                append("\n### Diagnostic Logs\n```\n")
-                append(formatedLogs)
-                append("\n```")
+        }
+
+        if (!includeLogs) return baseReport
+
+        val logHeader = "\n### Diagnostic Logs\n```\n"
+        val logFooter = "\n```"
+        val logBoxLength = URLEncoder.encode(logFooter + logHeader, "UTF-8").length
+        // Calculate space available for logs
+        val urlPrefixLength = ("https://github.com/ethran/notable/issues/new?" +
+                "title=${URLEncoder.encode("Bug: ${getTitle(description)}", "UTF-8")}" +
+                "&body=").length
+
+        val encodedBaseLength = URLEncoder.encode(baseReport, "UTF-8").length
+
+        val availableSpace = 8201 - (encodedBaseLength + logBoxLength + urlPrefixLength+50)
+
+        val wholeLogsLength = URLEncoder.encode(formattedLogs, "UTF-8").length
+        val trimmedLogs = if (wholeLogsLength > availableSpace) {
+            // Binary search for optimal truncation point
+            var low = 0
+            var high = wholeLogsLength
+            var bestLength = 0
+
+            while (low <= high) {
+                val mid = (low + high) / 2
+                val testLogs = formattedLogs.take(mid)
+                val testEncoded = URLEncoder.encode(testLogs, "UTF-8")
+
+                if (testEncoded.length <= availableSpace) {
+                    bestLength = mid
+                    low = mid + 1
+                } else {
+                    high = mid - 1
+                }
             }
+            formattedLogs.take(bestLength)
+        } else {
+            formattedLogs
+        }
+
+        return buildString {
+            append(baseReport)
+            append(logHeader)
+            append(trimmedLogs)
+            append(logFooter)
         }
     }
 
@@ -94,15 +140,25 @@ class ReportData(context: Context) {
         return description.take(40)
     }
 
-    private fun getRecentLogs(): String {
+    private fun getRecentLogs(
+        selectedTags: Map<String, Boolean>,
+        includeLibrariesLogs: Boolean
+    ): String {
         return try {
             // Get logs with threadtime format (most detailed format)
             val process = Runtime.getRuntime().exec("logcat -d -v threadtime")
             val reader = BufferedReader(InputStreamReader(process.inputStream))
 
+
             // Read all lines and keep only the newest matching entries
             val allLines = reader.useLines { lines ->
-                lines.filter { it.matches(Regex(LOG_LINE_REGEX)) }
+                lines.filter {
+                    val match = Regex(LOG_LINE_REGEX).matchEntire(it)
+                    excludeLibraryLogs(match, includeLibrariesLogs) && filterLogsByTags(
+                        match,
+                        selectedTags
+                    )
+                }
                     .toList()
             }
 
@@ -114,6 +170,52 @@ class ReportData(context: Context) {
         } catch (e: Exception) {
             "Error reading logs: ${e.message}"
         }
+    }
+
+    private fun excludeLibraryLogs(match: MatchResult?, includeLibrariesLogs: Boolean): Boolean {
+        if (includeLibrariesLogs) return true
+        val excludedTags = setOf(
+            "OnBackInvokedCallback",      // System back gesture
+            "OpenGLRenderer",             // Graphics system
+            "GoogleInputMethodService",   // Keyboard
+            "ProfileInstaller",           // Code optimization
+            "Parcel",                     // IPC
+            "InputMethodManager",         // Keyboard/input manager
+            "InsetsController",           // System UI/IME transitions
+            "Choreographer",              // Frame timing/animation
+            "ViewRootImpl",               // UI framework internals
+            "SurfaceView",                // Surface rendering
+            "BLASTBufferQueue",           // Graphics buffer management
+            "BufferQueueProducer",        //
+            "TrafficStats",               // Network stats
+            "StrictMode",                 // Policy violations
+            "androidx.compose",           // Jetpack Compose framework
+            "HwBinder",                   // Hardware binder subsystem
+            "libc",                       // Native C/C++ library
+            "lib_touch_reader",           // Touch input driver logs
+            "RawInputReader\$a",          // Raw input reader internal threads
+            "AdrenoGLES-0",                // GPU driver and Adreno graphics logs
+            "CompatibilityChangeReporter", ".ethran.notable"
+        )
+        if (match != null) {
+            val tag = match.groupValues[5].trim()
+            return tag !in excludedTags
+        } else {
+            return false
+        }
+    }
+
+    private fun filterLogsByTags(match: MatchResult?, selectedTags: Map<String, Boolean>): Boolean {
+        return if (match != null) {
+            val tag = match.groupValues[5].trim()
+            if (selectedTags.containsKey(tag))
+                selectedTags[tag] == true
+            else
+                true
+        } else {
+            false
+        }
+
     }
 
     fun formatLogsForDisplay(): String {
@@ -269,7 +371,11 @@ fun BugReportScreen(navController: NavController) {
     var description by remember { mutableStateOf("") }
     var includeLogs by remember { mutableStateOf(true) }
     val focusManager = LocalFocusManager.current
-    val reportData = ReportData(context)
+    val logTags =
+        listOf("PageDataManager", "PageViewCache", "GestureReceiver" /*, more if needed */)
+    var selectedTags by remember { mutableStateOf(logTags.associateWith { true }) }
+    var includeLibrariesLogs by remember { mutableStateOf(false) }
+    val reportData = ReportData(context, selectedTags, includeLibrariesLogs)
 
     Column(
         modifier = Modifier
@@ -296,14 +402,7 @@ fun BugReportScreen(navController: NavController) {
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
         )
-
-        Spacer(Modifier.height(16.dp))
-
-        // Report Preview Card
-        ReportPreviewCard(reportData, description.ifBlank { "_No description provided_" }, includeLogs)
-
-        Spacer(Modifier.height(16.dp))
-
+        Spacer(Modifier.height(8.dp))
         // Include logs toggle
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(
@@ -313,6 +412,45 @@ fun BugReportScreen(navController: NavController) {
             Spacer(Modifier.width(8.dp))
             Text("Include diagnostic logs")
         }
+        if (includeLogs) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Include logs from(leave default if unsure):",
+                style = MaterialTheme.typography.caption
+            )
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+            ) {
+                logTags.forEach { tag ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = selectedTags[tag] == true,
+                            onCheckedChange = { checked ->
+                                selectedTags =
+                                    selectedTags.toMutableMap().apply { put(tag, checked) }
+                            }
+                        )
+                        Text(tag, modifier = Modifier.padding(end = 8.dp))
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = includeLibrariesLogs,
+                        onCheckedChange = { checked ->
+                            includeLibrariesLogs = checked
+                        }
+                    )
+                    Text("Include libraries logs", modifier = Modifier.padding(end = 8.dp))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Report Preview Card
+        ReportPreviewCard(reportData, description.ifBlank { "_No description provided_" }, includeLogs)
 
         Spacer(Modifier.height(16.dp))
 
