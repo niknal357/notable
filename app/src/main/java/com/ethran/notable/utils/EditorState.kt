@@ -1,16 +1,15 @@
 package com.ethran.notable.utils
 
 import android.graphics.Color
-import android.util.Log
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.ethran.notable.TAG
 import com.ethran.notable.classes.ClipboardContent
 import com.ethran.notable.classes.PageView
 import com.ethran.notable.classes.SelectionState
 import com.ethran.notable.datastore.EditorSettingCacheManager
+import io.shipbook.shipbooksdk.ShipBook
 
 enum class Mode {
     Draw, Erase, Select, Line
@@ -33,7 +32,7 @@ class MenuStates {
 
 
 class EditorState(val bookId: String? = null, val pageId: String, val pageView: PageView) {
-
+    private val log = ShipBook.getLogger("EditorState")
     private val persistedEditorSettings = EditorSettingCacheManager.getEditorSettings()
 
     var mode by mutableStateOf(persistedEditorSettings?.mode ?: Mode.Draw) // should save
@@ -86,10 +85,7 @@ class EditorState(val bookId: String? = null, val pageId: String, val pageView: 
     fun checkForSelectionsAndMenus() {
         val shouldBeDrawing = !menuStates.anyMenuOpen && !selectionState.isNonEmpty()
         if (isDrawing != shouldBeDrawing) {
-            Log.d(
-                TAG, "We shouldn't be drawing: $shouldBeDrawing, " +
-                        "menus: ${menuStates.anyMenuOpen}, selection: ${selectionState.isNonEmpty()}"
-            )
+            log.d("Drawing state should be: $shouldBeDrawing (menus open: ${menuStates.anyMenuOpen}, selection active: ${selectionState.isNonEmpty()})")
             isDrawing = shouldBeDrawing
         }
     }
