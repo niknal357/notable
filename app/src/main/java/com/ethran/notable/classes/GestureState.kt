@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.IntOffset
 import com.ethran.notable.modals.GlobalAppSettings
 import com.ethran.notable.utils.SimplePointF
 import com.ethran.notable.utils.setAnimationMode
+import io.shipbook.shipbooksdk.ShipBook
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -41,14 +42,18 @@ data class GestureState(
     var initialTimestamp: Long = System.currentTimeMillis(),
     var lastTimestamp: Long = initialTimestamp,
 ) {
+    val log = ShipBook.getLogger("GestureState")
+
     var gestureMode: GestureMode = GestureMode.Normal
         set(value) {
             if (field != value) {
                 when (value) {
                     GestureMode.Zoom, GestureMode.Scroll, GestureMode.Selection -> {
+                        log.d("Entered ${value.name} gesture mode")
                         setAnimationMode(true)
                     }
                     GestureMode.Normal -> {
+                        log.d("Entered ${value.name} gesture mode")
                         setAnimationMode(false)
                     }
                 }

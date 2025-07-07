@@ -272,9 +272,8 @@ fun EditorGestureReceiver(
                         if (!GlobalAppSettings.current.smoothScroll && gestureState.isOneFinger()
                             && abs(verticalDrag) > SWIPE_THRESHOLD
                         ) {
-                            controlTower.onSingleFingerVerticalSwipe(
-                                verticalDrag
-                            )
+                            log.d("Discrete scrolling, verticalDrag: $verticalDrag")
+                            controlTower.onSingleFingerVerticalSwipe(verticalDrag)
                         }
                     } catch (e: CancellationException) {
                         log.w("Gesture coroutine canceled", e)
