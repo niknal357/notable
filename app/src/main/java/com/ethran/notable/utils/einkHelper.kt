@@ -104,7 +104,7 @@ fun setAnimationMode(isAnimationMode: Boolean) {
 // reference:
 // https://github.com/onyx-intl/OnyxAndroidDemo/blob/d3a1ffd3af231fe4de60a2a0da692c17cb35ce31/app/OnyxPenDemo/src/main/java/com/onyx/android/eink/pen/demo/ui/PenDemoActivity.java#L500
     if (isAnimationMode) {
-        EpdController.applyTransientUpdate(UpdateMode.ANIMATION_X)
+        EpdController.applyTransientUpdate(UpdateMode.ANIMATION)
         einkLogger.d("Animation mode enabled")
     } else {
         EpdController.clearTransientUpdate(true)
