@@ -177,7 +177,7 @@ class DrawCanvas(
                             else
                                 copyInput(plist.points, page.scroll, page.zoomLevel.value)
 
-                        val erasedByScribble = handleScribbleToErase(page, scaledPoints, history)
+                        val erasedByScribble = handleScribbleToErase(page, scaledPoints, history, getActualState().pen)
                         if (!erasedByScribble) {
                             // draw the stroke
                             handleDraw(

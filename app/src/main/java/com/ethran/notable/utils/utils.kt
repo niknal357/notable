@@ -278,8 +278,10 @@ fun isScribble(points: List<StrokePoint>): Boolean {
 fun handleScribbleToErase(
     page: PageView,
     touchPoints: List<StrokePoint>,
-    history: History
+    history: History,
+    pen: Pen
 ): Boolean {
+    if (pen == Pen.MARKER) return false // do not erase with highlighter
     if (!GlobalAppSettings.current.scribbleToEraseEnabled)
         return false // scribble to erase is disabled
     if (!isScribble(touchPoints))
