@@ -265,11 +265,11 @@ fun isScribble(points: List<StrokePoint>): Boolean {
     for (i in 1 until points.size) {
         val dx = points[i].x - points[i-1].x
         val dy = points[i].y - points[i-1].y
-        totalDistance += kotlin.math.sqrt(dx*dx + dy*dy)
+        totalDistance += kotlin.math.abs(dx) + kotlin.math.abs(dy)
     }
 
     val diagonal = kotlin.math.sqrt(width*width + height*height)
-    // if the total path length is shorter than ~3x the bounding box diagonal, it's likely not a scribble
+    // if the total path manhattan length is less than 3x the bounding box diagonal, it's likely not a scribble
     if (totalDistance < diagonal * 3) return false
     return true
 }
