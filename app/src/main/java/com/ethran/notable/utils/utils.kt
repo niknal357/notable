@@ -57,6 +57,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 const val SCRIBBLE_TO_ERASE_GRACE_PERIOD_MS = 100L
+const val SCRIBBLE_INTERSECTION_THRESHOLD = 0.20f
 var timeOfLastStrokeDrawn: Long = 0
 
 fun Modifier.noRippleClickable(
@@ -268,10 +269,49 @@ fun isScribble(points: List<StrokePoint>): Boolean {
         totalDistance += kotlin.math.abs(dx) + kotlin.math.abs(dy)
     }
 
-    val diagonal = kotlin.math.sqrt(width*width + height*height)
-    // if the total path manhattan length is less than 3x the bounding box diagonal, it's likely not a scribble
-    if (totalDistance < diagonal * 3) return false
+    val minLengthForScribble = kotlin.math.max(width, height) * 3
+    if (totalDistance < minLengthForScribble) return false
     return true
+}
+
+fun filterStrokesByIntersection(
+    candidateStrokes: List<Stroke>,
+    boundingBox: RectF,
+    threshold: Float = SCRIBBLE_INTERSECTION_THRESHOLD
+): List<Stroke> {
+    return candidateStrokes.filter { stroke ->
+        val strokeRect = strokeBounds(stroke)
+        val intersection = RectF()
+        
+        if (intersection.setIntersect(strokeRect, boundingBox)) {
+            val strokeArea = strokeRect.width() * strokeRect.height()
+            val intersectionArea = intersection.width() * intersection.height()
+            val intersectionRatio = if (strokeArea > 0) intersectionArea / strokeArea else 0f
+
+            intersectionRatio >= threshold
+        } else {
+            false
+        }
+    }
+}
+
+fun calculateNumReversals(
+    points: List<SimplePointF>,
+    stepSize: Int = 10
+): Int {
+    var numReversals = 0
+    for (i in 0 until points.size - 2 * stepSize step stepSize) {
+        val p1 = points[i]
+        val p2 = points[i + stepSize]
+        val p3 = points[i + 2 * stepSize]
+        val segment1 = SimplePointF(p2.x - p1.x, p2.y - p1.y)
+        val segment2 = SimplePointF(p3.x - p2.x, p3.y - p2.y)
+        val dotProduct = segment1.x * segment2.x + segment1.y * segment2.y
+        if (dotProduct < 0) {
+            numReversals++
+        }
+    }
+    return numReversals
 }
 
 // Erases strokes if touchPoints are "scribble", returns true if erased.
@@ -290,16 +330,20 @@ fun handleScribbleToErase(
         return false // not enough time has passed since last stroke
 
     val points = touchPoints.map { SimplePointF(it.x, it.y) }
+    if (calculateNumReversals(points) < 2) return false
+
     val path = pointsToPath(points)
     val outPath = Path()
+
     // calculate stroke width based on bounding box
     // bigger swinging in scribble = bigger bounding box => larger stroke size
     val boundingBox = calculateBoundingBox(touchPoints)
-    val strokeSizeForDetection = if (boundingBox.width() < boundingBox.height()) {
-        boundingBox.width() / 10f
-    } else {
-        boundingBox.height() / 10f
-    }
+    val minDim = kotlin.math.min(boundingBox.width(), boundingBox.height())
+    val maxDim = kotlin.math.max(boundingBox.width(), boundingBox.height())
+    val aspectRatio = if (minDim > 0) maxDim / minDim else 1f
+    val scaleFactor = kotlin.math.min(1f + (aspectRatio - 1f) / 2f, 2f)
+    val strokeSizeForDetection = minDim * 0.15f * scaleFactor
+
     val paint = Paint().apply {
         this.strokeWidth = strokeSizeForDetection
         this.style = Paint.Style.STROKE
@@ -309,7 +353,15 @@ fun handleScribbleToErase(
     }
     paint.getFillPath(path, outPath)
 
-    val deletedStrokes = selectStrokesFromPath(page.strokes, outPath)
+    val candidateStrokes = selectStrokesFromPath(page.strokes, outPath)
+    val expandedBoundingBox = RectF(
+        boundingBox.left - strokeSizeForDetection/2,
+        boundingBox.top - strokeSizeForDetection/2,
+        boundingBox.right + strokeSizeForDetection/2,
+        boundingBox.bottom + strokeSizeForDetection/2
+    )
+    val deletedStrokes = filterStrokesByIntersection(candidateStrokes, expandedBoundingBox)
+
     if (deletedStrokes.isNotEmpty()) {
         val deletedStrokeIds = deletedStrokes.map { it.id }
         page.removeStrokes(deletedStrokeIds)
